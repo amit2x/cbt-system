@@ -1,59 +1,187 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# CBT System - Computer Based Testing Platform
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+[![Laravel Version](https://shields.io)](https://laravel.com)
+[![PHP Version](https://shields.io)](https://php.net)
+[![License](https://shields.io)](LICENSE)
 
-## About Laravel
+A comprehensive, enterprise-grade Computer Based Testing (CBT) system for educational institutions to conduct online examinations, manage question banks, track student performance, and provide real-time exam monitoring.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🚀 Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### For Students
 
-## Learning Laravel
+- **Online Exam Engine:** Exam taking with real-time timers, auto-save functionality, and auto-submit on expiry.
+- **Navigation Palette:** Interactive tracking panel with 5 status indicators (Not Visited, Visited, Answered, Marked, Answered & Marked).
+- **Review System:** Quick "Mark for review" functionality during active sessions.
+- **Proctoring Security:** Fullscreen mode enforcement and browser tab-switch detection logs.
+- **Detailed Analytics:** Performance charts, topic-wise analysis, score distributions, and rank/percentile calculators.
+- **Engagement Tools:** Class feedback submissions and study streak tracking.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### For Instructors
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **Management Hub:** Complete control over courses, modules, and student batches.
+- **Quick Deploy:** Swift quiz creation and instant assessment launching.
+- **Live Dashboard:** Real-time exam monitoring with active tab-switch warnings and forced exam termination.
+- **Analytics Panel:** Question-wise performance metrics and student feedback response tracking.
 
-## Laravel Sponsors
+### For Administrators
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- **Access Control:** User management mapped using granular roles and permissions.
+- **Resource Scaling:** Core question bank supporting bulk spreadsheet import/export, categorisation, and difficulty scaling.
+- **Global Systems:** Exam scheduling engines, system theme adjustments, and comprehensive rank list generations.
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## 🛠️ Built With
 
-## Contributing
+- **Backend:** Laravel 12.x & PHP 8.2+
+- **Frontend:** Bootstrap 5, jQuery, Chart.js, Select2
+- **Database:** MySQL 8.0+
+- **Authentication:** Laravel UI Bootstrap Auth
+- **Authorization:** Spatie Laravel Permission
+- **APIs:** Laravel Sanctum
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+---
 
-## Code of Conduct
+## 📦 Installation & Setup
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Prerequisites
 
-## Security Vulnerabilities
+- PHP >= 8.2
+- Composer
+- MySQL >= 8.0
+- Node.js >= 18.x
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Steps
 
-## License
+1. **Clone the Repository:**
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+    ```bash
+    git clone https://github.com/your-repo/cbt-system.git
+    cd cbt-system
+    ```
+
+2. **Install Dependencies:**
+
+    ```bash
+    composer install
+    npm install
+    ```
+
+3. **Configure Environment:**
+
+    ```bash
+    cp .env.example .env
+    php artisan key:generate
+    ```
+
+    > _Note: Open `.env` and configure your database credentials before proceeding._
+
+4. **Setup Database & Seeds:**
+
+    ```bash
+    php artisan migrate
+    php artisan db:seed --class=RolePermissionSeeder
+    php artisan db:seed --class=SettingsSeeder
+    ```
+
+5. **Link Assets & Build:**
+
+    ```bash
+    php artisan storage:link
+    npm run build
+    ```
+
+6. **Start Application Server:**
+    ```bash
+    php artisan serve
+    ```
+
+---
+
+## 🔑 Default Credentials
+
+| Role           | Email                | Password   |
+| :------------- | :------------------- | :--------- |
+| **Admin**      | `admin@cbt.com`      | `password` |
+| **Instructor** | `instructor@cbt.com` | `password` |
+| **Student**    | `student@cbt.com`    | `password` |
+
+---
+
+## 🌐 API Endpoints
+
+The platform exposes rest endpoints optimized for mobile applications and external system integrations.
+
+| Method | Endpoint                                       | Description                                           |
+| :----- | :--------------------------------------------- | :---------------------------------------------------- |
+| `POST` | `/api/login`                                   | User authentication                                   |
+| `GET`  | `/api/student/exams`                           | List available student assessments                    |
+| `POST` | `/api/student/exams/{exam}/start`              | Initialize an exam instance                           |
+| `POST` | `/api/student/exams/{studentExam}/save-answer` | Payload capture for auto-saving answers               |
+| `POST` | `/api/student/exams/{studentExam}/submit`      | Manual finalized exam submission                      |
+| `GET`  | `/api/student/results`                         | Fetch complete student performance historical metrics |
+| `GET`  | `/api/student/analytics`                       | Deep metrics analytics extraction                     |
+
+---
+
+## 📁 Project Structure
+
+```text
+├── app/
+│   ├── Http/Controllers/     # Admin, Instructor, Student logic handlers
+│   ├── Models/               # Core Eloquent models
+│   ├── Services/             # Dedicated business logic layer
+│   ├── Repositories/         # Structural data repository pattern
+│   └── Traits/               # Shared modular traits
+├── database/
+│   ├── migrations/           # Structural database schemas
+│   └── seeders/              # User roles, configurations, and baseline testing seeds
+├── resources/
+│   └── views/                # Modular Bootstrap Blade front-end templates
+└── routes/
+    ├── web.php               # Standard web application navigation routing
+    └── api.php               # Secure Sanctum REST API endpoints
+```
+
+---
+
+## ⚙️ Automated Commands
+
+```bash
+# Auto-submit expired exams (Run via scheduler every minute)
+php artisan exams:auto-submit
+
+# Wipe all compiled application caches
+php artisan cache:clear && php artisan view:clear && php artisan config:clear && php artisan route:clear
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+| Common Issue                                            | Immediate Solution                                                                                     |
+| :------------------------------------------------------ | :----------------------------------------------------------------------------------------------------- |
+| White screen rendering right after user login           | Clear old state bindings: `php artisan config:clear` and `php artisan view:clear`                      |
+| Uploaded file elements or missing proctoring images     | Re-link public visibility paths: `php artisan storage:link`                                            |
+| Token mismatch (CSRF expiration) warnings               | Empty individual browser cookie tracking storage; check sessions configuration details                 |
+| Stale entity properties or migration compilation errors | Clear loaders and refresh database entirely: `composer dump-autoload` then `php artisan migrate:fresh` |
+
+---
+
+## 🌐 Browser Support
+
+The application is rigorously optimized for standardized evergreen rendering engines:
+
+- Google Chrome _(Recommended for best proctoring stability)_
+- Mozilla Firefox
+- Apple Safari
+- Microsoft Edge
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
