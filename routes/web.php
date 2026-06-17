@@ -82,6 +82,25 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::resource('batches', App\Http\Controllers\Admin\BatchController::class);
 
+    // ==================== Student Management ====================
+    Route::prefix('students')->name('students.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\StudentController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\StudentController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\StudentController::class, 'store'])->name('store');
+        Route::get('/import', [App\Http\Controllers\Admin\StudentController::class, 'import'])->name('import');
+        Route::post('/import', [App\Http\Controllers\Admin\StudentController::class, 'importStudents'])->name('import.post');
+        Route::get('/export', [App\Http\Controllers\Admin\StudentController::class, 'export'])->name('export');
+        Route::get('/download-template', [App\Http\Controllers\Admin\StudentController::class, 'downloadTemplate'])->name('download-template');
+        Route::get('/{student}', [App\Http\Controllers\Admin\StudentController::class, 'show'])->name('show');
+        Route::get('/{student}/edit', [App\Http\Controllers\Admin\StudentController::class, 'edit'])->name('edit');
+        Route::put('/{student}', [App\Http\Controllers\Admin\StudentController::class, 'update'])->name('update');
+        Route::delete('/{student}', [App\Http\Controllers\Admin\StudentController::class, 'destroy'])->name('destroy');
+        Route::post('/bulk-delete', [App\Http\Controllers\Admin\StudentController::class, 'bulkDelete'])->name('bulk-delete');
+        Route::post('/bulk-status', [App\Http\Controllers\Admin\StudentController::class, 'bulkStatus'])->name('bulk-status');
+        Route::post('/{student}/toggle-status', [App\Http\Controllers\Admin\StudentController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/{student}/reset-password', [App\Http\Controllers\Admin\StudentController::class, 'resetPassword'])->name('reset-password');
+    });
+
     // ==================== Question Bank ====================
     Route::get('questions/import', [App\Http\Controllers\Admin\QuestionController::class, 'showImportForm'])->name('questions.import');
     Route::post('questions/import', [App\Http\Controllers\Admin\QuestionController::class, 'import'])->name('questions.import.post');

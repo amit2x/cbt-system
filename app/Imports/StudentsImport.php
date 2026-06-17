@@ -2,30 +2,30 @@
 
 namespace App\Imports;
 
-use App\Models\User;
 use App\Models\Batch;
-use Maatwebsite\Excel\Concerns\ToModel;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithValidation;
-use Maatwebsite\Excel\Concerns\SkipsOnError;
-use Maatwebsite\Excel\Concerns\SkipsErrors;
-use Maatwebsite\Excel\Concerns\Importable;
-use Maatwebsite\Excel\Concerns\WithChunkReading;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\SkipsErrors;
+use Maatwebsite\Excel\Concerns\SkipsOnError;
+use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithValidation;
 
-class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnError, WithChunkReading
+class StudentsImport implements SkipsOnError, ToModel, WithChunkReading, WithHeadingRow, WithValidation
 {
     use Importable, SkipsErrors;
 
     protected $batch;
+
     protected $stats = [
         'created' => 0,
         'existing' => 0,
         'enrolled' => 0,
         'skipped' => 0,
-        'errors' => []
+        'errors' => [],
     ];
 
     public function __construct(Batch $batch)
@@ -49,7 +49,7 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         return [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
-            'phone' => 'required|regex:/^[0-9]{10,15}$/'
+            'phone' => 'required|regex:/^[0-9]{10,15}$/',
         ];
     }
 
@@ -73,6 +73,7 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         // Skip empty rows
         if (empty(array_filter($row))) {
             Log::info('Skipping empty row');
+
             return null;
         }
 
@@ -83,7 +84,7 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
             // Log the row being processed (excluding sensitive data)
             Log::info('Processing import row', [
                 'email' => $row['email'] ?? 'no email',
-                'name' => $row['name'] ?? 'no name'
+                'name' => $row['name'] ?? 'no name',
             ]);
 
             // Validate required fields
@@ -94,14 +95,14 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
             // Check if email exists
             $student = User::where('email', $row['email'])->first();
 
-            if (!$student) {
+            if (! $student) {
                 // Create new student
                 $student = User::create([
                     'name' => $row['name'],
                     'email' => $row['email'],
                     'password' => Hash::make('password123'), // Default password
                     'phone' => $row['phone'] ?? null,
-                    'is_active' => true
+                    'is_active' => true,
                 ]);
 
                 // Assign student role
@@ -120,17 +121,17 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
                 ->where('student_id', $student->id)
                 ->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 // Enroll in batch
                 $this->batch->students()->attach($student->id, [
                     'enrolled_at' => now(),
-                    'status' => 'active'
+                    'status' => 'active',
                 ]);
 
                 $this->stats['enrolled']++;
                 Log::info('Student enrolled in batch', [
                     'student_id' => $student->id,
-                    'batch_id' => $this->batch->id
+                    'batch_id' => $this->batch->id,
                 ]);
             } else {
                 $this->stats['skipped']++;
@@ -142,12 +143,12 @@ class StudentsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOn
         } catch (\Exception $e) {
             $this->stats['errors'][] = [
                 'row' => $row,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ];
 
             Log::error('Error processing import row', [
                 'error' => $e->getMessage(),
-                'row' => $row
+                'row' => $row,
             ]);
 
             // Re-throw to stop import on critical errors

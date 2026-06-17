@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
-      data-theme="{{ setting('theme_mode', 'light') }}"
-      data-primary="{{ setting('primary_color', '#4e73df') }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="{{ setting('theme_mode', 'light') }}"
+    data-primary="{{ setting('primary_color', '#4e73df') }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,9 +13,9 @@
 
     <!-- Favicon -->
     @if(setting('app_favicon'))
-        <link rel="icon" href="{{ setting('app_favicon') }}" type="image/x-icon">
+    <link rel="icon" href="{{ setting('app_favicon') }}" type="image/x-icon">
     @else
-        <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     @endif
 
     <!-- Fonts -->
@@ -27,41 +27,112 @@
     <!-- Custom CSS -->
     <style>
         :root {
-            --primary-color: {{ theme_color('primary_color', '#4e73df') }};
-            --secondary-color: {{ theme_color('secondary_color', '#858796') }};
-            --success-color: {{ theme_color('success_color', '#1cc88a') }};
-            --info-color: {{ theme_color('info_color', '#36b9cc') }};
-            --warning-color: {{ theme_color('warning_color', '#f6c23e') }};
-            --danger-color: {{ theme_color('danger_color', '#e74a3b') }};
-            --sidebar-bg: {{ setting('sidebar_bg', '#1a1e2b') }};
-            --sidebar-text: {{ setting('sidebar_text', '#ffffff') }};
-            --header-bg: {{ setting('header_bg', '#ffffff') }};
-            --header-text: {{ setting('header_text', '#3a3b45') }};
+            --primary-color: {
+                    {
+                    theme_color('primary_color', '#4e73df')
+                }
+            }
+
+            ;
+
+            --secondary-color: {
+                    {
+                    theme_color('secondary_color', '#858796')
+                }
+            }
+
+            ;
+
+            --success-color: {
+                    {
+                    theme_color('success_color', '#1cc88a')
+                }
+            }
+
+            ;
+
+            --info-color: {
+                    {
+                    theme_color('info_color', '#36b9cc')
+                }
+            }
+
+            ;
+
+            --warning-color: {
+                    {
+                    theme_color('warning_color', '#f6c23e')
+                }
+            }
+
+            ;
+
+            --danger-color: {
+                    {
+                    theme_color('danger_color', '#e74a3b')
+                }
+            }
+
+            ;
+
+            --sidebar-bg: {
+                    {
+                    setting('sidebar_bg', '#1a1e2b')
+                }
+            }
+
+            ;
+
+            --sidebar-text: {
+                    {
+                    setting('sidebar_text', '#ffffff')
+                }
+            }
+
+            ;
+
+            --header-bg: {
+                    {
+                    setting('header_bg', '#ffffff')
+                }
+            }
+
+            ;
+
+            --header-text: {
+                    {
+                    setting('header_text', '#3a3b45')
+                }
+            }
+
+            ;
         }
 
-        @if(is_dark_mode() === true)
-            body {
-                background-color: #1a1e2b;
-                color: #e0e0e0;
-            }
-            .card {
-                background-color: #2d323f;
-                border-color: #404654;
-            }
-            .table {
-                color: #e0e0e0;
-            }
-            .table-light {
-                background-color: #404654;
-                color: #ffffff;
-            }
-            .modal-content {
-                background-color: #2d323f;
-                color: #e0e0e0;
-            }
-        @endif
+        @if(is_dark_mode()===true) body {
+            background-color: #1a1e2b;
+            color: #e0e0e0;
+        }
 
-        #wrapper {
+        .card {
+            background-color: #2d323f;
+            border-color: #404654;
+        }
+
+        .table {
+            color: #e0e0e0;
+        }
+
+        .table-light {
+            background-color: #404654;
+            color: #ffffff;
+        }
+
+        .modal-content {
+            background-color: #2d323f;
+            color: #e0e0e0;
+        }
+
+        @endif #wrapper {
             overflow-x: hidden;
         }
 
@@ -76,7 +147,7 @@
         #sidebar-wrapper .sidebar-heading {
             padding: 0.875rem 1.25rem;
             font-size: 1.2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         #sidebar-wrapper .list-group {
@@ -92,7 +163,7 @@
         }
 
         #sidebar-wrapper .list-group-item:hover {
-            background-color: rgba(255,255,255,0.1);
+            background-color: rgba(255, 255, 255, 0.1);
             padding-left: 1.8rem;
         }
 
@@ -145,9 +216,17 @@
             filter: brightness(90%);
         }
 
-        .text-primary { color: var(--primary-color) !important; }
-        .bg-primary { background-color: var(--primary-color) !important; }
-        .border-primary { border-color: var(--primary-color) !important; }
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+
+        .bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+
+        .border-primary {
+            border-color: var(--primary-color) !important;
+        }
 
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
@@ -175,8 +254,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .stats-card {
@@ -189,11 +275,25 @@
             box-shadow: 0 8px 15px rgba(66, 31, 31, 0.1);
         }
 
-        .stats-card.border-left-primary { border-left-color: var(--primary-color); }
-        .stats-card.border-left-success { border-left-color: var(--success-color); }
-        .stats-card.border-left-info { border-left-color: var(--info-color); }
-        .stats-card.border-left-warning { border-left-color: var(--warning-color); }
-        .stats-card.border-left-danger { border-left-color: var(--danger-color); }
+        .stats-card.border-left-primary {
+            border-left-color: var(--primary-color);
+        }
+
+        .stats-card.border-left-success {
+            border-left-color: var(--success-color);
+        }
+
+        .stats-card.border-left-info {
+            border-left-color: var(--info-color);
+        }
+
+        .stats-card.border-left-warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .stats-card.border-left-danger {
+            border-left-color: var(--danger-color);
+        }
     </style>
 
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
@@ -201,66 +301,71 @@
     @stack('styles')
 
     @if(setting('google_analytics_id'))
-        <!-- Google Analytics -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{ setting('google_analytics_id') }}"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ setting('google_analytics_id') }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '{{ setting("google_analytics_id") }}');
-        </script>
+    </script>
     @endif
 </head>
+
 <body class="{{ is_dark_mode() ? 'dark-mode' : '' }} sb-nav-fixed">
     <div class="d-flex" id="wrapper">
         <!-- Sidebar -->
         <div class="border-end" id="sidebar-wrapper">
             <div class="sidebar-heading d-flex align-items-center justify-content-center py-3">
                 @if(setting('app_logo'))
-                    <img src="{{ setting('app_logo') }}" alt="{{ setting('app_name') }}" height="40" class="me-2">
+                <img src="{{ setting('app_logo') }}" alt="{{ setting('app_name') }}" height="40" class="me-2">
                 @endif
                 <span class="fw-bold">{{ setting('app_name', 'CBT System') }}</span>
             </div>
 
             <div class="list-group list-group-flush">
                 <a href="{{ route('admin.dashboard') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                     <i class="bi bi-speedometer2 me-2"></i>
                     <span>Dashboard</span>
                 </a>
 
                 <a href="{{ route('admin.courses.index') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.courses.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.courses.*') ? 'active' : '' }}">
                     <i class="bi bi-book me-2"></i>
                     <span>Courses</span>
                 </a>
 
                 <a href="{{ route('admin.batches.index') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.batches.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.batches.*') ? 'active' : '' }}">
                     <i class="bi bi-people me-2"></i>
                     <span>Batches</span>
                 </a>
-
+                <a href="{{ route('admin.students.index') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.students.*') ? 'active' : '' }}">
+                    <i class="bi bi-people me-2"></i>
+                    <span>Student Management</span>
+                </a>
                 <a href="{{ route('admin.questions.index') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.questions.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.questions.*') ? 'active' : '' }}">
                     <i class="bi bi-question-circle me-2"></i>
                     <span>Question Bank</span>
                 </a>
 
                 <a href="{{ route('admin.exams.index') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.exams.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.exams.*') ? 'active' : '' }}">
                     <i class="bi bi-pencil-square me-2"></i>
                     <span>Exams</span>
                 </a>
 
                 <a href="{{ route('admin.analytics.dashboard') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.analytics.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.analytics.*') ? 'active' : '' }}">
                     <i class="bi bi-graph-up me-2"></i>
                     <span>Analytics</span>
                 </a>
 
                 <a href="{{ route('admin.reports.index') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
                     <i class="bi bi-file-text me-2"></i>
                     <span>Reports</span>
                 </a>
@@ -270,13 +375,13 @@
                 </div>
 
                 <a href="{{ route('admin.settings.index') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
                     <i class="bi bi-gear me-2"></i>
                     <span>Settings</span>
                 </a>
 
                 <a href="{{ route('admin.users.index') }}"
-                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                     <i class="bi bi-people-fill me-2"></i>
                     <span>User Management</span>
                 </a>
@@ -295,7 +400,7 @@
                         <!-- Quick Actions -->
                         <div class="dropdown me-3">
                             <button class="btn btn-link dropdown-toggle text-decoration-none" type="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-plus-circle fs-5"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -319,7 +424,9 @@
                                         <i class="bi bi-pencil-square me-2"></i>New Exam
                                     </a>
                                 </li>
-                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('admin.questions.import') }}">
                                         <i class="bi bi-upload me-2"></i>Import Questions
@@ -331,12 +438,14 @@
                         <!-- Notifications -->
                         <div class="dropdown me-3">
                             <button class="btn btn-link position-relative text-decoration-none" type="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-bell fs-5"></i>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                                      id="notification-badge" style="display: none;">0</span>
+                                <span
+                                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                    id="notification-badge" style="display: none;">0</span>
                             </button>
-                            <div class="dropdown-menu dropdown-menu-end" style="width: 300px;" id="notifications-dropdown">
+                            <div class="dropdown-menu dropdown-menu-end" style="width: 300px;"
+                                id="notifications-dropdown">
                                 <div class="dropdown-header d-flex justify-content-between align-items-center">
                                     <span>Notifications</span>
                                     <small><a href="#" class="text-decoration-none">Mark all read</a></small>
@@ -361,10 +470,9 @@
                         <!-- User Dropdown -->
                         <div class="dropdown">
                             <button class="btn btn-link dropdown-toggle text-decoration-none" type="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                <img src="{{ Auth::user()->avatar_url }}"
-                                     alt="{{ Auth::user()->name }}"
-                                     class="rounded-circle" width="32" height="32">
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="{{ Auth::user()->avatar_url }}" alt="{{ Auth::user()->name }}"
+                                    class="rounded-circle" width="32" height="32">
                                 <span class="ms-2 d-none d-md-inline">{{ Auth::user()->name }}</span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -383,10 +491,12 @@
                                         <i class="bi bi-clock-history me-2"></i>Activity Log
                                     </a>
                                 </li>
-                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ route('logout') }}"
-                                       onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                         <i class="bi bi-box-arrow-right me-2"></i>Logout
                                     </a>
                                     <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
@@ -402,53 +512,57 @@
             <div class="container-fluid py-4">
                 <!-- Breadcrumbs -->
                 @if(isset($breadcrumbs) || View::hasSection('breadcrumbs'))
-                    <nav aria-label="breadcrumb" class="mb-4">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
-                            @yield('breadcrumbs')
-                        </ol>
-                    </nav>
+                <nav aria-label="breadcrumb" class="mb-4">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
+                        @yield('breadcrumbs')
+                    </ol>
+                </nav>
                 @endif
 
                 <!-- Page Title -->
                 @hasSection('page-title')
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h1 class="h3 mb-0">@yield('page-title')</h1>
-                        @yield('page-actions')
-                    </div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3 mb-0">@yield('page-title')</h1>
+                    @yield('page-actions')
+                </div>
                 @endif
 
                 <!-- Alert Messages -->
                 @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
+                <div class="alert alert-success alert-dismissible fade show animate__animated animate__fadeIn"
+                    role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
                 @endif
 
                 @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
+                <div class="alert alert-danger alert-dismissible fade show animate__animated animate__fadeIn"
+                    role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
                 @endif
 
                 @if(session('warning'))
-                    <div class="alert alert-warning alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
-                        <i class="bi bi-exclamation-circle-fill me-2"></i>
-                        {{ session('warning') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
+                <div class="alert alert-warning alert-dismissible fade show animate__animated animate__fadeIn"
+                    role="alert">
+                    <i class="bi bi-exclamation-circle-fill me-2"></i>
+                    {{ session('warning') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
                 @endif
 
                 @if(session('info'))
-                    <div class="alert alert-info alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        {{ session('info') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
+                <div class="alert alert-info alert-dismissible fade show animate__animated animate__fadeIn"
+                    role="alert">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    {{ session('info') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
                 @endif
 
                 <!-- Main Content -->
@@ -480,7 +594,7 @@
 
     <!-- Sidebar Toggle Script -->
     <script>
-            window.flashMessages = {
+        window.flashMessages = {
                 success: "{{ session('success') }}",
                 error: "{{ session('error') }}",
                 warning: "{{ session('warning') }}",
@@ -573,4 +687,5 @@
 
     @stack('scripts')
 </body>
+
 </html>
