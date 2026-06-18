@@ -21,14 +21,19 @@
         <div class="col-md-8">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Question Bank</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        Question Bank 
+                        @if($exam->course_id)
+                            <span class="badge bg-info">Course: {{ $exam->course->title }}</span>
+                        @endif
+                    </h6>
                 </div>
                 <div class="card-body">
                     <!-- Search and Filters -->
                     <form method="GET" action="{{ route('admin.exams.add-questions', $exam) }}" class="mb-4">
                         <div class="row g-2">
-                            <div class="col-md-5">
-                                <input type="text" name="search" class="form-control"
+                            <div class="col-md-4">
+                                <input type="text" name="search" class="form-control" 
                                        placeholder="Search questions..." value="{{ request('search') }}">
                             </div>
                             <div class="col-md-3">
@@ -47,13 +52,27 @@
                                     <option value="hard" {{ request('difficulty') == 'hard' ? 'selected' : '' }}>Hard</option>
                                 </select>
                             </div>
-                            <div class="col-md-1">
+                            <div class="col-md-2">
                                 <button type="submit" class="btn btn-primary w-100">
                                     <i class="bi bi-search"></i>
                                 </button>
                             </div>
                         </div>
                     </form>
+
+                    <!-- Show filter info -->
+                    @if($exam->course_id)
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Showing questions from <strong>{{ $exam->course->title }}</strong> course.
+                            @if($exam->modules()->count() > 0)
+                                <br>Modules: 
+                                @foreach($exam->modules()->get() as $module)
+                                    <span class="badge bg-secondary">{{ $module->title }}</span>
+                                @endforeach
+                            @endif
+                        </div>
+                    @endif
 
                     <!-- Questions List -->
                     <form id="addQuestionsForm" method="POST" action="{{ route('admin.exams.store-questions', $exam) }}">
@@ -75,8 +94,8 @@
                                     @forelse($questions as $question)
                                     <tr>
                                         <td>
-                                            <input type="checkbox" class="question-checkbox"
-                                                   name="questions[{{ $loop->index }}][question_id]"
+                                            <input type="checkbox" class="question-checkbox" 
+                                                   name="questions[{{ $loop->index }}][question_id]" 
                                                    value="{{ $question->id }}"
                                                    {{ $exam->questions->contains($question->id) ? 'checked' : '' }}>
                                         </td>
@@ -98,7 +117,15 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="5" class="text-center">No questions found.</td>
+                                        <td colspan="5" class="text-center">
+                                            @if($exam->course_id)
+                                                No questions found for this course.
+                                                <br>
+                                                <small class="text-muted">Try creating questions for the course first.</small>
+                                            @else
+                                                No questions found. Please create questions first.
+                                            @endif
+                                        </td>
                                     </tr>
                                     @endforelse
                                 </tbody>
@@ -121,10 +148,10 @@
                             </div>
                         </div>
 
-                        <!-- Configuration Section (initially hidden) -->
+                        <!-- Configuration Section -->
                         <div id="config-section" style="display: none;" class="mt-4">
                             <h5>Configure Selected Questions</h5>
-
+                            
                             <div class="row">
                                 <div class="col-md-4">
                                     <div class="mb-3">
@@ -297,189 +324,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    let selectedQuestions = [];
-
-(function() {
-    'use strict';
-
-    // Wait for DOM to be fully loaded
-    document.addEventListener('DOMContentLoaded', function() {
-
-
-    $(document).ready(function() {
-        // Initialize selected questions from existing exam questions
-        @foreach($exam->questions as $question)
-            selectedQuestions.push({
-                id: {{ $question->id }},
-                text: `{{ Str::limit(strip_tags($question->question_text), 50) }}`,
-                marks: {{ $question->pivot->marks ?? $question->marks }}
-            });
-        @endforeach
-        updateSelectedList();
-
-        // Select all checkbox
-        $('#select-all').on('change', function() {
-            $('.question-checkbox').prop('checked', $(this).prop('checked'));
-            updateSelectedQuestions();
-        });
-
-        // Individual checkboxes
-        $('.question-checkbox').on('change', function() {
-            updateSelectAll();
-            updateSelectedQuestions();
-        });
-
-        // Add Section
-        $('#addSectionForm').on('submit', function(e) {
-            e.preventDefault();
-
-            $.ajax({
-                url: '{{ route("admin.exams.sections.store", $exam) }}',
-                method: 'POST',
-                data: $(this).serialize(),
-                success: function(response) {
-                    if (response.success) {
-                        // $('#addSectionModal').modal('hide');
-                        const modal = new bootstrap.Modal(document.getElementById('addSectionModal'));
-                        modal.hide();
-                        $('#addSectionForm')[0].reset();
-                        toastr.success(response.message);
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    }
-                },
-                error: function(xhr) {
-                    toastr.error('Error adding section');
-                }
-            });
-        });
-    });
-
-
-});
-
-})();
-
-    function updateSelectAll() {
-        const total = $('.question-checkbox').length;
-        const checked = $('.question-checkbox:checked').length;
-        $('#select-all').prop('checked', total === checked);
-    }
-
-    function updateSelectedQuestions() {
-        selectedQuestions = [];
-        $('.question-checkbox:checked').each(function() {
-            const row = $(this).closest('tr');
-            const questionId = $(this).val();
-            const questionText = row.find('td:eq(1)').text().trim();
-            selectedQuestions.push({
-                id: questionId,
-                text: questionText,
-                marks: 0
-            });
-        });
-        updateSelectedList();
-    }
-
-    function updateSelectedList() {
-        const container = $('#selected-questions-list');
-        const count = selectedQuestions.length;
-
-        $('#selected-count').text(count);
-
-        if (count === 0) {
-            container.html('<p class="text-muted text-center">No questions selected</p>');
-            return;
-        }
-
-        let html = '<div class="list-group">';
-        selectedQuestions.forEach((q, index) => {
-            html += `
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small>${q.text.substring(0, 50)}...</small>
-                        <button type="button" class="btn btn-sm btn-danger" onclick="removeQuestion(${index})">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-
-        container.html(html);
-    }
-
-    function removeQuestion(index) {
-        const questionId = selectedQuestions[index].id;
-        $(`.question-checkbox[value="${questionId}"]`).prop('checked', false);
-        selectedQuestions.splice(index, 1);
-        updateSelectedList();
-        updateSelectAll();
-    }
-
-    function bulkConfigure() {
-        if (selectedQuestions.length === 0) {
-            toastr.warning('No questions selected');
-            return;
-        }
-        $('#config-section').toggle();
-    }
-
-    function applyConfig() {
-        const sectionId = $('#section_id').val();
-        const marks = $('#marks').val();
-        const negativeMarks = $('#negative_marks').val();
-
-        // Apply to all selected checkboxes
-        $('.question-checkbox:checked').each(function() {
-            const row = $(this).closest('tr');
-            // Here you would store these values in hidden inputs
-            // For now, just show a success message
-        });
-
-        toastr.success('Configuration applied to selected questions');
-        $('#config-section').hide();
-    }
-
-    function editSection(section) {
-        $('#edit_section_id').val(section.id);
-        $('#edit_section_title').val(section.title);
-        $('#edit_section_description').val(section.description);
-        $('#edit_section_duration').val(section.duration_minutes);
-        $('#edit_randomize_section').prop('checked', section.randomize_questions);
-        const modal = new bootstrap.Modal(document.getElementById('editSectionModal'));
-        modal.show();
-        // $('#editSectionModal').modal('show');
-    }
-
-    function deleteSection(id) {
-        if (confirm('Are you sure you want to delete this section?')) {
-            $.ajax({
-                url: `/admin/exams/{{ $exam->id }}/sections/${id}`,
-                method: 'DELETE',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        toastr.success(response.message);
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    }
-                },
-                error: function(xhr) {
-                    toastr.error('Error deleting section');
-                }
-            });
-        }
-    }
-
-
-</script>
-@endpush

@@ -108,9 +108,14 @@
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">Course Modules</h6>
-            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addModuleModal">
-                <i class="bi bi-plus-circle"></i> Add Module
-            </button>
+            <div>
+                <a href="{{ route('admin.modules.create', $course) }}" class="btn btn-sm btn-success">
+                    <i class="bi bi-plus-circle"></i> Add Module
+                </a>
+                <a href="{{ route('admin.modules.index', $course) }}" class="btn btn-sm btn-info">
+                    <i class="bi bi-list"></i> Manage All
+                </a>
+            </div>
         </div>
         <div class="card-body">
             @if($course->modules->count() > 0)
@@ -123,14 +128,19 @@
                                     <small class="text-muted">{{ Str::limit($module->description, 100) }}</small>
                                 </div>
                                 <div>
-                                    <button type="button" class="btn btn-sm btn-info edit-module"
-                                            data-id="{{ $module->id }}"
-                                            data-title="{{ $module->title }}"
-                                            data-description="{{ $module->description }}">
+                                    <span class="badge bg-{{ $module->status == 'active' ? 'success' : 'secondary' }} me-2">
+                                        {{ ucfirst($module->status) }}
+                                    </span>
+                                    <a href="{{ route('admin.modules.show', [$course, $module]) }}" 
+                                       class="btn btn-sm btn-info" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ route('admin.modules.edit', [$course, $module]) }}" 
+                                       class="btn btn-sm btn-primary" title="Edit">
                                         <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-danger delete-module"
-                                            data-id="{{ $module->id }}">
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger delete-module" 
+                                            data-id="{{ $module->id }}" title="Delete">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
@@ -218,13 +228,13 @@
 </style>
 @endpush
 
-@push('scripts')
 
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
 (function() {
     'use strict';
 
-    // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function() {
 
         // Initialize Select2
@@ -233,8 +243,6 @@
                 placeholder: 'Select instructors',
                 allowClear: true
             });
-        } else {
-            console.warn('Select2 not loaded');
         }
 
         // Initialize Sortable for modules
@@ -246,11 +254,8 @@
                     updateModuleOrder();
                 }
             });
-        } else {
-            console.warn('Sortable not loaded or modules list not found');
         }
 
-        // Helper function to show toast messages
         function showToast(type, message) {
             if (typeof toastr !== 'undefined') {
                 toastr[type](message);
@@ -259,29 +264,24 @@
             }
         }
 
-        // Helper function to close modal
         function closeModal(modalId) {
+            const modalElement = document.getElementById(modalId);
+            if (!modalElement) return;
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        }
 
-    const modalElement = document.getElementById(modalId);
-
-    if (!modalElement) return;
-
-    const modalInstance = bootstrap.Modal.getInstance(modalElement);
-
-    if (modalInstance) {
-        modalInstance.hide();
-    }
-
-}
-
-        // Add Module Form Submit
+        // Add Module Form Submit - Using new module route
         const addModuleForm = document.getElementById('addModuleForm');
         if (addModuleForm) {
             addModuleForm.addEventListener('submit', function(e) {
                 e.preventDefault();
 
                 const formData = new FormData(this);
-                const url = '{{ route("admin.courses.modules.store", $course) }}';
+                // Changed to use the new module route
+                const url = '{{ route("admin.modules.store", $course) }}';
 
                 fetch(url, {
                     method: 'POST',
@@ -293,10 +293,10 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
+                    if (data.status === 'success' || data.success) {
                         closeModal('addModuleModal');
                         addModuleForm.reset();
-                        showToast('success', data.message);
+                        showToast('success', data.message || 'Module added successfully');
                         setTimeout(() => {
                             location.reload();
                         }, 1000);
@@ -322,13 +322,12 @@
                 document.getElementById('edit_module_title').value = title;
                 document.getElementById('edit_module_description').value = description;
 
-                // Show modal
                 const modal = new bootstrap.Modal(document.getElementById('editModuleModal'));
                 modal.show();
             });
         });
 
-        // Update Module Form Submit
+        // Update Module Form Submit - Using new module route
         const editModuleForm = document.getElementById('editModuleForm');
         if (editModuleForm) {
             editModuleForm.addEventListener('submit', function(e) {
@@ -338,10 +337,11 @@
                 const formData = new FormData(this);
                 formData.append('_method', 'PUT');
 
-                const url = `/admin/courses/{{ $course->id }}/modules/${moduleId}`;
+                // Changed to use the new module route
+                const url = '{{ route("admin.modules.update", ["course" => $course, "module" => "__MODULE_ID__"]) }}'.replace('__MODULE_ID__', moduleId);
 
                 fetch(url, {
-                    method: 'POST', // Using POST with _method=PUT
+                    method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Accept': 'application/json'
@@ -350,9 +350,9 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
+                    if (data.status === 'success' || data.success) {
                         closeModal('editModuleModal');
-                        showToast('success', data.message);
+                        showToast('success', data.message || 'Module updated successfully');
                         setTimeout(() => {
                             location.reload();
                         }, 1000);
@@ -373,20 +373,19 @@
                 if (!confirm('Are you sure you want to delete this module?')) return;
 
                 const moduleId = this.dataset.id;
-                const url = `/admin/courses/{{ $course->id }}/modules/${moduleId}`;
+                const url = '{{ route("admin.modules.destroy", ["course" => $course, "module" => "__MODULE_ID__"]) }}'.replace('__MODULE_ID__', moduleId);
 
                 fetch(url, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
+                        'Accept': 'application/json'
                     }
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        showToast('success', data.message);
+                    if (data.status === 'success' || data.success) {
+                        showToast('success', data.message || 'Module deleted successfully');
                         setTimeout(() => {
                             location.reload();
                         }, 1000);
@@ -401,7 +400,7 @@
             });
         });
 
-        // Update module order function
+        // Update module order function - Using new module route
         function updateModuleOrder() {
             const modules = [];
             document.querySelectorAll('.module-item').forEach((item, index) => {
@@ -411,7 +410,8 @@
                 });
             });
 
-            const url = '{{ route("admin.courses.modules.order", $course) }}';
+            // Changed to use the new module route
+            const url = '{{ route("admin.modules.order", $course) }}';
 
             fetch(url, {
                 method: 'POST',
@@ -420,13 +420,11 @@
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    modules: modules
-                })
+                body: JSON.stringify({ modules: modules })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.status === 'success' || data.success) {
                     showToast('success', 'Module order updated');
                 }
             })

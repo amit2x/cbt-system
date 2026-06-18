@@ -56,6 +56,7 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
 | Admin Routes
 |--------------------------------------------------------------------------
 */
+// Admin Routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
 
     // Dashboard
@@ -63,10 +64,32 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // ==================== Course Management ====================
     Route::resource('courses', App\Http\Controllers\Admin\CourseController::class);
+    
+    // ==================== Module Management ====================
+    // Option 1: Using CourseController (backward compatibility)
     Route::post('courses/{course}/modules', [App\Http\Controllers\Admin\CourseController::class, 'storeModule'])->name('courses.modules.store');
     Route::put('courses/{course}/modules/{module}', [App\Http\Controllers\Admin\CourseController::class, 'updateModule'])->name('courses.modules.update');
     Route::delete('courses/{course}/modules/{module}', [App\Http\Controllers\Admin\CourseController::class, 'deleteModule'])->name('courses.modules.delete');
     Route::post('courses/{course}/modules/order', [App\Http\Controllers\Admin\CourseController::class, 'updateModuleOrder'])->name('courses.modules.order');
+    Route::get('courses/{course}/modules/api', [App\Http\Controllers\Admin\ModuleController::class, 'getModules'])->name('courses.modules.api');
+
+    
+    // Option 2: Using ModuleController (new dedicated module management)
+    Route::prefix('courses/{course}/modules')->name('modules.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ModuleController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\ModuleController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\ModuleController::class, 'store'])->name('store');
+        Route::get('/{module}', [App\Http\Controllers\Admin\ModuleController::class, 'show'])->name('show');
+        Route::get('/{module}/edit', [App\Http\Controllers\Admin\ModuleController::class, 'edit'])->name('edit');
+        Route::put('/{module}', [App\Http\Controllers\Admin\ModuleController::class, 'update'])->name('update');
+        Route::delete('/{module}', [App\Http\Controllers\Admin\ModuleController::class, 'destroy'])->name('destroy');
+        Route::post('/order', [App\Http\Controllers\Admin\ModuleController::class, 'updateOrder'])->name('order');
+        Route::post('/{module}/toggle-status', [App\Http\Controllers\Admin\ModuleController::class, 'toggleStatus'])->name('toggle-status');
+        Route::post('/bulk-delete', [App\Http\Controllers\Admin\ModuleController::class, 'bulkDelete'])->name('bulk-delete');
+        Route::post('/bulk-status', [App\Http\Controllers\Admin\ModuleController::class, 'bulkStatus'])->name('bulk-status');
+        Route::get('/api', [App\Http\Controllers\Admin\ModuleController::class, 'getModules'])->name('api');
+    });
+    
 
     // ==================== Batch Management ====================
     Route::get('students/import-template', [App\Http\Controllers\Admin\BatchController::class, 'downloadImportTemplate'])

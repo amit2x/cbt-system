@@ -12,13 +12,15 @@ class Exam extends Model
 
     protected $fillable = [
         'title', 'slug', 'description', 'type', 'category',
-        'course_id', 'batch_id',
+         'course_id', 'module_id', 'batch_id',
         'duration_minutes', 'total_marks', 'passing_percentage',
         'negative_marking', 'randomize_questions', 'randomize_options',
         'show_result_immediately', 'allow_review', 'attempts_allowed',
         'start_time', 'end_time', 'is_scheduled',
         'status', 'instructions', 'created_by', 'updated_by',
     ];
+    
+   
 
     protected $casts = [
         'randomize_questions' => 'boolean',
@@ -68,6 +70,22 @@ class Exam extends Model
             ->withPivot(['available_from', 'available_until'])
             ->withTimestamps();
     }
+    
+public function modules()
+{
+    return $this->belongsToMany(Module::class, 'exam_modules');
+}
+
+/**
+ * Get modules for this exam through the course
+ */
+public function getModulesAttribute()
+{
+    if ($this->course_id) {
+        return Module::where('course_id', $this->course_id)->get();
+    }
+    return collect([]);
+}
 
     /**
      * Get the sections for this exam
@@ -306,13 +324,45 @@ class Exam extends Model
     /**
      * Update total marks for the exam
      */
-    public function updateTotalMarks()
-    {
-        $total = $this->questions()->sum('marks') ?? 0;
-        $this->update(['total_marks' => $total]);
+    // public function updateTotalMarks()
+    // {
+    //     $total = $this->questions()->sum('marks') ?? 0;
+    //     $this->update(['total_marks' => $total]);
 
-        return $total;
-    }
+    //     return $total;
+    // }
+    
+    /**
+ * Update total marks for the exam.
+ */
+// public function updateTotalMarks()
+// {
+//     // Specify which table's marks column to use
+//     $total = \DB::table('exam_questions')
+//         ->where('exam_id', $this->id)
+//         ->sum('marks');
+    
+//     $this->update(['total_marks' => $total ?? 0]);
+    
+//     return $total;
+// }
+
+/**
+ * Update total marks for the exam.
+ */
+public function updateTotalMarks()
+{
+    $total = $this->questions()
+        ->withPivot('marks')
+        ->get()
+        ->sum(function($question) {
+            return $question->pivot->marks ?? 0;
+        });
+    
+    $this->update(['total_marks' => $total ?? 0]);
+    
+    return $total;
+}
 
     public function canBePublished()
     {

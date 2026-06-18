@@ -86,28 +86,70 @@ class ExamController extends Controller
     /**
      * Store a newly created exam.
      */
+    // public function store(StoreExamRequest $request)
+    // {
+    //     DB::beginTransaction();
+    //     try {
+    //         $data = $request->validated();
+    //         $data['created_by'] = auth()->id();
+
+    //         // Handle scheduled exams
+    //         if (!$request->is_scheduled) {
+    //             $data['start_time'] = null;
+    //             $data['end_time'] = null;
+    //         }
+
+    //         $exam = Exam::create($data);
+
+    //         // Attach multiple batches if provided
+    //         if ($request->has('batch_ids')) {
+    //             $exam->batches()->sync($request->batch_ids);
+    //         }
+
+    //         DB::commit();
+
+    //         return redirect()->route('admin.exams.show', $exam)
+    //                         ->with('success', 'Exam created successfully. Now add questions to the exam.');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return back()->with('error', 'Error creating exam: ' . $e->getMessage())
+    //                      ->withInput();
+    //     }
+    // }
+    
     public function store(StoreExamRequest $request)
     {
         DB::beginTransaction();
         try {
             $data = $request->validated();
             $data['created_by'] = auth()->id();
-
+            
             // Handle scheduled exams
             if (!$request->is_scheduled) {
                 $data['start_time'] = null;
                 $data['end_time'] = null;
             }
-
+            
+            // Validate module selection
+            if (empty($data['module_id'])) {
+                return back()->with('error', 'Please select a module for this exam.')
+                            ->withInput();
+            }
+            
             $exam = Exam::create($data);
-
+            
+            // Attach modules if provided (for backward compatibility)
+            if ($request->has('module_ids')) {
+                $exam->modules()->attach($request->module_ids);
+            }
+            
             // Attach multiple batches if provided
             if ($request->has('batch_ids')) {
                 $exam->batches()->sync($request->batch_ids);
             }
-
+            
             DB::commit();
-
+            
             return redirect()->route('admin.exams.show', $exam)
                             ->with('success', 'Exam created successfully. Now add questions to the exam.');
         } catch (\Exception $e) {
@@ -229,20 +271,64 @@ class ExamController extends Controller
     /**
      * Show add questions form.
      */
-    public function addQuestions(Exam $exam)
-    {
-        $exam->load('questions');
+    // public function addQuestions(Exam $exam)
+    // {
+    //     $exam->load('questions');
 
-        // Get available questions
-        $questions = Question::with(['subject', 'options'])
-                            ->where('status', 'active')
-                            ->latest()
-                            ->paginate(20);
+    //     // Get available questions
+    //     $questions = Question::with(['subject', 'options'])
+    //                         ->where('status', 'active')
+    //                         ->latest()
+    //                         ->paginate(20);
 
-        $sections = $exam->sections;
+    //     $sections = $exam->sections;
 
-        return view('admin.exams.add-questions', compact('exam', 'questions', 'sections'));
+    //     return view('admin.exams.add-questions', compact('exam', 'questions', 'sections'));
+    // }
+    
+/**
+ * Show add questions form.
+ */
+public function addQuestions(Exam $exam)
+{
+    $exam->load(['course']);
+    
+    // Get questions based on exam's course and modules
+    $query = Question::with(['subject', 'options'])
+        ->where('status', 'active');
+    
+    // Filter by course if exam has one
+    if ($exam->course_id) {
+        // Get modules for this course
+        $moduleIds = Module::where('course_id', $exam->course_id)->pluck('id')->toArray();
+        
+        if (!empty($moduleIds)) {
+            // Filter questions that belong to this course's modules
+            $query->whereIn('subject_id', $moduleIds);
+        }
     }
+    
+    // If exam has specific modules (via pivot table)
+    if (method_exists($exam, 'modules') && $exam->modules()->count() > 0) {
+        $moduleIds = $exam->modules()->pluck('id')->toArray();
+        if (!empty($moduleIds)) {
+            $query->whereIn('subject_id', $moduleIds);
+        }
+    }
+    
+    // Exclude questions already added to this exam
+    $existingQuestionIds = $exam->questions()->pluck('question_id')->toArray();
+    if (!empty($existingQuestionIds)) {
+        $query->whereNotIn('id', $existingQuestionIds);
+    }
+    
+    $questions = $query->latest()->paginate(20);
+    
+    // Get sections for this exam
+    $sections = $exam->sections;
+    
+    return view('admin.exams.add-questions', compact('exam', 'questions', 'sections'));
+}
 
     /**
      * Store questions for exam.
