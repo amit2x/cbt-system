@@ -66,17 +66,42 @@
                                     <td>Total Marks:</td>
                                     <td><strong>{{ $studentExam->obtained_marks }} / {{ $studentExam->exam->total_marks }}</strong></td>
                                 </tr>
-                                <tr>
-                                    <td>Time Taken:</td>
-                                    <td><strong>
-                                        @php
-                                            $hours = floor($studentExam->total_seconds_taken / 3600);
-                                            $minutes = floor(($studentExam->total_seconds_taken % 3600) / 60);
-                                            $seconds = $studentExam->total_seconds_taken % 60;
-                                            echo sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
-                                        @endphp
-                                    </strong></td>
-                                </tr>
+                                <!--<tr>-->
+                                <!--    <td>Time Taken:</td>-->
+                                <!--    <td><strong>-->
+                                <!--        @php-->
+                                <!--            $hours = floor($studentExam->total_seconds_taken / 3600);-->
+                                <!--            $minutes = floor(($studentExam->total_seconds_taken % 3600) / 60);-->
+                                <!--            $seconds = $studentExam->total_seconds_taken % 60;-->
+                                <!--            echo sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);-->
+                                <!--        @endphp-->
+                                <!--    </strong></td>-->
+                                <!--</tr>-->
+<!--                                <tr>-->
+<!--    <td>Time Taken:</td>-->
+<!--    <td><strong>-->
+<!--        {{ gmdate("H:i:s", $studentExam->total_seconds_taken) }}-->
+<!--    </strong></td>-->
+<!--</tr>-->
+
+<!--<tr>-->
+<!--    <td>Time Taken:</td>-->
+<!--    <td><strong>-->
+<!--        {{ \Carbon\CarbonInterval::seconds($studentExam->total_seconds_taken)->cascade()->format('%H:%I:%S') }}-->
+<!--    </strong></td>-->
+<!--</tr>-->
+
+<tr>
+    <td>Time Taken:</td>
+    <td><strong>
+        @if($studentExam->total_seconds_taken < 0)
+            Invalid Time Data
+        @else
+            {{ \Carbon\CarbonInterval::seconds($studentExam->total_seconds_taken)->cascade()->format('%H:%I:%S') }}
+        @endif
+    </strong></td>
+</tr>
+
                                 @if($studentExam->result->rank)
                                 <tr>
                                     <td>Rank:</td>
@@ -269,63 +294,67 @@
     </div>
 </div>
 @endsection
-
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', function() {
         // Question Analysis Chart
-        const questionCtx = document.getElementById('questionChart').getContext('2d');
-        new Chart(questionCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Correct', 'Incorrect', 'Unanswered'],
-                datasets: [{
-                    data: [
-                        {{ $studentExam->correct_answers }},
-                        {{ $studentExam->incorrect_answers }},
-                        {{ $studentExam->unanswered }}
-                    ],
-                    backgroundColor: ['#28a745', '#dc3545', '#6c757d']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+        const questionCanvas = document.getElementById('questionChart');
+        if (questionCanvas) {
+            const questionCtx = questionCanvas.getContext('2d');
+            new Chart(questionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Correct', 'Incorrect', 'Unanswered'],
+                    datasets: [{
+                        data: [
+                            {{ $studentExam->correct_answers }},
+                            {{ $studentExam->incorrect_answers }},
+                            {{ $studentExam->unanswered }}
+                        ],
+                        backgroundColor: ['#28a745', '#dc3545', '#6c757d']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // Score Chart
-        const scoreCtx = document.getElementById('scoreChart').getContext('2d');
-        new Chart(scoreCtx, {
-            type: 'bar',
-            data: {
-                labels: ['Your Score', 'Passing Score', 'Average Score', 'Highest Score'],
-                datasets: [{
-                    label: 'Percentage',
-                    data: [
-                        {{ $studentExam->percentage }},
-                        {{ $studentExam->exam->passing_percentage }},
-                        {{ $studentExam->exam->average_score ?? 0 }},
-                        {{ $studentExam->exam->highest_score ?? 0 }}
-                    ],
-                    backgroundColor: ['#007bff', '#ffc107', '#17a2b8', '#28a745']
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
+        const scoreCanvas = document.getElementById('scoreChart');
+        if (scoreCanvas) {
+            const scoreCtx = scoreCanvas.getContext('2d');
+            new Chart(scoreCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Your Score', 'Passing Score', 'Average Score', 'Highest Score'],
+                    datasets: [{
+                        label: 'Percentage',
+                        data: [
+                            {{ $studentExam->percentage }},
+                            {{ $studentExam->exam->passing_percentage }},
+                            {{ $studentExam->exam->average_score ?? 0 }},
+                            {{ $studentExam->exam->highest_score ?? 0 }}
+                        ],
+                        backgroundColor: ['#007bff', '#ffc107', '#17a2b8', '#28a745']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     });
 </script>
 @endpush

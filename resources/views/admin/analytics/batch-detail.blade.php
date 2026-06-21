@@ -319,9 +319,8 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    $(document).ready(function() {
+document.addEventListener('DOMContentLoaded', () => {
         @if($report)
         // Distribution Chart
         const distCtx = document.getElementById('distributionChart').getContext('2d');

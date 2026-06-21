@@ -278,9 +278,8 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', () => {
         // Trend Chart
         const trendCtx = document.getElementById('trendChart').getContext('2d');
         new Chart(trendCtx, {

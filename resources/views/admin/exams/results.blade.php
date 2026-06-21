@@ -183,7 +183,7 @@
             </div>
 
             <div class="d-flex justify-content-center mt-4">
-                {{ $results->withQueryString()->links() }}
+                {{ $results->withQueryString()->links('pagination::bootstrap-5') }}
             </div>
         </div>
     </div>
@@ -191,9 +191,8 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('scoreDistribution').getContext('2d');
         new Chart(ctx, {
             type: 'bar',

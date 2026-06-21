@@ -246,7 +246,7 @@
             </div>
 
             <div class="d-flex justify-content-center mt-4">
-                {{ $students->links() }}
+                {{ $students->links('pagination::bootstrap-5') }}
             </div>
         </div>
     </div>
@@ -254,9 +254,8 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', () => {
         // Score Distribution Chart
         const distCtx = document.getElementById('scoreDistributionChart').getContext('2d');
         new Chart(distCtx, {
@@ -320,7 +319,8 @@
 
     function exportAnalytics() {
         // Implement export functionality
-        window.location.href = '{{ route("admin.analytics.export", ["exam_id" => $exam->id]) }}';
+        window.location.href = '{{ route("admin.analytics.export", $exam->id) }}';
+
     }
 </script>
 @endpush

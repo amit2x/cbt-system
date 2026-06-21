@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,7 +17,7 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Auth::routes();
+Auth::routes(['register' => false]);
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 /*
@@ -38,6 +39,7 @@ Route::prefix('pages')->name('')->group(function () {
 | Profile Routes (Authenticated Users)
 |--------------------------------------------------------------------------
 */
+
 Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function () {
     Route::get('/', [App\Http\Controllers\ProfileController::class, 'show'])->name('show');
     Route::get('/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('edit');
@@ -48,8 +50,12 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
     Route::get('/activity', [App\Http\Controllers\ProfileController::class, 'activity'])->name('activity');
     Route::put('/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('password');
     Route::post('/revoke-session', [App\Http\Controllers\ProfileController::class, 'revokeSession'])->name('revoke-session');
+    Route::post('/revoke-all-sessions', [App\Http\Controllers\ProfileController::class, 'revokeAllSessions'])->name('revoke-all-sessions');
     Route::post('/enable-2fa', [App\Http\Controllers\ProfileController::class, 'enable2FA'])->name('enable-2fa');
+    Route::post('/disable-2fa', [App\Http\Controllers\ProfileController::class, 'disable2FA'])->name('disable-2fa');
+    Route::post('/deactivate', [App\Http\Controllers\ProfileController::class, 'deactivate'])->name('deactivate');
 });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -58,6 +64,11 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
 */
 // Admin Routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    
+    Route::post('/sidebar/toggle', function (Request $request) {
+        $request->session()->put('sidebar_collapsed', $request->open);
+        return response()->json(['success' => true]);
+    })->name('sidebar.toggle');
 
     // Dashboard
     Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
@@ -72,7 +83,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::delete('courses/{course}/modules/{module}', [App\Http\Controllers\Admin\CourseController::class, 'deleteModule'])->name('courses.modules.delete');
     Route::post('courses/{course}/modules/order', [App\Http\Controllers\Admin\CourseController::class, 'updateModuleOrder'])->name('courses.modules.order');
     Route::get('courses/{course}/modules/api', [App\Http\Controllers\Admin\ModuleController::class, 'getModules'])->name('courses.modules.api');
-
+    Route::get('courses/{course}/batches/api', [App\Http\Controllers\Admin\CourseController::class, 'getBatchesApi'])->name('courses.batches.api');
     
     // Option 2: Using ModuleController (new dedicated module management)
     Route::prefix('courses/{course}/modules')->name('modules.')->group(function () {
@@ -134,10 +145,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('questions/{question}/duplicate', [App\Http\Controllers\Admin\QuestionController::class, 'duplicate'])->name('questions.duplicate');
     Route::resource('questions', App\Http\Controllers\Admin\QuestionController::class);
 
-    // ==================== Question Categories ====================
+    
+    // Question Categories
+    Route::resource('question-categories', App\Http\Controllers\Admin\QuestionCategoryController::class);
+    Route::post('question-categories/{question_category}/toggle-status', [App\Http\Controllers\Admin\QuestionCategoryController::class, 'toggleStatus'])->name('question-categories.toggle-status');
     Route::get('question-categories/tree', [App\Http\Controllers\Admin\QuestionCategoryController::class, 'getTree'])->name('question-categories.tree');
     Route::post('question-categories/order', [App\Http\Controllers\Admin\QuestionCategoryController::class, 'updateOrder'])->name('question-categories.order');
-    Route::resource('question-categories', App\Http\Controllers\Admin\QuestionCategoryController::class)->except(['create', 'edit']);
 
     // ==================== Exam Management ====================
     Route::resource('exams', App\Http\Controllers\Admin\ExamController::class);
@@ -150,6 +163,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('exams/{exam}/statistics', [App\Http\Controllers\Admin\ExamController::class, 'statistics'])->name('exams.statistics');
     Route::get('exams/{exam}/results', [App\Http\Controllers\Admin\ExamController::class, 'results'])->name('exams.results');
     Route::get('exams/{exam}/results/export', [App\Http\Controllers\Admin\ExamController::class, 'exportResults'])->name('exams.export-results');
+
 
     // ==================== Exam Sections ====================
     Route::post('exams/{exam}/sections', [App\Http\Controllers\Admin\ExamSectionController::class, 'store'])->name('exams.sections.store');
@@ -194,16 +208,34 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/questions', [App\Http\Controllers\Admin\AnalyticsController::class, 'questionAnalytics'])->name('questions');
         Route::get('/questions/{question}', [App\Http\Controllers\Admin\AnalyticsController::class, 'showQuestionAnalytics'])->name('question-detail');
 
+        // Comparison
+        Route::post('/compare', [App\Http\Controllers\Admin\AnalyticsController::class, 'getComparisonData'])->name('compare');
+
+        // Export
+        Route::get('/export/{exam}', [App\Http\Controllers\Admin\AnalyticsController::class, 'exportExamAnalytics'])->name('export');
+        Route::get('/export/student/{student}', [App\Http\Controllers\Admin\AnalyticsController::class, 'exportStudentAnalytics'])->name('export-student');
+        Route::get('/export/batch/{batch}', [App\Http\Controllers\Admin\AnalyticsController::class, 'exportBatchAnalytics'])->name('export-batch');
+        
         // Reports
         Route::get('/reports', [App\Http\Controllers\Admin\AnalyticsController::class, 'listReports'])->name('reports');
         Route::post('/reports/generate', [App\Http\Controllers\Admin\AnalyticsController::class, 'generateReport'])->name('generate');
         Route::get('/reports/{report}', [App\Http\Controllers\Admin\AnalyticsController::class, 'showReport'])->name('show-report');
         Route::delete('/reports/{report}', [App\Http\Controllers\Admin\AnalyticsController::class, 'deleteReport'])->name('delete-report');
         Route::get('/reports/{report}/export', [App\Http\Controllers\Admin\AnalyticsController::class, 'exportReport'])->name('export-report');
-
-        // Comparison
-        Route::post('/compare', [App\Http\Controllers\Admin\AnalyticsController::class, 'getComparisonData'])->name('compare');
-
+    });
+    
+   // =================study-materials==========================================
+    Route::prefix('study-materials')->name('study-materials.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\StudyMaterialController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\Admin\StudyMaterialController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\StudyMaterialController::class, 'store'])->name('store');
+        Route::get('/{studyMaterial}', [App\Http\Controllers\Admin\StudyMaterialController::class, 'show'])->name('show');
+        Route::get('/{studyMaterial}/edit', [App\Http\Controllers\Admin\StudyMaterialController::class, 'edit'])->name('edit');
+        Route::put('/{studyMaterial}', [App\Http\Controllers\Admin\StudyMaterialController::class, 'update'])->name('update');
+        Route::delete('/{studyMaterial}', [App\Http\Controllers\Admin\StudyMaterialController::class, 'destroy'])->name('destroy');
+        Route::get('/{studyMaterial}/download', [App\Http\Controllers\Admin\StudyMaterialController::class, 'download'])->name('download');
+        Route::post('/{studyMaterial}/toggle-status', [App\Http\Controllers\Admin\StudyMaterialController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/modules/{course}', [App\Http\Controllers\Admin\StudyMaterialController::class, 'getModules'])->name('get-modules');
     });
 
     // ==================== Settings ====================
@@ -336,6 +368,15 @@ Route::middleware(['auth', 'role:instructor'])->prefix('instructor')->name('inst
         Route::get('/batches', [App\Http\Controllers\Instructor\ReportController::class, 'batchReports'])->name('batches');
         Route::post('/export', [App\Http\Controllers\Instructor\ReportController::class, 'export'])->name('export');
     });
+    
+    // ==================== Study Materials ====================
+    Route::prefix('study-materials')->name('study-materials.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Instructor\StudyMaterialController::class, 'index'])->name('index');
+        Route::get('/{studyMaterial}', [App\Http\Controllers\Instructor\StudyMaterialController::class, 'show'])->name('show');
+        Route::get('/{studyMaterial}/download', [App\Http\Controllers\Instructor\StudyMaterialController::class, 'download'])->name('download');
+        Route::get('/{studyMaterial}/view', [App\Http\Controllers\Instructor\StudyMaterialController::class, 'view'])->name('view');
+
+    });
 });
 
 /*
@@ -399,5 +440,11 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     });
 
     // ==================== Study Materials ====================
-    Route::get('/study-materials', [App\Http\Controllers\Student\StudyMaterialController::class, 'index'])->name('study-materials');
+    Route::get('study-materials', [App\Http\Controllers\Student\StudyMaterialController::class, 'index'])->name('study-materials');
+    Route::get('study-materials/{studyMaterial}', [App\Http\Controllers\Student\StudyMaterialController::class, 'show'])->name('study-materials.show');
+    Route::get('study-materials/{studyMaterial}/download', [App\Http\Controllers\Student\StudyMaterialController::class, 'download'])->name('study-materials.download');
+    Route::get('study-materials/category/{categoryId}', [App\Http\Controllers\Student\StudyMaterialController::class, 'getByCategory'])->name('study-materials.category');
+    Route::get('study-materials/course/{courseId}', [App\Http\Controllers\Student\StudyMaterialController::class, 'getByCourse'])->name('study-materials.course');
+    Route::get('study-materials/{studyMaterial}/view', [App\Http\Controllers\Student\StudyMaterialController::class, 'view'])->name('study-materials.view');
+
 });

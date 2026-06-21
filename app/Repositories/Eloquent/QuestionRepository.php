@@ -13,37 +13,72 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
         parent::__construct($model);
     }
 
-    public function createWithOptions(array $questionData, array $options = [])
-    {
-        DB::beginTransaction();
-        try {
-            // Create question
-            $question = $this->create($questionData);
+    // public function createWithOptions(array $questionData, array $options = [])
+    // {
+    //     DB::beginTransaction();
+    //     try {
+    //         // Create question
+    //         $question = $this->create($questionData);
 
-            // Attach categories if provided
-            if (isset($questionData['category_ids'])) {
-                $question->categories()->sync($questionData['category_ids']);
-            }
+    //         // Attach categories if provided
+    //         if (isset($questionData['category_ids'])) {
+    //             $question->categories()->sync($questionData['category_ids']);
+    //         }
 
-            // Create options for choice questions
-            if (!empty($options)) {
-                foreach ($options as $index => $optionData) {
-                    $question->options()->create([
-                        'option_text' => $optionData['option_text'],
-                        'is_correct' => $optionData['is_correct'] ?? false,
-                        'order' => $optionData['order'] ?? $index
-                    ]);
-                }
-            }
+    //         // Create options for choice questions
+    //         if (!empty($options)) {
+    //             foreach ($options as $index => $optionData) {
+    //                 $question->options()->create([
+    //                     'option_text' => $optionData['option_text'],
+    //                     'is_correct' => $optionData['is_correct'] ?? false,
+    //                     'order' => $optionData['order'] ?? $index
+    //                 ]);
+    //             }
+    //         }
 
-            DB::commit();
-            return $question->load(['options', 'categories']);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
+    //         DB::commit();
+    //         return $question->load(['options', 'categories']);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         throw $e;
+    //     }
+    // }
+public function createWithOptions(array $questionData, array $options = [])
+{
+    DB::beginTransaction();
+    try {
+        // Create question
+        $question = $this->create($questionData);
+        
+        // Attach categories if provided
+        if (isset($questionData['category_ids'])) {
+            $question->categories()->sync($questionData['category_ids']);
         }
+        
+        // Create options for choice questions or numerical
+        if (!empty($options)) {
+            foreach ($options as $index => $optionData) {
+                // Ensure is_correct is a boolean
+                $isCorrect = isset($optionData['is_correct']) ? 
+                    filter_var($optionData['is_correct'], FILTER_VALIDATE_BOOLEAN) : 
+                    false;
+                
+                $question->options()->create([
+                    'option_text' => $optionData['option_text'],
+                    'is_correct' => $isCorrect,
+                    'order' => $optionData['order'] ?? $index
+                ]);
+            }
+        }
+        
+        DB::commit();
+        return $question->load(['options', 'categories']);
+        
+    } catch (\Exception $e) {
+        DB::rollBack();
+        throw $e;
     }
-
+}
     public function updateWithOptions($id, array $questionData, array $options = [])
     {
         DB::beginTransaction();

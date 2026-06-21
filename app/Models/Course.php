@@ -17,6 +17,9 @@ class Course extends Model
     protected $casts = [
         'status' => 'string',
     ];
+    
+    protected $appends = ['progress_percentage'];
+
 
     protected static function boot()
     {
@@ -68,5 +71,29 @@ class Course extends Model
             ->withCount('students')
             ->get()
             ->sum('students_count');
+    }
+    
+    /**
+     * Get course progress percentage
+     */
+    public function getProgressPercentageAttribute()
+    {
+        $totalModules = $this->modules()->count();
+        if ($totalModules == 0) {
+            return 0;
+        }
+        $activeModules = $this->modules()->where('status', 'active')->count();
+        return round(($activeModules / $totalModules) * 100);
+    }
+
+    /**
+     * Get progress color based on percentage
+     */
+    public function getProgressColorAttribute()
+    {
+        $progress = $this->progress_percentage;
+        if ($progress >= 80) return 'success';
+        if ($progress >= 50) return 'warning';
+        return 'danger';
     }
 }

@@ -28,6 +28,15 @@ class QuestionCategoryController extends Controller
     }
 
     /**
+     * Show form for creating a new category.
+     */
+    public function create()
+    {
+        $categories = QuestionCategory::where('is_active', true)->get();
+        return view('admin.question-categories.create', compact('categories'));
+    }
+
+    /**
      * Store a newly created category.
      */
     public function store(Request $request)
@@ -36,70 +45,112 @@ class QuestionCategoryController extends Controller
             'name' => 'required|string|max:255|unique:question_categories',
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:question_categories,id',
-            'order' => 'integer'
+            'is_active' => 'nullable|boolean',
+            'order' => 'nullable|integer'
         ]);
 
-        $category = QuestionCategory::create($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Category created successfully',
-            'category' => $category
+        $category = QuestionCategory::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'parent_id' => $request->parent_id,
+            'is_active' => $request->has('is_active'),
+            'order' => $request->order ?? 0
         ]);
+
+        return redirect()->route('admin.question-categories.index')
+                         ->with('success', 'Category created successfully.');
+    }
+
+    /**
+     * Display the specified category.
+     */
+    public function show(QuestionCategory $question_category)
+    {
+        $category = $question_category->load(['parent', 'children', 'questions']);
+        return view('admin.question-categories.show', compact('category'));
+    }
+
+    /**
+     * Show form for editing the specified category.
+     */
+    public function edit(QuestionCategory $question_category)
+    {
+        $category = $question_category;
+        $categories = QuestionCategory::where('id', '!=', $category->id)
+                                      ->where('is_active', true)
+                                      ->get();
+        return view('admin.question-categories.edit', compact('category', 'categories'));
     }
 
     /**
      * Update the specified category.
      */
-    public function update(Request $request, QuestionCategory $category)
+    public function update(Request $request, QuestionCategory $question_category)
     {
+        $category = $question_category;
+        
         $request->validate([
             'name' => 'required|string|max:255|unique:question_categories,name,' . $category->id,
             'description' => 'nullable|string',
             'parent_id' => 'nullable|exists:question_categories,id',
-            'is_active' => 'boolean',
-            'order' => 'integer'
+            'is_active' => 'nullable|boolean',
+            'order' => 'nullable|integer'
         ]);
 
-        $category->update($request->all());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Category updated successfully'
+        $category->update([
+            'name' => $request->name,
+            'description' => $request->description,
+            'parent_id' => $request->parent_id,
+            'is_active' => $request->has('is_active'),
+            'order' => $request->order ?? $category->order
         ]);
+
+        return redirect()->route('admin.question-categories.index')
+                         ->with('success', 'Category updated successfully.');
     }
 
     /**
      * Remove the specified category.
      */
-    public function destroy(QuestionCategory $category)
+    public function destroy(QuestionCategory $question_category)
     {
+        $category = $question_category;
+        
         // Check if category has questions
         if ($category->questions()->count() > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete category with questions'
-            ], 422);
+            return redirect()->route('admin.question-categories.index')
+                             ->with('error', 'Cannot delete category with questions.');
         }
 
         // Check if category has children
         if ($category->children()->count() > 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot delete category with subcategories'
-            ], 422);
+            return redirect()->route('admin.question-categories.index')
+                             ->with('error', 'Cannot delete category with subcategories.');
         }
 
         $category->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Category deleted successfully'
-        ]);
+        return redirect()->route('admin.question-categories.index')
+                         ->with('success', 'Category deleted successfully.');
     }
 
     /**
-     * Get categories as tree.
+     * Toggle category status.
+     */
+    public function toggleStatus(QuestionCategory $question_category)
+    {
+        $category = $question_category;
+        
+        $category->update([
+            'is_active' => !$category->is_active
+        ]);
+
+        return redirect()->route('admin.question-categories.index')
+                         ->with('success', 'Category status updated successfully.');
+    }
+
+    /**
+     * Get categories as tree (API).
      */
     public function getTree()
     {
@@ -112,7 +163,7 @@ class QuestionCategoryController extends Controller
     }
 
     /**
-     * Update categories order.
+     * Update categories order (API).
      */
     public function updateOrder(Request $request)
     {

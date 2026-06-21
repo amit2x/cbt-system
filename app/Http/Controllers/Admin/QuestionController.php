@@ -96,21 +96,69 @@ class QuestionController extends Controller
     /**
      * Store a newly created question.
      */
-    public function store(StoreQuestionRequest $request)
-    {
-        try {
-            $questionData = $request->except('options');
-            $options = $request->input('options', []);
+    // public function store(StoreQuestionRequest $request)
+    // {
+    //     try {
+    //         $questionData = $request->except('options');
+    //         $options = $request->input('options', []);
 
-            $question = $this->questionRepository->createWithOptions($questionData, $options);
+    //         $question = $this->questionRepository->createWithOptions($questionData, $options);
 
-            return redirect()->route('admin.questions.index')
-                            ->with('success', 'Question created successfully.');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error creating question: ' . $e->getMessage())
-                         ->withInput();
+    //         return redirect()->route('admin.questions.index')
+    //                         ->with('success', 'Question created successfully.');
+    //     } catch (\Exception $e) {
+    //         return back()->with('error', 'Error creating question: ' . $e->getMessage())
+    //                      ->withInput();
+    //     }
+    // }
+    /**
+ * Store a newly created question.
+ */
+/**
+ * Store a newly created question.
+ */
+public function store(StoreQuestionRequest $request)
+{
+    try {
+        $questionData = $request->except(['options', 'correct_numerical', 'tolerance']);
+        $options = $request->input('options', []);
+        
+        // Process options to ensure is_correct is set
+        if (!empty($options)) {
+            foreach ($options as $index => $option) {
+                // If is_correct is missing or null, set to false (0)
+                if (!isset($option['is_correct']) || $option['is_correct'] === null) {
+                    $options[$index]['is_correct'] = false;
+                }
+                // Convert string '1' or '0' to boolean
+                $options[$index]['is_correct'] = filter_var($options[$index]['is_correct'], FILTER_VALIDATE_BOOLEAN);
+            }
         }
+        
+        // Handle numerical question
+        if ($request->type === 'numerical') {
+            $options = [
+                [
+                    'option_text' => $request->correct_numerical,
+                    'is_correct' => true,
+                    'order' => 0
+                ]
+            ];
+        }
+        
+        $question = $this->questionRepository->createWithOptions($questionData, $options);
+        
+        return redirect()->route('admin.questions.index')
+                        ->with('success', 'Question created successfully.');
+                        
+    } catch (\Exception $e) {
+        \Log::error('Question creation error: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
+        return back()->with('error', 'Error creating question: ' . $e->getMessage())
+                     ->withInput();
     }
+}
 
     /**
      * Display the specified question.

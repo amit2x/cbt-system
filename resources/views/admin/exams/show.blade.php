@@ -94,6 +94,20 @@
                                     <td>{{ $exam->course->title ?? 'N/A' }}</td>
                                 </tr>
                                 <tr>
+                                    <th>Modules:</th>
+                                    <td>
+                                        @if($exam->module_id)
+                                            {{ $exam->module->title ?? 'N/A' }}
+                                        @elseif($exam->modules && $exam->modules->count() > 0)
+                                            @foreach($exam->modules as $module)
+                                                <span class="badge bg-secondary">{{ $module->title }}</span>
+                                            @endforeach
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr>
                                     <th>Batch:</th>
                                     <td>
                                         @if($exam->batch)
@@ -453,7 +467,6 @@
         preview += '</div>';
 
         $('#previewContent').html(preview);
-        // $('#previewModal').modal('show');
         const modal = new bootstrap.Modal(document.getElementById('previewModal'));
         modal.show();
     }

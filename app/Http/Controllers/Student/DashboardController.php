@@ -8,6 +8,7 @@ use App\Models\Exam;
 use App\Models\Feedback;
 use App\Models\Result;
 use App\Models\StudentExam;
+use App\Models\StudyMaterial;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -299,30 +300,56 @@ class DashboardController extends Controller
         }
     }
 
+    
     /**
-     * Get recommended study materials
+     * Get recommended study materials for the student
      */
     private function getRecommendedMaterials($studentId, $batchIds)
     {
-        // This is a placeholder - implement based on your study materials system
-        $materials = [
-            [
-                'title' => 'Mathematics Fundamentals',
-                'subject' => 'Mathematics',
-                'type' => 'pdf'
-            ],
-            [
-                'title' => 'Physics Formulas',
-                'subject' => 'Physics',
-                'type' => 'pdf'
-            ],
-            [
-                'title' => 'Chemistry Quick Guide',
-                'subject' => 'Chemistry',
-                'type' => 'pdf'
-            ]
-        ];
-
-        return $materials;
+        // Get the student's enrolled courses from their batches
+        $courseIds = \DB::table('batches')
+            ->whereIn('id', $batchIds)
+            ->pluck('course_id')
+            ->toArray();
+    
+        if (empty($courseIds)) {
+            return collect([]);
+        }
+    
+        // Get published study materials for the student's courses
+        $materials = StudyMaterial::with(['course', 'module', 'category'])
+            ->whereIn('course_id', $courseIds)
+            ->where('status', 'published')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+    
+        // If no materials found, return empty collection
+        if ($materials->isEmpty()) {
+            return collect([]);
+        }
+    
+        // Transform materials for dashboard display
+        return $materials->map(function($material) {
+            return [
+                'id' => $material->id,
+                'title' => $material->title,
+                'subject' => $material->course->title ?? 'General',
+                'type' => $material->material_type,
+                'file_path' => $material->file_path,
+                'file_url' => $material->file_url,
+                'external_url' => $material->external_url,
+                'views' => $material->views,
+                'downloads' => $material->downloads,
+                'created_at' => $material->created_at,
+                'url' => route('student.study-materials.show', $material),
+                'download_url' => $material->file_path ? route('student.study-materials.download', $material) : null,
+                'category_name' => $material->category->name ?? 'Uncategorized',
+                'type_badge' => $material->material_type_badge,
+                'formatted_size' => $material->formatted_file_size,
+                'has_file' => !is_null($material->file_path),
+                'is_link' => $material->material_type === 'link'
+            ];
+        });
     }
 }

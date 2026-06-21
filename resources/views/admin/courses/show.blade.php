@@ -54,24 +54,36 @@
                 <div class="card-body">
                     @if($course->modules->count() > 0)
                         <div class="accordion" id="modulesAccordion">
-                            @foreach($course->modules as $index => $module)
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button {{ $index > 0 ? 'collapsed' : '' }}"
-                                                type="button" data-bs-toggle="collapse"
-                                                data-bs-target="#module{{ $module->id }}">
-                                            <strong>{{ $module->title }}</strong>
-                                        </button>
-                                    </h2>
-                                    <div id="module{{ $module->id }}"
-                                         class="accordion-collapse collapse {{ $index == 0 ? 'show' : '' }}">
-                                        <div class="accordion-body">
-                                            {{ $module->description ?? 'No description' }}
-                                        </div>
+                        @foreach($course->modules as $index => $module)
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button {{ $index > 0 ? 'collapsed' : '' }}"
+                                            type="button" data-bs-toggle="collapse"
+                                            data-bs-target="#module{{ $module->id }}">
+                                        <span class="d-inline-flex align-items-center gap-2">
+                                            <strong>#{{ $module->id }} - {{ $module->title }}</strong>
+                                            <i class="bi bi-info-circle text-primary" 
+                                               data-bs-toggle="tooltip" 
+                                               data-bs-placement="top" 
+                                               title="Use module ID #{{ $module->id }} in the subject_id column when uploading the question excel sheet.">
+                                            </i>
+                                        </span>
+                                    </button>
+                                </h2>
+                                <div id="module{{ $module->id }}"
+                                     class="accordion-collapse collapse {{ $index == 0 ? 'show' : '' }}">
+                                    <div class="accordion-body">
+                                        <p class="mb-2">{{ $module->description ?? 'No description' }}</p>
+                                        <small class="text-muted d-block mt-2">
+                                            Use module ID <strong>{{ $module->id }}</strong> in the <code>subject_id</code> column when uploading the question excel sheet for this module.
+                                        </small>
                                     </div>
                                 </div>
-                            @endforeach
-                        </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+
                     @else
                         <p class="text-center text-muted my-3">No modules added yet.</p>
                     @endif

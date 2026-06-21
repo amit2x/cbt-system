@@ -38,7 +38,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select name="course_id" class="form-control select2">
+                    <select name="course_id" class="form-control">
                         <option value="">All Courses</option>
                         @foreach($courses as $course)
                             <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
@@ -170,7 +170,7 @@
             </div>
 
             <div class="d-flex justify-content-center mt-4">
-                {{ $exams->withQueryString()->links() }}
+                {{ $exams->withQueryString()->links('pagination::bootstrap-5') }}
             </div>
         </div>
     </div>
@@ -184,18 +184,11 @@
 @endsection
 
 @push('styles')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 @endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    $(document).ready(function() {
-        $('.select2').select2({
-            placeholder: 'Select Course',
-            allowClear: true
-        });
-    });
+    
 
     function publishExam(id) {
         if (confirm('Are you sure you want to publish this exam?')) {

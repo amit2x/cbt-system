@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="container-fluid">
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Create New Question</h1>
         <a href="{{ route('admin.questions.index') }}" class="btn btn-secondary">
@@ -41,6 +42,7 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+                        <input type="hidden" id="correct_option_value" name="correct_option_value" value="">
 
                         <!-- Options Container (for choice questions) -->
                         <div id="options-container" style="display: none;">
@@ -256,6 +258,42 @@
 
         // Initialize type change handler
         handleTypeChange();
+
+        // Fix: Ensure correct_option is handled properly on form submit
+        // $('#questionForm').on('submit', function(e) {
+        //     const type = $('#type').val();
+            
+        //     if (type === 'single_choice') {
+        //         // Find which radio is selected
+        //         const selectedRadio = $('input[name="correct_option"]:checked');
+        //         if (selectedRadio.length === 0) {
+        //             toastr.error('Please select the correct answer');
+        //             e.preventDefault();
+        //             return false;
+        //         }
+                
+        //         const selectedIndex = parseInt(selectedRadio.val());
+                
+        //         // Set ALL options to is_correct=0 first
+        //         $('.option-row').each(function(index) {
+        //             $(`input[name="options[${index}][is_correct]"]`).val(0);
+        //         });
+                
+        //         // Set the selected option to is_correct=1
+        //         $(`input[name="options[${selectedIndex}][is_correct]"]`).val(1);
+                
+        //         // Debug: Log the values
+        //         console.log('Selected index:', selectedIndex);
+        //         $('.option-row').each(function(index) {
+        //             console.log(`Option ${index} is_correct:`, $(`input[name="options[${index}][is_correct]"]`).val());
+        //         });
+                
+        //         // Remove the correct_option field from submission to avoid confusion
+        //         // We already have the is_correct values set
+        //     }
+            
+        //     return true; // Allow form submission
+        // });
     });
 
     function handleTypeChange() {
@@ -265,13 +303,13 @@
         $('#options-container').hide();
         $('#numerical-container').hide();
 
-        // Show relevant container
+        // Reset option count and clear list when type changes
         if (type === 'single_choice' || type === 'multiple_choice') {
+            $('#options-list').empty();
+            optionCount = 0;
             $('#options-container').show();
-            if (optionCount === 0) {
-                addOption(); // Add first option
-                addOption(); // Add second option
-            }
+            addOption(); // Add first option
+            addOption(); // Add second option
         } else if (type === 'numerical') {
             $('#numerical-container').show();
         }
@@ -280,23 +318,42 @@
     function addOption() {
         const type = $('#type').val();
         const isMultiple = type === 'multiple_choice';
+        const letter = String.fromCharCode(65 + optionCount);
+        
+        let correctInput = '';
+        if (isMultiple) {
+            // Multiple choice - use checkbox with hidden field
+            correctInput = `
+                <input class="form-check-input" type="checkbox" 
+                       name="options[${optionCount}][is_correct]" 
+                       value="1">
+                <input type="hidden" name="options[${optionCount}][is_correct]" value="0">
+            `;
+        } else {
+            // Single choice - use radio button with hidden field
+            correctInput = `
+                <input class="form-check-input" type="radio" 
+                       name="correct_option" 
+                       value="${optionCount}"
+                       id="correct_option_${optionCount}">
+                <label class="form-check-label" for="correct_option_${optionCount}">
+                    Correct Answer
+                </label>
+                <input type="hidden" name="options[${optionCount}][is_correct]" value="0">
+            `;
+        }
+        
         const optionHtml = `
             <div class="option-row" id="option-${optionCount}">
                 <div class="row">
                     <div class="col-md-8">
                         <input type="text" class="form-control"
                                name="options[${optionCount}][option_text]"
-                               placeholder="Option ${String.fromCharCode(65 + optionCount)}" required>
+                               placeholder="Option ${letter}" required>
                     </div>
                     <div class="col-md-3">
                         <div class="form-check mt-2">
-                            <input class="form-check-input" type="${isMultiple ? 'checkbox' : 'radio'}"
-                                   name="options[${optionCount}][is_correct]"
-                                   value="1"
-                                   ${isMultiple ? '' : 'name="correct_option"'}>
-                            <label class="form-check-label">
-                                Correct Answer
-                            </label>
+                            ${correctInput}
                         </div>
                     </div>
                     <div class="col-md-1">
@@ -315,6 +372,8 @@
 
     function removeOption(id) {
         if ($('.option-row').length > 2) {
+            // If the removed option was selected, clear the radio selection
+            $(`input[name="correct_option"][value="${id}"]`).prop('checked', false);
             $(`#option-${id}`).remove();
         } else {
             toastr.warning('Minimum 2 options required');
@@ -347,11 +406,11 @@
             preview += '<h6>Options:</h6><div class="options-preview">';
             $('.option-row').each(function() {
                 const optionText = $(this).find('input[name*="[option_text]"]').val();
-                const isCorrect = $(this).find('input[name*="[is_correct]"]').is(':checked');
+                const isChecked = $(this).find('input[type="checkbox"]:checked, input[type="radio"]:checked').length > 0;
                 preview += `
-                    <div class="option-item mb-2 p-2 ${isCorrect ? 'bg-success text-white' : 'bg-light'}">
+                    <div class="option-item mb-2 p-2 ${isChecked ? 'bg-success text-white' : 'bg-light'}">
                         ${optionText}
-                        ${isCorrect ? '<span class="correct-badge ms-2">✓ Correct</span>' : ''}
+                        ${isChecked ? '<span class="correct-badge ms-2">✓ Correct</span>' : ''}
                     </div>
                 `;
             });
@@ -385,5 +444,14 @@
         $('#previewContent').html(preview);
         $('#previewModal').modal('show');
     }
+
+    // Debug: Log form data before submit
+    $(document).on('submit', '#questionForm', function(e) {
+        console.log('Form submitting...');
+        const formData = new FormData(this);
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+    });
 </script>
 @endpush

@@ -19,16 +19,31 @@ class CourseController extends Controller
         $this->middleware('role:admin');
     }
 
+    
+    
     /**
      * Display a listing of courses.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $courses = Course::with(['creator', 'instructors'])
-                        ->withCount(['modules', 'batches'])
-                        ->latest()
-                        ->paginate(10);
-
+        $query = Course::with(['creator', 'instructors'])
+            ->withCount(['modules', 'batches']);
+    
+        // Apply search filter
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
+        }
+    
+        // Apply status filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+    
+        $courses = $query->latest()->paginate(15);
+    
         return view('admin.courses.index', compact('courses'));
     }
 
@@ -229,5 +244,30 @@ class CourseController extends Controller
         }
 
         return redirect()->back()->with('success', 'Module order updated.');
+    }
+    
+    /**
+     * Get batches for a course (API endpoint).
+     */
+    public function getBatchesApi(Course $course)
+    {
+        $batches = $course->batches()
+            ->whereIn('status', ['upcoming', 'ongoing'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($batch) {
+                return [
+                    'id' => $batch->id,
+                    'name' => $batch->name,
+                    'status' => $batch->status,
+                    'students_count' => $batch->students()->count(),
+                    'course_id' => $batch->course_id,
+                ];
+            });
+    
+        return response()->json([
+            'status' => 'success',
+            'data' => $batches
+        ]);
     }
 }

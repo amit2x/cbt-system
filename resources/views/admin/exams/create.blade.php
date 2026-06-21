@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="container-fluid">
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Create New Exam</h1>
         <a href="{{ route('admin.exams.index') }}" class="btn btn-secondary">
@@ -118,37 +119,36 @@
                             </div>
                         </div>
 
-                        <!-- Batch -->
+                        <!-- Batch Selection -->
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <div class="mb-3">
-                                    <label for="batch_id" class="form-label">Batch</label>
-                                    <select class="form-control select2 @error('batch_id') is-invalid @enderror"
-                                            id="batch_id" name="batch_id">
-                                        <option value="">Select Batch</option>
-                                        @foreach($batches as $batch)
-                                            <option value="{{ $batch->id }}" {{ old('batch_id') == $batch->id ? 'selected' : '' }}>
-                                                {{ $batch->name }} ({{ $batch->course->title }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('batch_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="batch_ids" class="form-label">Additional Batches (Optional)</label>
-                                    <select class="form-control select2" id="batch_ids" name="batch_ids[]" multiple>
-                                        @foreach($batches as $batch)
-                                            <option value="{{ $batch->id }}"
-                                                {{ in_array($batch->id, old('batch_ids', [])) ? 'selected' : '' }}>
-                                                {{ $batch->name }} ({{ $batch->course->title }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted">Select multiple batches if exam is for multiple batches</small>
+                                    <label class="form-label">Batch Assignment</label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="batch_id" class="form-label">Primary Batch <span class="text-danger">*</span></label>
+                                            <select class="form-control select2 @error('batch_id') is-invalid @enderror"
+                                                    id="batch_id" name="batch_id" required>
+                                                <option value="">Select Primary Batch</option>
+                                                <!-- Options will be populated dynamically -->
+                                            </select>
+                                            @error('batch_id')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            <small class="text-muted">Main batch for this exam</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="batch_ids" class="form-label">Additional Batches</label>
+                                            <select class="form-control select2 @error('batch_ids') is-invalid @enderror"
+                                                    id="batch_ids" name="batch_ids[]" multiple>
+                                                <!-- Options will be populated dynamically -->
+                                            </select>
+                                            @error('batch_ids')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            <small class="text-muted">Select additional batches for this exam</small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -177,7 +177,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="negative_marking" class="form-label">Negative Marking (per wrong answer)</label>
+                            <label for="negative_marking" class="form-label">Negative Marking</label>
                             <input type="number" class="form-control @error('negative_marking') is-invalid @enderror"
                                    id="negative_marking" name="negative_marking" value="{{ old('negative_marking', 0) }}"
                                    min="0" step="0.25">
@@ -320,20 +320,37 @@
         font-size: 12px;
         color: #999;
     }
+    .loading-batches {
+        position: relative;
+    }
+    .loading-batches::after {
+        content: 'Loading batches...';
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 12px;
+        color: #999;
+    }
+    .has-error .select2-selection {
+        border-color: #dc3545 !important;
+    }
+    .has-error .select2-selection__placeholder {
+        color: #dc3545 !important;
+    }
 </style>
 @endpush
+
 @push('scripts')
-<!-- Add jQuery before any other scripts -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    // Wait for jQuery to be fully loaded
     (function($) {
         'use strict';
         
-        // Document ready with jQuery
         $(document).ready(function() {
-            console.log('Document ready - initializing exam form');
+            console.log('Exam form initialized');
             
             // Initialize Select2 for all select elements
             $('.select2').select2({
@@ -341,106 +358,136 @@
                 allowClear: true,
                 width: '100%'
             });
-            
-            // Initialize module select
-            const $moduleSelect = $('#module_id');
+
             const $courseSelect = $('#course_id');
-            
-            // Add loading indicator
-            function showLoading(show) {
-                if (show) {
-                    $moduleSelect.prop('disabled', true);
-                    $moduleSelect.closest('.mb-3').addClass('loading-modules');
-                } else {
+            const $moduleSelect = $('#module_id');
+            const $batchSelect = $('#batch_id');
+            const $additionalBatches = $('#batch_ids');
+
+            // ========== LOAD MODULES ==========
+            function loadModules(courseId) {
+                $moduleSelect.empty().append('<option value="">Select Module</option>');
+                $moduleSelect.prop('disabled', true);
+                $moduleSelect.closest('.mb-3').addClass('loading-modules');
+
+                if (!courseId) {
                     $moduleSelect.prop('disabled', false);
                     $moduleSelect.closest('.mb-3').removeClass('loading-modules');
-                }
-            }
-            
-            // Function to load modules for a course
-            function loadModules(courseId) {
-                // Clear existing options
-                $moduleSelect.empty().append('<option value="">Select Module</option>');
-                
-                if (!courseId) {
-                    showLoading(false);
                     $moduleSelect.trigger('change');
                     return;
                 }
-                
-                showLoading(true);
-                
-                // Make AJAX request
+
                 $.ajax({
                     url: `/admin/courses/${courseId}/modules/api`,
                     method: 'GET',
                     dataType: 'json',
                     success: function(response) {
-                        console.log('Modules response:', response);
-                        
                         if (response.status === 'success' && response.data && response.data.length > 0) {
                             $.each(response.data, function(index, module) {
                                 $moduleSelect.append(
                                     `<option value="${module.id}">${module.title}</option>`
                                 );
                             });
-                            $moduleSelect.append('<option value="">-- No module selected --</option>');
                         } else {
-                            $moduleSelect.append('<option value="">No modules available for this course</option>');
+                            toastr.error("No Modules Available for the selected course!");
+                            $moduleSelect.append('<option value="">No modules available</option>');
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.error('Error loading modules:', error);
-                        console.error('XHR:', xhr);
+                    error: function(xhr) {
+                        toastr.error("Error occured whiled loading related modules!");
+                        console.error('Error loading modules:', xhr);
                         $moduleSelect.append('<option value="">Error loading modules</option>');
                     },
                     complete: function() {
-                        showLoading(false);
+                        $moduleSelect.prop('disabled', false);
+                        $moduleSelect.closest('.mb-3').removeClass('loading-modules');
                         $moduleSelect.trigger('change');
                     }
                 });
             }
-            
-            // Combined Course change handler
+
+            // ========== LOAD BATCHES ==========
+            function loadBatches(courseId) {
+                // Clear both batch selects
+                $batchSelect.empty().append('<option value="">Select Primary Batch</option>');
+                $additionalBatches.empty();
+
+                // Disable selects while loading
+                $batchSelect.prop('disabled', true);
+                $additionalBatches.prop('disabled', true);
+                $batchSelect.closest('.mb-3').addClass('loading-batches');
+
+                if (!courseId) {
+                    $batchSelect.prop('disabled', false);
+                    $additionalBatches.prop('disabled', false);
+                    $batchSelect.closest('.mb-3').removeClass('loading-batches');
+                    $batchSelect.trigger('change');
+                    $additionalBatches.trigger('change');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/admin/courses/${courseId}/batches/api`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status === 'success' && response.data && response.data.length > 0) {
+                            $.each(response.data, function(index, batch) {
+                                // Add to primary batch select
+                                $batchSelect.append(
+                                    `<option value="${batch.id}">${batch.name} (${batch.status})</option>`
+                                );
+                                // Add to additional batches select
+                                $additionalBatches.append(
+                                    `<option value="${batch.id}">${batch.name} (${batch.status})</option>`
+                                );
+                            });
+                        } else {
+                            toastr.error("No Batch Available!");
+                            $batchSelect.append('<option value="">No batches available, please add batch first</option>');
+                            $additionalBatches.append('<option value="">No batches available</option>');
+                        }
+                    },
+                    error: function(xhr) {
+                        toastr.error("Error occured while loading batches!");
+                        console.error('Error loading batches:', xhr);
+                        $batchSelect.append('<option value="">Error loading batches</option>');
+                        $additionalBatches.append('<option value="">Error loading batches</option>');
+                    },
+                    complete: function() {
+                        $batchSelect.prop('disabled', false);
+                        $additionalBatches.prop('disabled', false);
+                        $batchSelect.closest('.mb-3').removeClass('loading-batches');
+                        $batchSelect.trigger('change');
+                        $additionalBatches.trigger('change');
+                    }
+                });
+            }
+
+            // ========== COURSE CHANGE HANDLER ==========
             $courseSelect.on('change', function() {
                 const courseId = $(this).val();
                 console.log('Course changed to:', courseId);
                 
-                // Load modules for selected course
                 loadModules(courseId);
-                
-                // Filter batches by course
-                const selectedCourseText = $courseSelect.find('option:selected').text();
-                $('#batch_id option').each(function() {
-                    const $batch = $(this);
-                    if ($batch.val() && !$batch.text().includes(selectedCourseText)) {
-                        $batch.hide();
-                    } else {
-                        $batch.show();
-                    }
-                });
-                $('#batch_id').val(null).trigger('change');
+                loadBatches(courseId);
             });
-            
-            // Validate module selection on form submit
+
+            // ========== VALIDATE MODULE ON SUBMIT ==========
             $('#examForm').on('submit', function(e) {
                 const moduleId = $moduleSelect.val();
                 if (!moduleId) {
                     e.preventDefault();
-                    
-                    // Show error using toastr or alert
+                    const errorMsg = 'Please select a module for this exam';
                     if (typeof toastr !== 'undefined') {
-                        toastr.error('Please select a module for this exam');
+                        toastr.error(errorMsg);
                     } else {
-                        alert('Please select a module for this exam');
+                        alert(errorMsg);
                     }
-                    
                     $moduleSelect.closest('.mb-3').addClass('has-error');
                     setTimeout(function() {
                         $moduleSelect.closest('.mb-3').removeClass('has-error');
                     }, 3000);
-                    
-                    // Open Select2 dropdown
                     if ($moduleSelect.hasClass('select2-hidden-accessible')) {
                         $moduleSelect.select2('open');
                     } else {
@@ -450,56 +497,53 @@
                 }
                 return true;
             });
-            
-            // Remove error state on module change
+
+            // ========== REMOVE ERROR STATE ON CHANGE ==========
             $moduleSelect.on('change', function() {
                 if ($(this).val()) {
                     $(this).closest('.mb-3').removeClass('has-error');
                 }
             });
-            
-            // Trigger course change if course is pre-selected
+
+            // ========== TRIGGER ON PAGE LOAD ==========
             if ($courseSelect.val()) {
                 console.log('Pre-selected course found, triggering change');
                 $courseSelect.trigger('change');
             }
-            
-            // Debug: Log select2 initialization
+
+            // ========== LOGGING ==========
             console.log('Select2 initialized:', $('.select2').length);
             console.log('Course select value:', $courseSelect.val());
-            
-            // Add a manual test button for debugging
-            $courseSelect.after('<small class="text-muted ms-2" id="debug-info"></small>');
-            
-            // Override the ajax function to add more debugging
+
+            // Override ajax for debugging
             const originalAjax = $.ajax;
             $.ajax = function(settings) {
                 console.log('AJAX request:', settings.url);
                 return originalAjax.call(this, settings);
             };
-            
-            // Log any errors
+
             window.onerror = function(message, source, lineno, colno, error) {
                 console.error('Global error:', message, source, lineno, colno, error);
                 return false;
             };
         });
         
-        // Fallback for if jQuery doesn't load
-        console.log('jQuery loaded:', typeof jQuery !== 'undefined');
-        
     })(window.jQuery || window.$);
 
     function toggleSchedule() {
-        const isChecked = $('#is_scheduled').is(':checked');
-        $('#schedule-fields').toggle(isChecked);
-
+        const isChecked = document.getElementById('is_scheduled').checked;
+        const scheduleFields = document.getElementById('schedule-fields');
+        const startTime = document.getElementById('start_time');
+        const endTime = document.getElementById('end_time');
+        
+        scheduleFields.style.display = isChecked ? 'block' : 'none';
+        
         if (isChecked) {
-            $('#start_time').attr('required', true);
-            $('#end_time').attr('required', true);
+            startTime.setAttribute('required', 'required');
+            endTime.setAttribute('required', 'required');
         } else {
-            $('#start_time').removeAttr('required');
-            $('#end_time').removeAttr('required');
+            startTime.removeAttribute('required');
+            endTime.removeAttribute('required');
         }
     }
 </script>

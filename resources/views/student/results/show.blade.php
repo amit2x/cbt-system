@@ -304,9 +304,8 @@
 @endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    $(document).ready(function() {
+    document.addEventListener('DOMContentLoaded', function() {
         // Score Circle
         const scoreCtx = document.getElementById('scoreCircle').getContext('2d');
         new Chart(scoreCtx, {

@@ -88,19 +88,22 @@ class StudentExam extends Model
     }
 
     // Helper Methods
-    public function getFormattedTimeRemainingAttribute()
-    {
-        $seconds = $this->remaining_seconds;
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds % 3600) / 60);
-        $secs = $seconds % 60;
 
-        if ($hours > 0) {
-            return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
-        }
+    /**
+ * Get formatted time remaining
+ */
+public function getFormattedTimeRemainingAttribute()
+{
+    $seconds = max(0, $this->remaining_seconds ?? 0);
+    $hours = floor($seconds / 3600);
+    $minutes = floor(($seconds % 3600) / 60);
+    $secs = $seconds % 60;
 
-        return sprintf('%02d:%02d', $minutes, $secs);
+    if ($hours > 0) {
+        return sprintf("%02d:%02d:%02d", $hours, $minutes, $secs);
     }
+    return sprintf("%02d:%02d", $minutes, $secs);
+}
 
     public function getProgressPercentageAttribute()
     {

@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
 
 class Exam extends Model
 {
@@ -70,6 +72,14 @@ class Exam extends Model
             ->withPivot(['available_from', 'available_until'])
             ->withTimestamps();
     }
+    
+/**
+ * Get the module associated with this exam.
+ */
+public function module()
+{
+    return $this->belongsTo(Module::class);
+}
     
 public function modules()
 {
@@ -265,6 +275,34 @@ public function getModulesAttribute()
         return 0;
     }
 
+    /**
+     * Get total marks for this exam
+     */
+    public function getTotalMarksAttribute()
+    {
+        // First try from exam_questions pivot
+        $total = DB::table('exam_questions')
+            ->where('exam_id', $this->id)
+            ->sum('marks');
+        
+        if ($total > 0) {
+            return $total;
+        }
+        
+        // Fallback: get from questions table
+        $questionIds = DB::table('exam_questions')
+            ->where('exam_id', $this->id)
+            ->pluck('question_id');
+        
+        if ($questionIds->isNotEmpty()) {
+            return DB::table('questions')
+                ->whereIn('id', $questionIds)
+                ->whereNull('deleted_at')
+                ->sum('marks') ?? 0;
+        }
+        
+        return 0;
+    }
     public function getAttemptedCountAttribute()
     {
         return $this->studentExams()->where('status', 'completed')->count();

@@ -143,46 +143,86 @@ class ExamEngineService
     /**
      * Save answer
      */
+    // public function saveAnswer(StudentExam $studentExam, $questionId, $answer, $isMarkedForReview = false)
+    // {
+    //     try {
+    //         $studentAnswer = $studentExam->answers()
+    //             ->where('question_id', $questionId)
+    //             ->first();
+
+    //         if (! $studentAnswer) {
+    //             throw new \Exception('Question not found in exam');
+    //         }
+
+    //         // Calculate time taken for this question
+    //         $timeTaken = $studentAnswer->last_saved_at
+    //             ? now()->diffInSeconds($studentAnswer->last_saved_at)
+    //             : 0;
+
+    //         // Save answer
+    //         $studentAnswer->saveAnswer($answer, $isMarkedForReview);
+
+    //         // Update time taken
+    //         if ($timeTaken > 0) {
+    //             $studentAnswer->update([
+    //                 'time_taken_seconds' => ($studentAnswer->time_taken_seconds ?? 0) + $timeTaken,
+    //             ]);
+    //         }
+
+    //         // Update remaining time in cache
+    //         $this->updateRemainingTime($studentExam);
+
+    //         // Log answer saved
+    //         $studentExam->log('answer_saved', 'Answer saved for question', [
+    //             'question_id' => $questionId,
+    //             'is_marked_for_review' => $isMarkedForReview,
+    //         ]);
+
+    //         return $studentAnswer;
+    //     } catch (\Exception $e) {
+    //         throw $e;
+    //     }
+    // }
+    
     public function saveAnswer(StudentExam $studentExam, $questionId, $answer, $isMarkedForReview = false)
-    {
-        try {
-            $studentAnswer = $studentExam->answers()
-                ->where('question_id', $questionId)
-                ->first();
+{
+    try {
+        $studentAnswer = $studentExam->answers()
+            ->where('question_id', $questionId)
+            ->first();
 
-            if (! $studentAnswer) {
-                throw new \Exception('Question not found in exam');
-            }
-
-            // Calculate time taken for this question
-            $timeTaken = $studentAnswer->last_saved_at
-                ? now()->diffInSeconds($studentAnswer->last_saved_at)
-                : 0;
-
-            // Save answer
-            $studentAnswer->saveAnswer($answer, $isMarkedForReview);
-
-            // Update time taken
-            if ($timeTaken > 0) {
-                $studentAnswer->update([
-                    'time_taken_seconds' => ($studentAnswer->time_taken_seconds ?? 0) + $timeTaken,
-                ]);
-            }
-
-            // Update remaining time in cache
-            $this->updateRemainingTime($studentExam);
-
-            // Log answer saved
-            $studentExam->log('answer_saved', 'Answer saved for question', [
-                'question_id' => $questionId,
-                'is_marked_for_review' => $isMarkedForReview,
-            ]);
-
-            return $studentAnswer;
-        } catch (\Exception $e) {
-            throw $e;
+        if (! $studentAnswer) {
+            \Log::error("Exam Error: Question {$questionId} not found in exam {$studentExam->id}");
+            throw new \Exception('Question not found in exam');
         }
+
+        // Log initial state for debugging
+        \Log::info("Debug SaveAnswer Start:", [
+            'student_answer_id' => $studentAnswer->id,
+            'db_last_saved_at' => $studentAnswer->last_saved_at,
+            'db_time_taken_seconds' => $studentAnswer->time_taken_seconds
+        ]);
+
+        // Delegate all saving and time calculations to the model method to avoid duplicate calculations
+        $studentAnswer->saveAnswer($answer, $isMarkedForReview);
+
+        // Update remaining time in cache
+        $this->updateRemainingTime($studentExam);
+
+        // Log answer saved
+        $studentExam->log('answer_saved', 'Answer saved for question', [
+            'question_id' => $questionId,
+            'is_marked_for_review' => $isMarkedForReview,
+        ]);
+
+        return $studentAnswer;
+    } catch (\Exception $e) {
+        \Log::error("Exception in saveAnswer: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        throw $e;
     }
+}
+
+
 
     /**
      * Mark question for review
@@ -225,174 +265,474 @@ class ExamEngineService
         return $studentExam->fresh();
     }
 
-    /**
-     * Submit exam
-     */
-    // public function submitExam(StudentExam $studentExam)
-    // {
-    //     DB::beginTransaction();
-    //     try {
-    //         // Calculate final marks for all answers
-    //         $totalMarks = 0;
-    //         $correctCount = 0;
-    //         $incorrectCount = 0;
 
-    //         foreach ($studentExam->answers as $answer) {
-    //             $marks = $answer->calculateMarks();
-    //             $totalMarks += $marks;
+/**
+ * Working Submit exam
+ */
+// public function submitExam(StudentExam $studentExam)
+// {
+//     DB::beginTransaction();
+//     try {
+//         // Calculate final marks for all answers
+//         $totalMarks = 0;
+//         $correctCount = 0;
+//         $incorrectCount = 0;
+//         $unansweredCount = 0;
+        
+//         $answers = $studentExam->answers()->with('question')->get();
+        
+//         // Log for debugging
+//         \Log::info('Submitting exam', [
+//             'student_exam_id' => $studentExam->id,
+//             'total_questions' => $studentExam->total_questions,
+//             'answers_count' => $answers->count()
+//         ]);
+        
+//         foreach ($answers as $answer) {
+//             // Calculate marks for each answer
+//             $marks = $answer->calculateMarks();
+//             $totalMarks += $marks;
+            
+//             if ($answer->is_correct === true) {
+//                 $correctCount++;
+//             } elseif ($answer->is_correct === false) {
+//                 $incorrectCount++;
+//             }
+//         }
 
-    //             if ($answer->is_correct) {
-    //                 $correctCount++;
-    //             } elseif ($answer->selected_options || $answer->answer_text) {
-    //                 $incorrectCount++;
-    //             }
-    //         }
+//         // Calculate unanswered questions
+//         $answeredCount = $correctCount + $incorrectCount;
+//         $unansweredCount = $studentExam->total_questions - $answeredCount;
 
-    //         $unansweredCount = $studentExam->total_questions -
-    //             ($correctCount + $incorrectCount);
+//         // Get exam total marks using the model method
+//         $examTotalMarks = $studentExam->exam->total_marks;      
+        
+//         // Calculate percentage
+//         $percentage = $examTotalMarks > 0 
+//             ? round(($totalMarks / $examTotalMarks) * 100, 2)
+//             : 0;
 
-    //         // Update student exam
-    //         $studentExam->update([
-    //             'submitted_at' => now(),
-    //             'status' => 'completed',
-    //             'remaining_seconds' => 0,
-    //             'total_seconds_taken' => now()->diffInSeconds($studentExam->started_at),
-    //             'obtained_marks' => $totalMarks,
-    //             'percentage' => $studentExam->exam->total_marks > 0
-    //                 ? round(($totalMarks / $studentExam->exam->total_marks) * 100, 2)
-    //                 : 0,
-    //             'correct_answers' => $correctCount,
-    //             'incorrect_answers' => $incorrectCount,
-    //             'unanswered' => $unansweredCount
-    //         ]);
+//         // Determine status
+//         $passingPercentage = $studentExam->exam->passing_percentage ?? 40;
+//         $status = $percentage >= $passingPercentage ? 'passed' : 'failed';
 
-    //         // Create result record
-    //         $result = $studentExam->result()->create([
-    //             'student_id' => $studentExam->student_id,
-    //             'exam_id' => $studentExam->exam_id,
-    //             'total_marks' => $studentExam->exam->total_marks,
-    //             'obtained_marks' => $totalMarks,
-    //             'percentage' => $studentExam->percentage,
-    //             'correct_answers' => $correctCount,
-    //             'incorrect_answers' => $incorrectCount,
-    //             'unanswered' => $unansweredCount,
-    //             'status' => $totalMarks >= ($studentExam->exam->passing_percentage / 100 * $studentExam->exam->total_marks)
-    //                 ? 'passed'
-    //                 : 'failed'
-    //         ]);
+//         // 1. Parse started_at safely using Carbon
+//         $startedAt = $studentExam->started_at;
+//         Log::info('Exam was Started at: ' . $startedAt);
+        
+//         if (is_string($startedAt)) {
+//             $startedAt = \Carbon\Carbon::parse($startedAt);
+//         }
+        
+//         // 2. Parse submitted_at safely (Fallback to now)
+//         $submittedAt = $studentExam->submitted_at;
+//         if (is_string($submittedAt)) {
+//             $submittedAt = \Carbon\Carbon::parse($submittedAt);
+//         } else {
+//             $submittedAt = $submittedAt ?? now();
+//         }
+//         Log::info('Exam Submitted at: ' . $submittedAt);
+        
+//         // 3. FIX: Explicitly pass true as the 2nd argument to diffInSeconds to force absolute (positive) value
+//         $timeTakenSeconds = $startedAt->diffInSeconds($submittedAt, true);
+        
+//         // Fallback logic if the difference evaluates to 0
+//         if ($timeTakenSeconds == 0 && $studentExam->remaining_seconds > 0) {
+//             $examDuration = $studentExam->exam->duration_minutes * 60;
+//             $timeTakenSeconds = max(0, $examDuration - $studentExam->remaining_seconds);
+//         }
+        
+//         // Force integer cast to prevent floating-point decimals in your log
+//         $timeTakenSeconds = (int) max(0, $timeTakenSeconds);
+        
+//         Log::info('Total Time Taken: ' . $timeTakenSeconds);
+        
+//         // dd($timeTakenSeconds);
+        
+        
 
-    //         // Calculate rank
-    //         $this->calculateRank($result);
+//         // Calculate Speed Per Minute
+//         // Speed = (Correct Answers + Incorrect Answers) / Time Taken in Minutes
+//         $totalAttempted = $correctCount + $incorrectCount;
+//         $timeTakenMinutes = $timeTakenSeconds > 0 ? $timeTakenSeconds / 60 : 1; // Avoid division by zero
+//         $speedPerMinute = round($totalAttempted / $timeTakenMinutes, 2);
+    
+    
+        
+//         // Log the calculated values
+//         \Log::info('Calculated exam values', [
+//             'examTotalMarks' => $examTotalMarks,
+//             'totalMarks' => $totalMarks,
+//             'percentage' => $percentage,
+//             'timeTakenSeconds' => $timeTakenSeconds,
+//             'totalAttempted' => $totalAttempted,
+//             'speedPerMinute' => $speedPerMinute,
+//             'correctCount' => $correctCount,
+//             'incorrectCount' => $incorrectCount,
+//             'unansweredCount' => $unansweredCount
+//         ]);
 
-    //         // Log exam submission
-    //         $studentExam->log('exam_submit', 'Exam submitted successfully', [
-    //             'obtained_marks' => $totalMarks,
-    //             'percentage' => $studentExam->percentage,
-    //             'correct' => $correctCount,
-    //             'incorrect' => $incorrectCount,
-    //             'unanswered' => $unansweredCount
-    //         ]);
+//         // Update student exam - IMPORTANT: Use the submitted_at we calculated
+//         $studentExam->update([
+//             'submitted_at' => $submittedAt,
+//             'status' => 'completed',
+//             'remaining_seconds' => 0,
+//             'total_seconds_taken' => $timeTakenSeconds,
+//             'obtained_marks' => $totalMarks,
+//             'percentage' => $percentage,
+//             'correct_answers' => $correctCount,
+//             'incorrect_answers' => $incorrectCount,
+//             'unanswered' => $unansweredCount
+//         ]);
 
-    //         DB::commit();
+//         // Create result record
+//         $result = Result::create([
+//             'student_exam_id' => $studentExam->id,
+//             'student_id' => $studentExam->student_id,
+//             'exam_id' => $studentExam->exam_id,
+//             'batch_id' => $studentExam->batch_id,
+//             'total_questions' => $studentExam->total_questions,
+//             'total_marks' => $examTotalMarks,
+//             'obtained_marks' => $totalMarks,
+//             'percentage' => $percentage,
+//             'status' => $status,
+//             'correct_answers' => $correctCount,
+//             'incorrect_answers' => $incorrectCount,
+//             'unanswered' => $unansweredCount,
+//             'time_taken_seconds' => $timeTakenSeconds,
+//             'speed_per_minute' => $speedPerMinute
+//         ]);
 
-    //         return $studentExam->load('result');
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         throw $e;
-    //     }
-    // }
+//         // Calculate rank
+//         $this->calculateRank($result);
 
-    /**
-     * Submit exam
-     */
-    public function submitExam(StudentExam $studentExam)
-    {
-        DB::beginTransaction();
-        try {
-            // Calculate final marks for all answers
-            $totalMarks = 0;
-            $correctCount = 0;
-            $incorrectCount = 0;
-            $unansweredCount = 0;
+//         // Log exam submission
+//         \Log::info('Exam submitted successfully', [
+//             'student_exam_id' => $studentExam->id,
+//             'total_marks' => $totalMarks,
+//             'exam_total_marks' => $examTotalMarks,
+//             'percentage' => $percentage,
+//             'status' => $status,
+//             'correct' => $correctCount,
+//             'incorrect' => $incorrectCount,
+//             'unanswered' => $unansweredCount,
+//             'time_taken' => $timeTakenSeconds,
+//             'speed_per_minute' => $speedPerMinute
 
-            $answers = $studentExam->answers()->with('question')->get();
+//         ]);
 
-            foreach ($answers as $answer) {
-                $marks = $answer->calculateMarks();
-                $totalMarks += $marks;
+//         DB::commit();
+        
+//         return $studentExam->fresh()->load('result');
+//     } catch (\Exception $e) {
+//         DB::rollBack();
+//         \Log::error('Exam submission error: ' . $e->getMessage(), [
+//             'student_exam_id' => $studentExam->id,
+//             'trace' => $e->getTraceAsString()
+//         ]);
+//         throw $e;
+//     }
+// }
 
-                if ($answer->is_correct) {
-                    $correctCount++;
-                } elseif ($answer->selected_options || $answer->answer_text) {
-                    $incorrectCount++;
+/**
+ * Submit exam
+ */
+public function submitExam(StudentExam $studentExam)
+{
+    DB::beginTransaction();
+    try {
+        // Calculate final marks for all answers
+        $totalMarks = 0;
+        $correctCount = 0;
+        $incorrectCount = 0;
+        $unansweredCount = 0;
+        
+        $answers = $studentExam->answers()->with('question')->get();
+        
+        // Arrays for analytics
+        $sectionalData = [];
+        $topicData = [];
+        $difficultyData = [
+            'easy' => ['total' => 0, 'correct' => 0, 'incorrect' => 0, 'unanswered' => 0],
+            'medium' => ['total' => 0, 'correct' => 0, 'incorrect' => 0, 'unanswered' => 0],
+            'hard' => ['total' => 0, 'correct' => 0, 'incorrect' => 0, 'unanswered' => 0]
+        ];
+        $typeData = [
+            'single_choice' => ['total' => 0, 'correct' => 0, 'incorrect' => 0],
+            'multiple_choice' => ['total' => 0, 'correct' => 0, 'incorrect' => 0],
+            'numerical' => ['total' => 0, 'correct' => 0, 'incorrect' => 0]
+        ];
+        $questionTimeData = [];
+        
+        foreach ($answers as $answer) {
+            // Calculate marks for each answer
+            $marks = $answer->calculateMarks();
+            $totalMarks += $marks;
+            
+            $question = $answer->question;
+            
+            // Track question time
+            $questionTimeData[] = [
+                'question_id' => $question->id,
+                'time_taken' => $answer->time_taken_seconds ?? 0,
+                'is_correct' => $answer->is_correct
+            ];
+            
+            // Count correct/incorrect
+            if ($answer->is_correct === true) {
+                $correctCount++;
+            } elseif ($answer->is_correct === false) {
+                $incorrectCount++;
+            }
+            
+            // Sectional Analysis (by subject/module)
+            if ($question->subject_id) {
+                $subjectName = $question->subject->title ?? 'Unknown';
+                if (!isset($sectionalData[$subjectName])) {
+                    $sectionalData[$subjectName] = [
+                        'total' => 0,
+                        'correct' => 0,
+                        'incorrect' => 0,
+                        'unanswered' => 0
+                    ];
+                }
+                $sectionalData[$subjectName]['total']++;
+                if ($answer->is_correct === true) {
+                    $sectionalData[$subjectName]['correct']++;
+                } elseif ($answer->is_correct === false) {
+                    $sectionalData[$subjectName]['incorrect']++;
+                } else {
+                    $sectionalData[$subjectName]['unanswered']++;
                 }
             }
+            
+            // Difficulty Analysis
+            $difficulty = $question->difficulty ?? 'medium';
+            $difficultyData[$difficulty]['total']++;
+            if ($answer->is_correct === true) {
+                $difficultyData[$difficulty]['correct']++;
+            } elseif ($answer->is_correct === false) {
+                $difficultyData[$difficulty]['incorrect']++;
+            } else {
+                $difficultyData[$difficulty]['unanswered']++;
+            }
+            
+            // Type Analysis
+            $type = $question->type ?? 'single_choice';
+            $typeData[$type]['total']++;
+            if ($answer->is_correct === true) {
+                $typeData[$type]['correct']++;
+            } elseif ($answer->is_correct === false) {
+                $typeData[$type]['incorrect']++;
+            }
+            
+            // Topic Analysis (from tags)
+            if ($question->tags) {
+                foreach ($question->tags as $tag) {
+                    if (!isset($topicData[$tag])) {
+                        $topicData[$tag] = [
+                            'total' => 0,
+                            'correct' => 0,
+                            'incorrect' => 0
+                        ];
+                    }
+                    $topicData[$tag]['total']++;
+                    if ($answer->is_correct === true) {
+                        $topicData[$tag]['correct']++;
+                    } elseif ($answer->is_correct === false) {
+                        $topicData[$tag]['incorrect']++;
+                    }
+                }
+            }
+        }
 
-            $unansweredCount = $studentExam->total_questions - ($correctCount + $incorrectCount);
+        // Calculate unanswered questions
+        $answeredCount = $correctCount + $incorrectCount;
+        $unansweredCount = $studentExam->total_questions - $answeredCount;
 
-            // Calculate percentage
-            $examTotalMarks = $studentExam->exam->total_marks;
-            $percentage = $examTotalMarks > 0
-                ? round(($totalMarks / $examTotalMarks) * 100, 2)
-                : 0;
+        // Get exam total marks
+        $examTotalMarks = $studentExam->exam->total_marks;      
+        
+        // Calculate percentage
+        $percentage = $examTotalMarks > 0 
+            ? round(($totalMarks / $examTotalMarks) * 100, 2)
+            : 0;
 
-            // Determine status
-            $status = $percentage >= $studentExam->exam->passing_percentage ? 'passed' : 'failed';
+        // Determine status
+        $passingPercentage = $studentExam->exam->passing_percentage ?? 40;
+        $status = $percentage >= $passingPercentage ? 'passed' : 'failed';
 
-            // Update student exam
-            $studentExam->update([
-                'submitted_at' => now(),
-                'status' => 'completed',
-                'remaining_seconds' => 0,
-                'total_seconds_taken' => now()->diffInSeconds($studentExam->started_at),
-                'obtained_marks' => $totalMarks,
-                'percentage' => $percentage,
-                'correct_answers' => $correctCount,
-                'incorrect_answers' => $incorrectCount,
-                'unanswered' => $unansweredCount,
-            ]);
+        // Calculate time taken
+        $startedAt = $studentExam->started_at;
+        if (is_string($startedAt)) {
+            $startedAt = \Carbon\Carbon::parse($startedAt);
+        }
 
-            // Create result record with all required fields
-            $result = Result::create([
-                'student_exam_id' => $studentExam->id,
-                'student_id' => $studentExam->student_id,
-                'exam_id' => $studentExam->exam_id,
-                'batch_id' => $studentExam->batch_id,
-                'total_questions' => $studentExam->total_questions,
-                'total_marks' => $examTotalMarks,
-                'obtained_marks' => $totalMarks,
-                'percentage' => $percentage,
-                'status' => $status,
-                'correct_answers' => $correctCount,
-                'incorrect_answers' => $incorrectCount,
-                'unanswered' => $unansweredCount,
-                'time_taken_seconds' => $studentExam->total_seconds_taken ?? now()->diffInSeconds($studentExam->started_at),
-            ]);
+        $submittedAt = $studentExam->submitted_at;
+        if (is_string($submittedAt)) {
+            $submittedAt = \Carbon\Carbon::parse($submittedAt);
+        } else {
+            $submittedAt = $submittedAt ?? now();
+        }
 
-            // Calculate rank
-            $this->calculateRank($result);
+        $timeTakenSeconds = $startedAt->diffInSeconds($submittedAt, true);
+        
+        if ($timeTakenSeconds == 0 && $studentExam->remaining_seconds > 0) {
+            $examDuration = $studentExam->exam->duration_minutes * 60;
+            $timeTakenSeconds = max(0, $examDuration - $studentExam->remaining_seconds);
+        }
 
-            // Log exam submission
-            $studentExam->log('exam_submit', 'Exam submitted successfully', [
-                'obtained_marks' => $totalMarks,
-                'percentage' => $percentage,
-                'correct' => $correctCount,
-                'incorrect' => $incorrectCount,
-                'unanswered' => $unansweredCount,
-            ]);
+        $timeTakenSeconds = (int) max(0, $timeTakenSeconds);
 
-            DB::commit();
+        // Calculate Speed Per Minute
+        $totalAttempted = $correctCount + $incorrectCount;
+        $timeTakenMinutes = $timeTakenSeconds > 0 ? $timeTakenSeconds / 60 : 1;
+        $speedPerMinute = round($totalAttempted / $timeTakenMinutes, 2);
 
-            return $studentExam->fresh()->load('result');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Exam submission error: '.$e->getMessage(), [
-                'student_exam_id' => $studentExam->id,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
+        // Calculate Accuracy Percentage
+        $accuracyPercentage = $answeredCount > 0 
+            ? round(($correctCount / $answeredCount) * 100, 2)
+            : 0;
+
+        // Calculate Consistency Score (based on section performance)
+        $consistencyScore = $this->calculateConsistencyScore($sectionalData);
+
+        // Calculate Speed Score (based on average time per question)
+        $speedScore = $this->calculateSpeedScore($questionTimeData);
+
+        // Log the calculated values
+        \Log::info('Calculated exam values', [
+            'examTotalMarks' => $examTotalMarks,
+            'totalMarks' => $totalMarks,
+            'percentage' => $percentage,
+            'timeTakenSeconds' => $timeTakenSeconds,
+            'speedPerMinute' => $speedPerMinute,
+            'accuracyPercentage' => $accuracyPercentage,
+            'consistencyScore' => $consistencyScore,
+            'speedScore' => $speedScore
+        ]);
+
+        // Update student exam
+        $studentExam->update([
+            'submitted_at' => $submittedAt,
+            'status' => 'completed',
+            'remaining_seconds' => 0,
+            'total_seconds_taken' => $timeTakenSeconds,
+            'obtained_marks' => $totalMarks,
+            'percentage' => $percentage,
+            'correct_answers' => $correctCount,
+            'incorrect_answers' => $incorrectCount,
+            'unanswered' => $unansweredCount
+        ]);
+
+        // Create result record with all analytics
+        $result = Result::create([
+            'student_exam_id' => $studentExam->id,
+            'student_id' => $studentExam->student_id,
+            'exam_id' => $studentExam->exam_id,
+            'batch_id' => $studentExam->batch_id,
+            'total_questions' => $studentExam->total_questions,
+            'total_marks' => $examTotalMarks,
+            'obtained_marks' => $totalMarks,
+            'percentage' => $percentage,
+            'status' => $status,
+            'correct_answers' => $correctCount,
+            'incorrect_answers' => $incorrectCount,
+            'unanswered' => $unansweredCount,
+            'marked_for_review' => $answers->where('is_marked_for_review', true)->count(),
+            'time_taken_seconds' => $timeTakenSeconds,
+            'speed_per_minute' => $speedPerMinute,
+            'accuracy_percentage' => $accuracyPercentage,
+            'consistency_score' => $consistencyScore,
+            'speed_score' => $speedScore,
+            'sectional_analysis' => $sectionalData,
+            'topic_analysis' => $topicData,
+            'difficulty_analysis' => $difficultyData,
+            'accuracy_by_type' => $typeData
+        ]);
+
+        // Calculate rank
+        $this->calculateRank($result);
+
+        // Log exam submission
+        \Log::info('Exam submitted successfully', [
+            'student_exam_id' => $studentExam->id,
+            'total_marks' => $totalMarks,
+            'exam_total_marks' => $examTotalMarks,
+            'percentage' => $percentage,
+            'status' => $status,
+            'correct' => $correctCount,
+            'incorrect' => $incorrectCount,
+            'unanswered' => $unansweredCount,
+            'time_taken' => $timeTakenSeconds,
+            'speed_per_minute' => $speedPerMinute
+        ]);
+
+        DB::commit();
+        
+        return $studentExam->fresh()->load('result');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('Exam submission error: ' . $e->getMessage(), [
+            'student_exam_id' => $studentExam->id,
+            'trace' => $e->getTraceAsString()
+        ]);
+        throw $e;
+    }
+}
+
+/**
+ * Calculate consistency score (0-100)
+ */
+protected function calculateConsistencyScore($sectionalData)
+{
+    if (empty($sectionalData) || count($sectionalData) < 2) {
+        return 100;
+    }
+    
+    $scores = [];
+    foreach ($sectionalData as $section) {
+        $total = $section['total'];
+        if ($total > 0) {
+            $accuracy = round(($section['correct'] / $total) * 100, 2);
+            $scores[] = $accuracy;
         }
     }
+    
+    if (count($scores) < 2) return 100;
+    
+    // Calculate standard deviation of section scores
+    $mean = array_sum($scores) / count($scores);
+    $variance = 0;
+    foreach ($scores as $score) {
+        $variance += pow($score - $mean, 2);
+    }
+    $stdDev = sqrt($variance / count($scores));
+    
+    // Convert to consistency score (100 - normalized std dev)
+    $maxStdDev = 50; // Maximum possible std dev
+    $consistency = 100 - min(100, ($stdDev / $maxStdDev) * 100);
+    return round($consistency, 2);
+}
+
+/**
+ * Calculate speed score (0-100)
+ */
+protected function calculateSpeedScore($questionTimeData)
+{
+    if (empty($questionTimeData)) return 0;
+    
+    $times = array_column($questionTimeData, 'time_taken');
+    $avgTime = array_sum($times) / count($times);
+    
+    // Average time should ideally be 30-60 seconds per question
+    $idealTime = 45; // 45 seconds per question is ideal
+    $timeRatio = $avgTime > 0 ? $idealTime / $avgTime : 0;
+    
+    // Speed score: 100 if faster than ideal, 50 if at ideal, 0 if very slow
+    $speedScore = min(100, $timeRatio * 100);
+    return round($speedScore, 2);
+}
 
     /**
      * Auto-submit expired exams

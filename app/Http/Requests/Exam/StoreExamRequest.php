@@ -18,8 +18,9 @@ class StoreExamRequest extends FormRequest
             'description' => 'nullable|string',
             'type' => 'required|in:mock_test,full_exam,quiz,practice',
             'category' => 'required|in:daily,weekly,monthly,custom',
-            'course_id' => 'nullable|exists:courses,id',
-            'batch_id' => 'nullable|exists:batches,id',
+            'course_id' => 'required|exists:courses,id',
+            'module_id' => 'required|exists:modules,id',
+            'batch_id' => 'required|exists:batches,id',
             'duration_minutes' => 'required|integer|min:1|max:1440',
             'passing_percentage' => 'required|numeric|min:0|max:100',
             'negative_marking' => 'required|numeric|min:0',
@@ -42,6 +43,10 @@ class StoreExamRequest extends FormRequest
     {
         return [
             'title.required' => 'Exam title is required',
+            'course_id.required' => 'Please select a course',
+            'course_id.exists' => 'Selected course does not exist',
+            'module_id.required' => 'Please select a module',
+            'module_id.exists' => 'Selected module does not exist',
             'duration_minutes.required' => 'Exam duration is required',
             'duration_minutes.min' => 'Duration must be at least 1 minute',
             'duration_minutes.max' => 'Duration cannot exceed 24 hours',

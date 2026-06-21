@@ -16,33 +16,65 @@ class Result extends Model
     //     'accuracy_percentage', 'speed_score', 'consistency_score',
     //     'certificate_url', 'certificate_generated_at'
     // ];
-
-    protected $fillable = [
+    
+    
+     protected $fillable = [
         'student_exam_id', 'student_id', 'exam_id', 'batch_id',
         'total_questions', 'total_marks', 'obtained_marks', 'percentage', 'status',
-        'total_questions', 'correct_answers', 'incorrect_answers', 'unanswered', 'marked_for_review',
+        'correct_answers', 'incorrect_answers', 'unanswered', 'marked_for_review',
         'time_taken_seconds', 'speed_per_minute',
         'rank', 'percentile', 'total_participants',
         'sectional_analysis', 'topic_analysis', 'difficulty_analysis', 'accuracy_by_type',
         'accuracy_percentage', 'speed_score', 'consistency_score',
-        'certificate_url', 'certificate_generated_at',
+        'certificate_url', 'certificate_generated_at'
     ];
 
     protected $casts = [
         'total_marks' => 'float',
         'obtained_marks' => 'float',
         'percentage' => 'float',
-        'speed_per_minute' => 'float',
-        'accuracy_percentage' => 'float',
-        'speed_score' => 'float',
-        'consistency_score' => 'float',
+        'correct_answers' => 'integer',
+        'incorrect_answers' => 'integer',
+        'unanswered' => 'integer',
+        'time_taken_seconds' => 'integer',
+        'rank' => 'integer',
         'percentile' => 'float',
         'sectional_analysis' => 'array',
         'topic_analysis' => 'array',
         'difficulty_analysis' => 'array',
         'accuracy_by_type' => 'array',
-        'certificate_generated_at' => 'datetime',
+        'accuracy_percentage' => 'float'
     ];
+
+
+    
+
+    // protected $fillable = [
+    //     'student_exam_id', 'student_id', 'exam_id', 'batch_id',
+    //     'total_questions', 'total_marks', 'obtained_marks', 'percentage', 'status',
+    //     'correct_answers', 'incorrect_answers', 'unanswered', 'marked_for_review',
+    //     'time_taken_seconds', 'speed_per_minute',
+    //     'rank', 'percentile', 'total_participants',
+    //     'sectional_analysis', 'topic_analysis', 'difficulty_analysis', 'accuracy_by_type',
+    //     'accuracy_percentage', 'speed_score', 'consistency_score',
+    //     'certificate_url', 'certificate_generated_at',
+    // ];
+
+    // protected $casts = [
+    //     'total_marks' => 'float',
+    //     'obtained_marks' => 'float',
+    //     'percentage' => 'float',
+    //     'speed_per_minute' => 'float',
+    //     'accuracy_percentage' => 'float',
+    //     'speed_score' => 'float',
+    //     'consistency_score' => 'float',
+    //     'percentile' => 'float',
+    //     'sectional_analysis' => 'array',
+    //     'topic_analysis' => 'array',
+    //     'difficulty_analysis' => 'array',
+    //     'accuracy_by_type' => 'array',
+    //     'certificate_generated_at' => 'datetime',
+    // ];
 
     protected $appends = [
         'formatted_time',
@@ -106,18 +138,23 @@ class Result extends Model
     }
 
     // Accessors
-    public function getFormattedTimeAttribute()
-    {
-        $hours = floor($this->time_taken_seconds / 3600);
-        $minutes = floor(($this->time_taken_seconds % 3600) / 60);
-        $seconds = $this->time_taken_seconds % 60;
 
-        if ($hours > 0) {
-            return sprintf('%d:%02d:%02d', $hours, $minutes, $seconds);
-        }
-
-        return sprintf('%d:%02d', $minutes, $seconds);
+    
+    /**
+ * Get formatted time taken
+ */
+public function getFormattedTimeAttribute()
+{
+    $seconds = $this->time_taken_seconds ?? 0;
+    $hours = floor($seconds / 3600);
+    $minutes = floor(($seconds % 3600) / 60);
+    $secs = $seconds % 60;
+    
+    if ($hours > 0) {
+        return sprintf("%02d:%02d:%02d", $hours, $minutes, $secs);
     }
+    return sprintf("%02d:%02d", $minutes, $secs);
+}
 
     public function getPerformanceLevelAttribute()
     {
