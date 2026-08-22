@@ -3,8 +3,11 @@
 namespace App\Repositories\Eloquent;
 
 use App\Models\Question;
+use App\Models\QuestionOption;
 use App\Repositories\Contracts\QuestionRepositoryInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class QuestionRepository extends BaseRepository implements QuestionRepositoryInterface
 {
@@ -13,78 +16,72 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
         parent::__construct($model);
     }
 
-    // public function createWithOptions(array $questionData, array $options = [])
-    // {
-    //     DB::beginTransaction();
-    //     try {
-    //         // Create question
-    //         $question = $this->create($questionData);
-
-    //         // Attach categories if provided
-    //         if (isset($questionData['category_ids'])) {
-    //             $question->categories()->sync($questionData['category_ids']);
-    //         }
-
-    //         // Create options for choice questions
-    //         if (!empty($options)) {
-    //             foreach ($options as $index => $optionData) {
-    //                 $question->options()->create([
-    //                     'option_text' => $optionData['option_text'],
-    //                     'is_correct' => $optionData['is_correct'] ?? false,
-    //                     'order' => $optionData['order'] ?? $index
-    //                 ]);
-    //             }
-    //         }
-
-    //         DB::commit();
-    //         return $question->load(['options', 'categories']);
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         throw $e;
-    //     }
-    // }
-public function createWithOptions(array $questionData, array $options = [])
-{
-    DB::beginTransaction();
-    try {
-        // Create question
-        $question = $this->create($questionData);
-        
-        // Attach categories if provided
-        if (isset($questionData['category_ids'])) {
-            $question->categories()->sync($questionData['category_ids']);
-        }
-        
-        // Create options for choice questions or numerical
-        if (!empty($options)) {
-            foreach ($options as $index => $optionData) {
-                // Ensure is_correct is a boolean
-                $isCorrect = isset($optionData['is_correct']) ? 
-                    filter_var($optionData['is_correct'], FILTER_VALIDATE_BOOLEAN) : 
-                    false;
-                
-                $question->options()->create([
-                    'option_text' => $optionData['option_text'],
-                    'is_correct' => $isCorrect,
-                    'order' => $optionData['order'] ?? $index
-                ]);
+    /**
+     * Create a new question with options (including images)
+     */
+    public function createWithOptions(array $questionData, array $options = [])
+    {
+        DB::beginTransaction();
+        try {
+            // Create question
+            $question = $this->create($questionData);
+            
+            // Attach categories if provided
+            if (isset($questionData['category_ids'])) {
+                $question->categories()->sync($questionData['category_ids']);
             }
+            
+            // Create options for choice questions or numerical
+            if (!empty($options)) {
+                foreach ($options as $index => $optionData) {
+                    // Ensure is_correct is a boolean
+                    $isCorrect = isset($optionData['is_correct']) ? 
+                        filter_var($optionData['is_correct'], FILTER_VALIDATE_BOOLEAN) : 
+                        false;
+                    
+                    // Prepare option data with image support
+                    $optionCreateData = [
+                        'option_text' => $optionData['option_text'] ?? null,
+                        'is_correct' => $isCorrect,
+                        'order' => $optionData['order'] ?? $index
+                    ];
+                    
+                    // Add option image if present
+                    if (isset($optionData['option_image']) && !empty($optionData['option_image'])) {
+                        $optionCreateData['option_image'] = $optionData['option_image'];
+                    }
+                    
+                    // Add option image alt if present
+                    if (isset($optionData['option_image_alt'])) {
+                        $optionCreateData['option_image_alt'] = $optionData['option_image_alt'];
+                    }
+                    
+                    $question->options()->create($optionCreateData);
+                }
+            }
+            
+            DB::commit();
+            return $question->load(['options', 'categories']);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error creating question with options: ' . $e->getMessage());
+            throw $e;
         }
-        
-        DB::commit();
-        return $question->load(['options', 'categories']);
-        
-    } catch (\Exception $e) {
-        DB::rollBack();
-        throw $e;
     }
-}
+
+    /**
+     * Update a question with options (including images)
+     */
     public function updateWithOptions($id, array $questionData, array $options = [])
     {
         DB::beginTransaction();
         try {
+            // Find the question
+            $question = $this->find($id);
+            
             // Update question
-            $question = $this->update($id, $questionData);
+            $question->update($questionData);
 
             // Sync categories
             if (isset($questionData['category_ids'])) {
@@ -93,27 +90,64 @@ public function createWithOptions(array $questionData, array $options = [])
 
             // Update options for choice questions
             if (!empty($options)) {
-                // Delete existing options
+                // First, collect existing option IDs to preserve images if needed
+                $existingOptions = $question->options()->get()->keyBy('id');
+                
+                // Delete existing options (but images will be handled separately)
                 $question->options()->delete();
-
-                // Create new options
+                
+                // Create new options with proper data
                 foreach ($options as $index => $optionData) {
-                    $question->options()->create([
-                        'option_text' => $optionData['option_text'],
-                        'is_correct' => $optionData['is_correct'] ?? false,
+                    // Get the option image - handle both string paths and null
+                    $optionImage = null;
+                    if (isset($optionData['option_image']) && !empty($optionData['option_image'])) {
+                        // If it's a string (path), use it
+                        if (is_string($optionData['option_image'])) {
+                            $optionImage = $optionData['option_image'];
+                        }
+                        // If it's an UploadedFile, it should have been stored already
+                        // The controller should have stored it and passed the path
+                    }
+                    
+                    // Prepare option data
+                    $optionCreateData = [
+                        'option_text' => $optionData['option_text'] ?? null,
+                        'is_correct' => isset($optionData['is_correct']) ? 
+                            filter_var($optionData['is_correct'], FILTER_VALIDATE_BOOLEAN) : 
+                            false,
                         'order' => $optionData['order'] ?? $index
-                    ]);
+                    ];
+                    
+                    // Add image if present
+                    if ($optionImage) {
+                        $optionCreateData['option_image'] = $optionImage;
+                    }
+                    
+                    // Add image alt if present
+                    if (isset($optionData['option_image_alt'])) {
+                        $optionCreateData['option_image_alt'] = $optionData['option_image_alt'];
+                    }
+                    
+                    $question->options()->create($optionCreateData);
                 }
             }
 
             DB::commit();
             return $question->load(['options', 'categories']);
+            
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Error updating question with options: ' . $e->getMessage(), [
+                'question_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
             throw $e;
         }
     }
 
+    /**
+     * Get questions by difficulty
+     */
     public function getQuestionsByDifficulty($difficulty)
     {
         return $this->model->where('difficulty', $difficulty)
@@ -122,6 +156,9 @@ public function createWithOptions(array $questionData, array $options = [])
                           ->get();
     }
 
+    /**
+     * Get questions by type
+     */
     public function getQuestionsByType($type)
     {
         return $this->model->where('type', $type)
@@ -130,6 +167,9 @@ public function createWithOptions(array $questionData, array $options = [])
                           ->get();
     }
 
+    /**
+     * Get questions by category
+     */
     public function getQuestionsByCategory($categoryId)
     {
         return $this->model->whereHas('categories', function($q) use ($categoryId) {
@@ -140,6 +180,9 @@ public function createWithOptions(array $questionData, array $options = [])
                         ->get();
     }
 
+    /**
+     * Get random questions with filters
+     */
     public function getRandomQuestions($count, $filters = [])
     {
         $query = $this->model->where('status', 'active');
@@ -172,6 +215,9 @@ public function createWithOptions(array $questionData, array $options = [])
                      ->get();
     }
 
+    /**
+     * Bulk upload questions
+     */
     public function bulkUpload(array $questions)
     {
         DB::beginTransaction();
@@ -194,6 +240,9 @@ public function createWithOptions(array $questionData, array $options = [])
         }
     }
 
+    /**
+     * Get questions for an exam
+     */
     public function getQuestionsForExam($examId, $count = null)
     {
         $query = $this->model->whereHas('exams', function($q) use ($examId) {
@@ -206,5 +255,38 @@ public function createWithOptions(array $questionData, array $options = [])
         }
 
         return $query->get();
+    }
+
+    /**
+     * Delete question and its associated images
+     */
+    public function deleteWithImages($id)
+    {
+        DB::beginTransaction();
+        try {
+            $question = $this->find($id);
+            
+            // Delete question image
+            if ($question->question_image) {
+                Storage::disk('public')->delete($question->question_image);
+            }
+            
+            // Delete option images
+            foreach ($question->options as $option) {
+                if ($option->option_image) {
+                    Storage::disk('public')->delete($option->option_image);
+                }
+            }
+            
+            // Delete the question
+            $question->delete();
+            
+            DB::commit();
+            return true;
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 }

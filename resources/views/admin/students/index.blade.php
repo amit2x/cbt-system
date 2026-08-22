@@ -150,26 +150,53 @@
             </div>
 
             <!-- Bulk Actions -->
-            <div class="row mt-3">
-                <div class="col-md-6">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-success" onclick="bulkStatus('active')">
-                            <i class="bi bi-check-circle"></i> Activate Selected
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="bulkStatus('inactive')">
-                            <i class="bi bi-x-circle"></i> Deactivate Selected
-                        </button>
-                        <button type="button" class="btn btn-danger" onclick="bulkDelete()">
-                            <i class="bi bi-trash"></i> Delete Selected
-                        </button>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="d-flex justify-content-end">
-                        {{ $students->withQueryString()->links() }}
-                    </div>
-                </div>
-            </div>
+            <!--<div class="row mt-3">-->
+            <!--    <div class="col-md-6">-->
+            <!--        <div class="btn-group">-->
+            <!--            <button type="button" class="btn btn-success" onclick="bulkStatus('active')">-->
+            <!--                <i class="bi bi-check-circle"></i> Activate Selected-->
+            <!--            </button>-->
+            <!--            <button type="button" class="btn btn-secondary" onclick="bulkStatus('inactive')">-->
+            <!--                <i class="bi bi-x-circle"></i> Deactivate Selected-->
+            <!--            </button>-->
+            <!--            <button type="button" class="btn btn-danger" onclick="bulkDelete()">-->
+            <!--                <i class="bi bi-trash"></i> Delete Selected-->
+            <!--            </button>-->
+            <!--        </div>-->
+            <!--    </div>-->
+            <!--    <div class="col-md-6">-->
+            <!--        <div class="d-flex j">-->
+            <!--            {{ $students->withQueryString()->links() }}-->
+            <!--        </div>-->
+            <!--    </div>-->
+            <!--</div>-->
+            
+            <!-- Bulk Actions Row -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="btn-group">
+            <button type="button" class="btn btn-success" onclick="bulkStatus('active')">
+                <i class="bi bi-check-circle"></i> Activate Selected
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="bulkStatus('inactive')">
+                <i class="bi bi-x-circle"></i> Deactivate Selected
+            </button>
+            <button type="button" class="btn btn-danger" onclick="bulkDelete()">
+                <i class="bi bi-trash"></i> Delete Selected
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination Row -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="">
+            {{ $students->withQueryString()->links('pagination::bootstrap-5') }}
+        </div>
+    </div>
+</div>
+
         </div>
     </div>
 </div>
@@ -181,24 +208,23 @@
 </form>
 @endsection
 
-@push('styles')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-@endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    $(document).ready(function() {
-        $('.select2').select2({
-            placeholder: 'Select Batch',
-            allowClear: true
-        });
 
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Select2
+        $('.select2').select2({ 
+            placeholder: 'Select Batch', 
+            allowClear: true 
+        });
+    
         // Select all checkbox
         $('#select-all').on('change', function() {
             $('.student-checkbox').prop('checked', $(this).prop('checked'));
         });
     });
+
 
     function deleteStudent(id) {
         if (confirm('Are you sure you want to delete this student?')) {

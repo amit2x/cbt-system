@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class RankList extends Model
+class RankList extends BaseModel
 {
+    use HasAirport;
     protected $fillable = [
         'exam_id', 'batch_id', 'title', 'generated_date',
         'rank_data', 'total_students', 'average_score',

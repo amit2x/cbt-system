@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Traits\HasAirport;
 
-class QuestionCategory extends Model
+class QuestionCategory extends BaseModel
 {
+    use HasAirport;
     protected $table = 'question_categories';
 
     protected $fillable = [

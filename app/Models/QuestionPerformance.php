@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class QuestionPerformance extends Model
+class QuestionPerformance extends BaseModel
 {
+    use HasAirport;
     protected $table = 'question_performance';
 
     protected $fillable = [
@@ -17,7 +19,9 @@ class QuestionPerformance extends Model
     ];
 
     protected $casts = [
-        'option_analysis' => 'array'
+        'option_analysis' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function question()
@@ -67,5 +71,49 @@ class QuestionPerformance extends Model
                 'percentage' => $total > 0 ? round(($count / $total) * 100, 1) : 0
             ];
         })->values();
+    }
+    
+    // ✅ Ensure option_analysis is always valid JSON
+    public function setOptionAnalysisAttribute($value)
+    {
+        if (is_null($value)) {
+            $this->attributes['option_analysis'] = null;
+            return;
+        }
+
+        // If it's already a string, try to decode/encode
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $this->attributes['option_analysis'] = json_encode($decoded);
+                return;
+            }
+            // If not valid JSON, wrap it
+            $this->attributes['option_analysis'] = json_encode(['value' => $value]);
+            return;
+        }
+
+        // If it's an array, encode it
+        if (is_array($value)) {
+            $this->attributes['option_analysis'] = json_encode($value);
+            return;
+        }
+
+        // Fallback: convert to string and encode
+        $this->attributes['option_analysis'] = json_encode(['value' => (string) $value]);
+    }
+
+    public function getOptionAnalysisAttribute($value)
+    {
+        if (is_null($value)) {
+            return [];
+        }
+        
+        if (is_array($value)) {
+            return $value;
+        }
+        
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
     }
 }

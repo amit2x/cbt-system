@@ -76,9 +76,8 @@
 
                     <h6>Sample Data:</h6>
                     <pre class="bg-light p-2 rounded" style="font-size: 12px;">
-name,email,phone,roll_no
-John Doe,john@example.com,1234567890,STU001
-Jane Smith,jane@example.com,0987654321,STU002
+name, email, phone, organization_name, address
+Amit Kumar, amitk2@aai.aero, 7633947548, AAI, NSCBIA Kolkata
                     </pre>
 
                     <a href="{{ route('admin.students.download-template') }}" class="btn btn-success w-100 mt-3">

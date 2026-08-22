@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use App\Http\Controllers\LanguageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +35,10 @@ Route::prefix('pages')->name('')->group(function () {
     Route::get('/cookie-policy', [App\Http\Controllers\HomeController::class, 'cookiePolicy'])->name('cookie-policy');
 });
 
+
+// Language Routes
+Route::post('/language/switch', [LanguageController::class, 'switch'])->name('language.switch');
+Route::get('/language/current', [LanguageController::class, 'current'])->name('language.current');
 /*
 |--------------------------------------------------------------------------
 | Profile Routes (Authenticated Users)
@@ -47,6 +52,7 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
     Route::get('/settings', [App\Http\Controllers\ProfileController::class, 'settings'])->name('settings');
     Route::put('/settings/update', [App\Http\Controllers\ProfileController::class, 'updateSettings'])->name('update-settings');
     Route::post('/avatar', [App\Http\Controllers\ProfileController::class, 'uploadAvatar'])->name('upload-avatar');
+    Route::delete('/remove-avatar', [App\Http\Controllers\ProfileController::class, 'removeAvatar'])->name('remove-avatar');
     Route::get('/activity', [App\Http\Controllers\ProfileController::class, 'activity'])->name('activity');
     Route::put('/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('password');
     Route::post('/revoke-session', [App\Http\Controllers\ProfileController::class, 'revokeSession'])->name('revoke-session');
@@ -54,8 +60,17 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
     Route::post('/enable-2fa', [App\Http\Controllers\ProfileController::class, 'enable2FA'])->name('enable-2fa');
     Route::post('/disable-2fa', [App\Http\Controllers\ProfileController::class, 'disable2FA'])->name('disable-2fa');
     Route::post('/deactivate', [App\Http\Controllers\ProfileController::class, 'deactivate'])->name('deactivate');
+    
+    
 });
 
+Route::middleware(['auth'])->group(function(){
+   // for all auth user Notification
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+ 
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -69,6 +84,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         $request->session()->put('sidebar_collapsed', $request->open);
         return response()->json(['success' => true]);
     })->name('sidebar.toggle');
+    
+    Route::get('/activity-logs', [\App\Http\Controllers\Admin\ActivityLogController::class, 'index'])->name('activity-logs.index');
+    Route::post('/activity-logs/clear', [\App\Http\Controllers\Admin\ActivityLogController::class, 'clear'])->name('activity-logs.clear');
+    Route::get('/activity-logs/export', [\App\Http\Controllers\Admin\ActivityLogController::class, 'export'])->name('activity-logs.export');
+    
+    
+    // Admin Notification
+    Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('admin.notifications.index');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\Admin\NotificationController::class, 'markAsRead'])->name('admin.notifications.mark-read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\Admin\NotificationController::class, 'markAllAsRead'])->name('admin.notifications.mark-all-read');
 
     // Dashboard
     Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
@@ -113,6 +138,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('batches/{batch}/import-students', [App\Http\Controllers\Admin\BatchController::class, 'importStudents'])->name('batches.import-students');
     Route::get('batches/{batch}/export-students', [App\Http\Controllers\Admin\BatchController::class, 'exportStudents'])->name('batches.export-students');
     Route::get('batches/{batch}/statistics', [App\Http\Controllers\Admin\BatchController::class, 'statistics'])->name('batches.statistics');
+    Route::post('batches/bulk-delete', [App\Http\Controllers\Admin\BatchController::class, 'bulkDelete'])->name('batches.bulk-delete');
+    Route::post('batches/bulk-status', [App\Http\Controllers\Admin\BatchController::class, 'bulkStatus'])->name('batches.bulk-status');
 
     Route::resource('batches', App\Http\Controllers\Admin\BatchController::class);
 
@@ -163,8 +190,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('exams/{exam}/statistics', [App\Http\Controllers\Admin\ExamController::class, 'statistics'])->name('exams.statistics');
     Route::get('exams/{exam}/results', [App\Http\Controllers\Admin\ExamController::class, 'results'])->name('exams.results');
     Route::get('exams/{exam}/results/export', [App\Http\Controllers\Admin\ExamController::class, 'exportResults'])->name('exams.export-results');
-
-
+    
+    Route::post('/exams/{exam}/add-random-questions', [App\Http\Controllers\Admin\ExamController::class, 'addRandomQuestions'])->name('exams.add-random-questions');
+    Route::post('/exams/{exam}/questions/bulk-remove', [App\Http\Controllers\Admin\ExamController::class, 'bulkRemoveQuestions'])->name('exams.bulk-remove');
     // ==================== Exam Sections ====================
     Route::post('exams/{exam}/sections', [App\Http\Controllers\Admin\ExamSectionController::class, 'store'])->name('exams.sections.store');
     Route::put('exams/{exam}/sections/{section}', [App\Http\Controllers\Admin\ExamSectionController::class, 'update'])->name('exams.sections.update');
@@ -177,12 +205,20 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/', [App\Http\Controllers\Admin\ReportController::class, 'index'])->name('index');
         Route::get('/exams', [App\Http\Controllers\Admin\ReportController::class, 'examReports'])->name('exams');
         Route::get('/exams/{exam}', [App\Http\Controllers\Admin\ReportController::class, 'examDetail'])->name('exam-detail');
+        Route::get('/exams/{exam}', [App\Http\Controllers\Admin\ReportController::class, 'examDetail'])->name('exam-detail');
+        Route::get('/exams/{exam}/export', [App\Http\Controllers\Admin\ReportController::class, 'exportExam'])->name('export-exam');        
         Route::get('/students', [App\Http\Controllers\Admin\ReportController::class, 'studentReports'])->name('students');
         Route::get('/students/{student}', [App\Http\Controllers\Admin\ReportController::class, 'studentDetail'])->name('student-detail');
+        Route::get('/students/export', [App\Http\Controllers\Admin\ReportController::class, 'exportStudents'])->name('export-students');
+        Route::get('/students/{student}', [App\Http\Controllers\Admin\ReportController::class, 'exportStudent'])->name('export-student');
         Route::get('/batches', [App\Http\Controllers\Admin\ReportController::class, 'batchReports'])->name('batches');
         Route::get('/batches/{batch}', [App\Http\Controllers\Admin\ReportController::class, 'batchDetail'])->name('batch-detail');
+        Route::get('/batches/{batch}', [App\Http\Controllers\Admin\ReportController::class, 'batchDetail'])->name('batch-detail');
+        Route::get('/batches/{batch}/export', [App\Http\Controllers\Admin\ReportController::class, 'exportBatch'])->name('export-batch');
         Route::post('/export', [App\Http\Controllers\Admin\ReportController::class, 'export'])->name('export');
         Route::post('/exams/{exam}/generate-ranklist', [App\Http\Controllers\Admin\ReportController::class, 'generateRankList'])->name('generate-ranklist');
+        Route::get('/question-analysis', [App\Http\Controllers\Admin\ReportController::class, 'questionAnalysis'])->name('question-analysis');
+        Route::get('/question-analysis/{question}', [App\Http\Controllers\Admin\ReportController::class, 'questionDetail'])->name('question-detail');
         Route::get('/ranklist/{rankList}', [App\Http\Controllers\Admin\ReportController::class, 'viewRankList'])->name('rank-list');
         Route::post('/ranklist/{rankList}/publish', [App\Http\Controllers\Admin\ReportController::class, 'publishRankList'])->name('publish-ranklist');
     });
@@ -266,6 +302,39 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         ->name('users.impersonate');
     Route::get('users/leave-impersonate', [App\Http\Controllers\Admin\UserController::class, 'leaveImpersonate'])
         ->name('users.leave-impersonate');
+        
+    Route::get('users/{user}/reset-password', [App\Http\Controllers\Admin\UserController::class, 'showResetPasswordForm'])
+        ->name('reset-password');
+    Route::post('users/{user}/reset-password', [App\Http\Controllers\Admin\UserController::class, 'resetPassword'])
+    ->name('reset-password.post');
+        
+    
+    // Airport Management Routes
+    Route::resource('airports', App\Http\Controllers\Admin\AirportController::class);
+    
+    // Additional airport routes
+    Route::post('airports/{airport}/toggle-status', [App\Http\Controllers\Admin\AirportController::class, 'toggleStatus'])->name('airports.toggle-status');
+    
+    Route::post('airports/restore/{id}', [App\Http\Controllers\Admin\AirportController::class, 'restore'])->name('airports.restore');
+    
+    // Bulk actions
+    Route::post('airports/bulk-delete', [App\Http\Controllers\Admin\AirportController::class, 'bulkDelete'])->name('airports.bulk-delete');
+    
+    Route::post('airports/bulk-status', [App\Http\Controllers\Admin\AirportController::class, 'bulkStatus'])->name('airports.bulk-status');
+    
+    
+    
+    Route::prefix('monitoring')->group(function () {
+        Route::get('/', [App\Http\Controllers\Instructor\MonitoringController::class, 'adminIndex'])
+            ->name('monitoring.index');
+        Route::get('/{session}', [App\Http\Controllers\Instructor\MonitoringController::class, 'show'])
+            ->name('monitoring.show');
+        Route::post('/{session}/end', [App\Http\Controllers\Instructor\MonitoringController::class, 'endSession'])
+            ->name('monitoring.end');
+        Route::post('/review-images', [App\Http\Controllers\Instructor\MonitoringController::class, 'reviewImages'])
+            ->name('monitoring.review-images');
+    });
+        
 });
 
 /*
@@ -278,6 +347,11 @@ Route::middleware(['auth', 'role:instructor'])->prefix('instructor')->name('inst
 
     // Dashboard
     Route::get('/dashboard', [App\Http\Controllers\Instructor\DashboardController::class, 'index'])->name('dashboard');
+
+    // Instructor Notification
+    Route::get('/notifications', [\App\Http\Controllers\Instructor\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\Instructor\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\Instructor\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 
     // ==================== Courses ====================
     Route::get('courses', [App\Http\Controllers\Instructor\CourseController::class, 'index'])
@@ -323,6 +397,9 @@ Route::middleware(['auth', 'role:instructor'])->prefix('instructor')->name('inst
         Route::post('/{quiz}/add-questions', [App\Http\Controllers\Instructor\QuizController::class, 'addQuestions'])->name('add-questions');
         Route::get('/{quiz}/export-results', [App\Http\Controllers\Instructor\QuizController::class, 'exportResults'])->name('export-results');
         Route::get('/template', [App\Http\Controllers\Instructor\QuizController::class, 'getTemplate'])->name('template');
+        
+        Route::get('/questions-by-batch/{batchId}', [App\Http\Controllers\Instructor\QuizController::class, 'getQuestionsByBatch'])->name('questions-by-batch');
+        Route::post('/generate-questions', [App\Http\Controllers\Instructor\QuizController::class, 'generateQuestions'])->name('generate-questions');
     });
 
     // ==================== Live Monitoring ====================
@@ -338,6 +415,31 @@ Route::middleware(['auth', 'role:instructor'])->prefix('instructor')->name('inst
         Route::get('/{session}/suspicious-images', [App\Http\Controllers\Instructor\LiveMonitoringController::class, 'getSuspiciousImages'])->name('suspicious');
         Route::post('/images/{image}/review', [App\Http\Controllers\Instructor\LiveMonitoringController::class, 'reviewImage'])->name('review-image');
         Route::get('/{session}/export', [App\Http\Controllers\Instructor\LiveMonitoringController::class, 'exportReport'])->name('export');
+    });
+    
+    
+    // Monitoring Routes
+    Route::prefix('monitoring')->group(function () {
+        Route::get('/', [App\Http\Controllers\Instructor\MonitoringController::class, 'index'])->name('monitoring.index');
+        Route::post('/start', [App\Http\Controllers\Instructor\MonitoringController::class, 'startSession'])->name('monitoring.start');
+        Route::get('/{session}', [App\Http\Controllers\Instructor\MonitoringController::class, 'show'])->name('monitoring.show');
+        Route::post('/{session}/end', [App\Http\Controllers\Instructor\MonitoringController::class, 'endSession'])->name('monitoring.end');
+        Route::post('/{session}/pause', [App\Http\Controllers\Instructor\MonitoringController::class, 'pauseSession'])->name('monitoring.pause');
+        Route::post('/{session}/resume', [App\Http\Controllers\Instructor\MonitoringController::class, 'resumeSession'])->name('monitoring.resume');
+        
+        // Student proctoring details
+        Route::get('/student/{studentExamId}', [App\Http\Controllers\Instructor\MonitoringController::class, 'studentProctoringDetails'])
+            ->name('monitoring.student-details');
+        
+        // Proctoring actions
+        Route::post('/review-images', [App\Http\Controllers\Instructor\MonitoringController::class, 'reviewImages'])
+            ->name('monitoring.review-images');
+        Route::post('/{session}/capture-manual', [App\Http\Controllers\Instructor\MonitoringController::class, 'captureManualScreenshot'])
+            ->name('monitoring.capture-manual');
+        Route::post('/{session}/log-activity', [App\Http\Controllers\Instructor\MonitoringController::class, 'logActivity'])
+            ->name('monitoring.log-activity');
+        Route::get('/{session}/export', [App\Http\Controllers\Instructor\MonitoringController::class, 'exportReport'])
+            ->name('monitoring.export');
     });
 
     // ==================== Feedback ====================
@@ -388,7 +490,15 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
 
     // Dashboard
     Route::get('/dashboard', [App\Http\Controllers\Student\DashboardController::class, 'index'])->name('dashboard');
+     Route::get('/course/{course}', [App\Http\Controllers\Student\DashboardController::class, 'courseDetail'])->name('course.detail');
+    Route::get('/batch/{batch}', [App\Http\Controllers\Student\DashboardController::class, 'batchDetail'])->name('batch.detail');
+    Route::get('/batch/{batch}/exams', [App\Http\Controllers\Student\DashboardController::class, 'batchExams'])->name('batch.exams');
 
+
+    // Student Notification
+    Route::get('/notifications', [\App\Http\Controllers\Student\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\Student\NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/read-all', [\App\Http\Controllers\Student\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     // ==================== Exams ====================
     Route::prefix('exams')->name('exams.')->group(function () {
         Route::get('/', [App\Http\Controllers\Student\ExamController::class, 'index'])->name('index');
@@ -399,6 +509,7 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     // ==================== Taking Exam ====================
     Route::prefix('exam')->name('exam.')->group(function () {
         Route::get('/{studentExam}/take', [App\Http\Controllers\Student\ExamController::class, 'take'])->name('take');
+        Route::get('/{studentExam}/resume', [App\Http\Controllers\Student\ExamController::class, 'resume'])->name('resume');
         Route::get('/{studentExam}/question/{question}', [App\Http\Controllers\Student\ExamController::class, 'getQuestion'])->name('question');
         Route::post('/{studentExam}/save-answer', [App\Http\Controllers\Student\ExamController::class, 'saveAnswer'])->name('save-answer');
         Route::post('/{studentExam}/mark-review', [App\Http\Controllers\Student\ExamController::class, 'markForReview'])->name('mark-review');
@@ -407,6 +518,10 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
         Route::get('/{studentExam}/time-remaining', [App\Http\Controllers\Student\ExamController::class, 'getRemainingTime'])->name('time-remaining');
         Route::post('/{studentExam}/activity', [App\Http\Controllers\Student\ExamController::class, 'logActivity'])->name('activity');
         Route::get('/{studentExam}/result', [App\Http\Controllers\Student\ExamController::class, 'result'])->name('result');
+        
+        Route::post('/{studentExam}/save-current-question', [App\Http\Controllers\Student\ExamController::class, 'saveCurrentQuestion'])->name('save-current-question');
+        Route::post('/{studentExam}/save-exit',[App\Http\Controllers\Student\ExamController::class, 'saveExit'])->name('save-exit');
+        Route::post('/{studentExam}/sync-timer',[App\Http\Controllers\Student\ExamController::class, 'syncTimer'])->name('sync-timer');
     });
 
     // ==================== Results ====================
@@ -439,6 +554,25 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
         Route::get('/topics', [App\Http\Controllers\Student\AnalyticsController::class, 'topics'])->name('topics');
     });
 
+    // ==================== Quizzes ====================
+    Route::prefix('quizzes')->name('quizzes.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Student\QuizController::class, 'index'])->name('index');
+        Route::get('/{exam}/instructions', [App\Http\Controllers\Student\QuizController::class, 'instructions'])->name('instructions');
+        Route::post('/{exam}/start', [App\Http\Controllers\Student\QuizController::class, 'start'])->name('start');
+    });
+    
+    // ==================== Taking Quiz ====================
+    Route::prefix('quiz')->name('quiz.')->group(function () {
+        Route::get('/{studentExam}/take', [App\Http\Controllers\Student\QuizController::class, 'take'])->name('take');
+        Route::get('/{studentExam}/question/{question}', [App\Http\Controllers\Student\QuizController::class, 'getQuestion'])->name('question');
+        Route::post('/{studentExam}/save-answer', [App\Http\Controllers\Student\QuizController::class, 'saveAnswer'])->name('save-answer');
+        Route::post('/{studentExam}/mark-review', [App\Http\Controllers\Student\QuizController::class, 'markForReview'])->name('mark-review');
+        Route::post('/{studentExam}/submit', [App\Http\Controllers\Student\QuizController::class, 'submit'])->name('submit');
+        Route::get('/{studentExam}/result', [App\Http\Controllers\Student\QuizController::class, 'result'])->name('result');
+        Route::post('/{studentExam}/save-current-question', [App\Http\Controllers\Student\QuizController::class, 'saveCurrentQuestion'])->name('save-current-question');
+        Route::post('/{studentExam}/sync-timer', [App\Http\Controllers\Student\QuizController::class, 'syncTimer'])->name('sync-timer');
+    });
+    
     // ==================== Study Materials ====================
     Route::get('study-materials', [App\Http\Controllers\Student\StudyMaterialController::class, 'index'])->name('study-materials');
     Route::get('study-materials/{studyMaterial}', [App\Http\Controllers\Student\StudyMaterialController::class, 'show'])->name('study-materials.show');

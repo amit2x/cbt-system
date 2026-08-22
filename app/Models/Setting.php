@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use App\Traits\HasAirport;
 
-class Setting extends Model
+class Setting extends BaseModel
 {
+ 
+       
     protected $fillable = ['key', 'value', 'type', 'group', 'order'];
 
     protected $casts = [

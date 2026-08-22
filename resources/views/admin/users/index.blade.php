@@ -106,6 +106,12 @@
                                        class="btn btn-sm btn-primary" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
+                                    <a href="{{ route('admin.reset-password',  $user) }}"
+                                       class="btn btn-sm btn-secondary" title="Reset Password">
+                                        <i class="bi bi-key"></i>
+                                    </a>
+                                    
+                                    
                                     @if($user->id !== auth()->id())
                                         <button type="button" class="btn btn-sm btn-{{ $user->is_active ? 'warning' : 'success' }}"
                                                 onclick="toggleStatus({{ $user->id }})"
@@ -132,9 +138,10 @@
                 </table>
             </div>
 
-            <!-- Bulk Actions -->
+            
+            <!-- Bulk Actions Row -->
             <div class="row mt-3">
-                <div class="col-md-6">
+                <div class="col-12">
                     <div class="btn-group">
                         <button type="button" class="btn btn-danger" onclick="bulkDelete()">
                             <i class="bi bi-trash"></i> Delete Selected
@@ -144,12 +151,17 @@
                         </button>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="d-flex justify-content-end">
-                        {{ $users->withQueryString()->links() }}
+            </div>
+            
+            <!-- Pagination Row -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="table-responsive">
+                        {{ $users->withQueryString()->links('pagination::bootstrap-5') }}
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -168,9 +180,11 @@
 
 @push('scripts')
 <script>
-    // Select all checkbox
-    $('#select-all').on('change', function() {
-        $('.user-checkbox').prop('checked', $(this).prop('checked'));
+    document.addEventListener('DOMContentLoaded', function() {
+        // Select all checkbox
+        $('#select-all').on('change', function() {
+            $('.user-checkbox').prop('checked', $(this).prop('checked'));
+        });
     });
 
     function deleteUser(id) {

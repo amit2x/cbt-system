@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Session;
 use App\Traits\ApiResponse;
 
+use Illuminate\Support\Facades\Validator;
+
 class ProfileController extends Controller
 {
     use ApiResponse;
@@ -39,20 +41,96 @@ class ProfileController extends Controller
     /**
      * Update profile
      */
+    /**
+     * Update profile
+     */
     public function update(Request $request)
     {
         $user = auth()->user();
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
+            'organization_name' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:800',
         ]);
 
-        $user->update($request->only(['name', 'email', 'phone']));
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
 
-        return redirect()->route('profile.show')
-            ->with('success', 'Profile updated successfully.');
+        try {
+            $user->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'organization_name' => $request->organization_name,
+                'address' => $request->address,
+            ]);
+
+            return redirect()->route('profile.edit')
+                ->with('success', 'Profile updated successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to update profile: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Upload avatar - Direct form submission
+     */
+    public function uploadAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:4096'
+        ]);
+
+        try {
+            $user = auth()->user();
+
+            // Delete old avatar
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+
+            // Store new avatar
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->update(['avatar' => $path]);
+
+            return redirect()->route('profile.edit')
+                ->with('success', 'Profile picture updated successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to upload avatar: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Remove avatar
+     */
+    public function removeAvatar(Request $request)
+    {
+        try {
+            $user = auth()->user();
+
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+                $user->update(['avatar' => null]);
+            }
+
+            return redirect()->route('profile.edit')
+                ->with('success', 'Profile picture removed successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to remove avatar: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -103,36 +181,7 @@ class ProfileController extends Controller
             ->with('success', 'Settings updated successfully.');
     }
 
-    /**
-     * Upload avatar
-     */
-    public function uploadAvatar(Request $request)
-    {
-        $request->validate([
-            'avatar' => 'required|image|max:2048'
-        ]);
-
-        $user = auth()->user();
-
-        // Delete old avatar
-        if ($user->avatar) {
-            Storage::disk('public')->delete($user->avatar);
-        }
-
-        // Store new avatar
-        $path = $request->file('avatar')->store('avatars', 'public');
-        $user->update(['avatar' => $path]);
-
-        if ($request->ajax()) {
-            return $this->successResponse([
-                'avatar_url' => asset('storage/' . $path)
-            ], 'Avatar uploaded successfully');
-        }
-
-        return redirect()->route('profile.edit')
-            ->with('success', 'Avatar updated successfully.');
-    }
-
+    
     /**
      * Show activity log
      */

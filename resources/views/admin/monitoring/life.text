@@ -1,0 +1,62 @@
+┌─────────────────────────────────────────────────────────────────────┐
+│                        EXAM LIFECYCLE                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. Student starts exam                                             │
+│     ↓                                                              │
+│  2. Student is now "active" in the exam                            │
+│     (status: 'in_progress')                                        │
+│     ↓                                                              │
+│  3. ✅ INSTRUCTOR STARTS MONITORING SESSION                        │
+│     - Must be started AFTER students have started the exam         │
+│     - Or can be started at any time during the exam                │
+│     ↓                                                              │
+│  4. Monitoring session begins capturing:                           │
+│     - Screenshots at intervals                                     │
+│     - Tab switches                                                 │
+│     - Mouse events                                                 │
+│     - Suspicious activity                                          │
+│     ↓                                                              │
+│  5. Instructor monitors in REAL-TIME                              │
+│     - Sees active students                                         │
+│     - Views captured screenshots                                   │
+│     - Gets alerts for suspicious activity                          │
+│     ↓                                                              │
+│  6. Exam continues until completion                                │
+│     ↓                                                              │
+│  7. Instructor ends monitoring session                             │
+│     ↓                                                              │
+│  8. All proctoring data is saved for review                        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+
+Key Points
+
+Aspect	Explanation
+When to Start	✅ During the exam - Students must have already started the exam
+Pre-Exam Start	❌ Cannot start before students begin (no active students to monitor)
+Real-Time	✅ Yes, instructor sees live activity as it happens
+Post-Exam Review	✅ All captured data is saved and can be reviewed later
+Active Students	Only students with status started or in_progress are monitored
+Inactive Students	Students who haven't started or have completed are not shown
+
+
+How to Use
+Students start the exam (from student dashboard)
+Instructor goes to Monitoring Dashboard
+Clicks "Start New Session"
+Selects the exam being taken
+Session starts capturing proctoring data
+Instructor monitors live feed
+After exam ends, instructor ends the session
+
+
+Important Notes
+⚠️ Session must be started AFTER students begin the exam
+✅ Only active exam sessions are monitored
+✅ Screenshots are captured at intervals (e.g., every 60 seconds)
+✅ Instructor can manually capture screenshots
+✅ All data is saved in the database for review
+✅ Admins can view all sessions across all instructors

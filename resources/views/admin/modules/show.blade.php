@@ -37,8 +37,8 @@
                             <td>{{ $module->description ?? 'No description' }}</td>
                         </tr>
                         <tr>
-                            <th>Order:</th>
-                            <td>{{ $module->order + 1 }}</td>
+                            <th>Subject Id:</th>
+                            <td>{{ $module->id }} <small class="text-muted"> (Use this as subject_id while uploading question sheet)</small>  </td>
                         </tr>
                         <tr>
                             <th>Status:</th>
@@ -66,17 +66,6 @@
                     <h6 class="m-0 font-weight-bold text-primary">Associated Exams</h6>
                 </div>
                 <div class="card-body">
-                    @php
-                        // Get exams that use questions from this module via subject_id
-                        $examQuestions = DB::table('exam_questions')
-                            ->join('questions', 'exam_questions.question_id', '=', 'questions.id')
-                            ->where('questions.subject_id', $module->id)
-                            ->distinct()
-                            ->pluck('exam_questions.exam_id');
-                        
-                        $exams = \App\Models\Exam::whereIn('id', $examQuestions)->get();
-                    @endphp
-                    
                     @if($exams->count() > 0)
                         <div class="list-group">
                             @foreach($exams as $exam)
@@ -87,7 +76,7 @@
                                             <br>
                                             <small class="text-muted">Type: {{ $exam->type_name }} | Duration: {{ $exam->duration_minutes }} min</small>
                                         </div>
-                                        <span class="badge bg-primary">{{ $exam->questions_count ?? 0 }} questions</span>
+                                        <span class="badge bg-primary">{{ $exam->exam_questions_count ?? 0 }} questions</span>
                                     </div>
                                 </a>
                             @endforeach

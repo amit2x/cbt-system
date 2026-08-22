@@ -47,6 +47,14 @@
                 <i class="bi bi-camera-video me-2"></i>
                 <span>Live Monitoring</span>
             </a>
+            
+            
+            
+            <a href="{{ route('instructor.monitoring.index') }}"
+               class="list-group-item list-group-item-action {{ request()->routeIs('instructor.monitoring.*') ? 'active' : '' }}">
+                <i class="bi bi-camera-video me-2"></i>
+                <span>Monitoring</span>
+            </a>
 
             <a href="{{ route('instructor.feedback.create') }}"
                class="list-group-item list-group-item-action {{ request()->routeIs('instructor.feedback.*') ? 'active' : '' }}">

@@ -315,8 +315,7 @@ public function batchAnalytics()
     $totalBatches = Batch::count();
     $ongoingBatches = Batch::where('status', 'ongoing')->count();
     $totalStudents = Batch::withCount('students')->get()->sum('students_count');
-    $averageScore = Result::avg('percentage') ?? 0;
-    
+    $averageScore = round(Result::avg('percentage') ?? 0, 2); 
     // Chart data
     $batchLabels = [];
     $batchScores = [];
@@ -386,27 +385,106 @@ public function questionAnalytics(Request $request)
     /**
      * Show detailed student analytics
      */
-    public function showStudentAnalytics(User $student, Request $request)
-    {
-        if (!$student->hasRole('student')) {
-            abort(404);
+    // public function showStudentAnalytics(User $student, Request $request)
+    // {
+    //     if (!$student->hasRole('student')) {
+    //         abort(404);
+    //     }
+
+    //     $batchId = $request->get('batch_id');
+    //     $profile = $this->analyticsService->generateStudentProfile($student->id, $batchId);
+
+    //     // Get recent results
+    //     $recentResults = $student->results()
+    //         ->with('exam')
+    //         ->orderBy('created_at', 'desc')
+    //         ->take(10)
+    //         ->get();
+
+    //     // Get available batches for filtering
+    //     $batches = $student->batches()->get();
+
+    //     return view('admin.analytics.student-detail', compact('student', 'profile', 'recentResults', 'batches'));
+    // }
+    
+    /**
+ * Show detailed student analytics
+ */
+public function showStudentAnalytics(User $student, Request $request)
+{
+    if (!$student->hasRole('student')) {
+        abort(404);
+    }
+
+    $batchId = $request->get('batch_id');
+    $profile = $this->analyticsService->generateStudentProfile($student->id, $batchId);
+
+    // FIX: Ensure all array fields are properly decoded
+    if ($profile) {
+        // Decode strengths if it's a JSON string
+        if (isset($profile['strengths'])) {
+            if (is_string($profile['strengths'])) {
+                $profile['strengths'] = json_decode($profile['strengths'], true) ?? [];
+            }
+            // Ensure it's an array
+            if (!is_array($profile['strengths'])) {
+                $profile['strengths'] = [];
+            }
         }
 
-        $batchId = $request->get('batch_id');
-        $profile = $this->analyticsService->generateStudentProfile($student->id, $batchId);
+        // Decode weaknesses if it's a JSON string
+        if (isset($profile['weaknesses'])) {
+            if (is_string($profile['weaknesses'])) {
+                $profile['weaknesses'] = json_decode($profile['weaknesses'], true) ?? [];
+            }
+            if (!is_array($profile['weaknesses'])) {
+                $profile['weaknesses'] = [];
+            }
+        }
 
-        // Get recent results
-        $recentResults = $student->results()
-            ->with('exam')
-            ->orderBy('created_at', 'desc')
-            ->take(10)
-            ->get();
+        // Decode topic_analysis if it's a JSON string
+        if (isset($profile['topic_analysis'])) {
+            if (is_string($profile['topic_analysis'])) {
+                $profile['topic_analysis'] = json_decode($profile['topic_analysis'], true) ?? [];
+            }
+            if (!is_array($profile['topic_analysis'])) {
+                $profile['topic_analysis'] = [];
+            }
+            
+            // Normalize topic data
+            $profile['topic_analysis'] = collect($profile['topic_analysis'])->map(function($topic) {
+                // If the topic has 'name' instead of 'topic', rename it
+                if (isset($topic['name']) && !isset($topic['topic'])) {
+                    $topic['topic'] = $topic['name'];
+                }
+                return [
+                    'topic' => $topic['topic'] ?? 'Uncategorized',
+                    'total' => (int) ($topic['total'] ?? 0),
+                    'correct' => (int) ($topic['correct'] ?? 0),
+                    'incorrect' => (int) ($topic['incorrect'] ?? 0),
+                    'accuracy' => (float) ($topic['accuracy'] ?? 0)
+                ];
+            })->toArray();
+        }
 
-        // Get available batches for filtering
-        $batches = $student->batches()->get();
-
-        return view('admin.analytics.student-detail', compact('student', 'profile', 'recentResults', 'batches'));
+        // Decode trends if it's a JSON string
+        if (isset($profile['trends']) && is_string($profile['trends'])) {
+            $profile['trends'] = json_decode($profile['trends'], true) ?? [];
+        }
     }
+
+    // Get recent results
+    $recentResults = $student->results()
+        ->with('exam')
+        ->orderBy('created_at', 'desc')
+        ->take(10)
+        ->get();
+
+    // Get available batches for filtering
+    $batches = $student->batches()->get();
+
+    return view('admin.analytics.student-detail', compact('student', 'profile', 'recentResults', 'batches'));
+}
 
     /**
      * Batch Analytics
@@ -798,4 +876,194 @@ private function addToCsv($handle, $key, $value)
 {
     fputcsv($handle, [$key, $value]);
 }
+
+
+
+/**
+ * Analyze options for MCQ - FIXED with UTF-8 sanitization
+ */
+protected function analyzeOptions($questionId, $answers)
+{
+    $options = Question::find($questionId)->options;
+    $analysis = [];
+
+    foreach ($options as $option) {
+        $count = $answers->filter(function($answer) use ($option) {
+            $selected = json_decode($answer->selected_options ?? '[]', true);
+            return in_array($option->id, $selected);
+        })->count();
+
+        // ✅ Sanitize option text to remove invalid UTF-8 characters
+        $optionText = $option->option_text ?? '';
+        $optionText = $this->sanitizeUtf8($optionText);
+        $optionText = substr($optionText, 0, 50);
+
+        $analysis['option_' . $option->id] = [
+            'option_text' => $optionText,
+            'count' => $count,
+            'is_correct' => (bool) $option->is_correct
+        ];
+    }
+
+    return $analysis;
+}
+
+/**
+ * Sanitize UTF-8 string - removes invalid characters
+ */
+protected function sanitizeUtf8($string)
+{
+    if (is_null($string)) {
+        return '';
+    }
+    
+    // Remove invalid UTF-8 characters
+    $string = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+    
+    // Remove control characters (except newlines, tabs, etc.)
+    $string = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $string);
+    
+    // Remove any remaining invalid characters
+    $string = preg_replace('/[^\x09\x0A\x0D\x20-\x7E\x80-\xFF]/u', '', $string);
+    
+    return $string;
+}
+
+/**
+ * Generate question performance analysis - FIXED
+ */
+public function generateQuestionAnalysis($questionId, $examId = null)
+{
+    $query = DB::table('student_answers')
+        ->join('student_exams', 'student_answers.student_exam_id', '=', 'student_exams.id')
+        ->where('student_answers.question_id', $questionId);
+
+    if ($examId) {
+        $query->where('student_exams.exam_id', $examId);
+    }
+
+    $answers = $query->select(
+        'student_answers.*',
+        'student_exams.exam_id',
+        'student_exams.student_id'
+    )->get();
+
+    $question = Question::find($questionId);
+
+    if ($answers->isEmpty()) {
+        return null;
+    }
+
+    $total = $answers->count();
+    $correct = $answers->where('is_correct', true)->count();
+    $incorrect = $answers->where('is_correct', false)
+        ->filter(function($a) {
+            return $a->selected_options || $a->answer_text;
+        })->count();
+    $unanswered = $total - $correct - $incorrect;
+
+    // Calculate time metrics
+    $times = $answers->pluck('time_taken_seconds')->filter();
+    $avgTime = $times->avg() ?: 0;
+    $minTime = $times->min() ?: 0;
+    $maxTime = $times->max() ?: 0;
+
+    // Calculate difficulty index (percentage who got it wrong)
+    $difficultyIndex = $total > 0 ? round(($incorrect / $total) * 100, 2) : 0;
+
+    // Option analysis for MCQs - with UTF-8 sanitization
+    $optionAnalysis = null;
+    if (in_array($question->type, ['single_choice', 'multiple_choice'])) {
+        $optionAnalysis = $this->analyzeOptions($questionId, $answers);
+        
+        // ✅ Ensure optionAnalysis is JSON encodable
+        if (is_array($optionAnalysis)) {
+            // Sanitize all values
+            foreach ($optionAnalysis as $key => $value) {
+                if (is_string($value)) {
+                    $optionAnalysis[$key] = $this->sanitizeUtf8($value);
+                }
+            }
+        }
+    }
+
+    // Calculate discrimination index
+    $discriminationIndex = $this->calculateDiscriminationIndex($questionId, $answers);
+
+    // Determine effectiveness
+    $effectivenessScore = $total > 0 ? ($correct / $total) * 100 : 0;
+    $effectivenessLevel = $this->determineEffectiveness($effectivenessScore, $difficultyIndex);
+
+    // ✅ Convert option_analysis to JSON and ensure it's valid
+    $optionAnalysisJson = null;
+    if ($optionAnalysis) {
+        $jsonString = json_encode($optionAnalysis);
+        if ($jsonString === false) {
+            // If encoding fails, try with sanitized data
+            $optionAnalysis = $this->sanitizeArray($optionAnalysis);
+            $jsonString = json_encode($optionAnalysis);
+        }
+        $optionAnalysisJson = $jsonString !== false ? $jsonString : '{}';
+    }
+
+    // Update or create question performance record
+    QuestionPerformance::updateOrCreate(
+        ['question_id' => $questionId, 'exam_id' => $examId],
+        [
+            'total_attempts' => $total,
+            'correct_attempts' => $correct,
+            'incorrect_attempts' => $incorrect,
+            'accuracy_rate' => $total > 0 ? round(($correct / $total) * 100, 2) : 0,
+            'avg_time_seconds' => round($avgTime, 2),
+            'min_time_seconds' => round($minTime, 2),
+            'max_time_seconds' => round($maxTime, 2),
+            'difficulty_index' => $difficultyIndex,
+            'discrimination_index' => $discriminationIndex,
+            'option_analysis' => $optionAnalysisJson, // ✅ Store as JSON string
+            'effectiveness_score' => round($effectivenessScore, 2),
+            'effectiveness_level' => $effectivenessLevel
+        ]
+    );
+
+    return [
+        'question_id' => $questionId,
+        'question_text' => substr($this->sanitizeUtf8(strip_tags($question->question_text)), 0, 200),
+        'type' => $question->type_name,
+        'difficulty' => $question->difficulty_name,
+        'metrics' => [
+            'total_attempts' => $total,
+            'correct' => $correct,
+            'incorrect' => $incorrect,
+            'unanswered' => $unanswered,
+            'accuracy_rate' => round(($correct / max($total, 1)) * 100, 2),
+            'difficulty_index' => $difficultyIndex,
+            'discrimination_index' => $discriminationIndex,
+            'avg_time' => gmdate('i:s', (int) $avgTime),
+            'effectiveness_level' => $effectivenessLevel
+        ],
+        'option_analysis' => $optionAnalysis
+    ];
+}
+
+/**
+ * Sanitize all strings in an array recursively
+ */
+protected function sanitizeArray($array)
+{
+    if (!is_array($array)) {
+        return $this->sanitizeUtf8((string) $array);
+    }
+
+    foreach ($array as $key => $value) {
+        if (is_array($value)) {
+            $array[$key] = $this->sanitizeArray($value);
+        } elseif (is_string($value)) {
+            $array[$key] = $this->sanitizeUtf8($value);
+        }
+    }
+
+    return $array;
+}
+
+
 }

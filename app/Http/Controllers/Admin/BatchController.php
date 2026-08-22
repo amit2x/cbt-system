@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Exports\BatchStudentsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Batch\StoreBatchRequest;
+use App\Http\Requests\Batch\UpdateBatchRequest;
 use App\Imports\StudentsImport;
 use App\Models\Batch;
 use App\Models\Course;
@@ -24,12 +25,38 @@ class BatchController extends Controller
     /**
      * Display a listing of batches.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $batches = Batch::with(['course', 'instructor'])
-                        ->withCount('students')
-                        ->latest()
-                        ->paginate(10);
+        
+        $query = Batch::with(['course', 'instructor'])
+            ->withCount('students');
+    
+        // Apply search filter
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%{$request->search}%")
+                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
+        }
+    
+        // Apply status filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        // Apply course filter
+        if ($request->filled('course_id')) {
+            $query->where('course_id', $request->course_id);
+        }
+        
+        // $batches = Batch::with(['course', 'instructor'])
+        //                 ->withCount('students')
+        //                 ->latest()
+        //                 ->paginate(10);
+        
+        $batches = $query->latest()->paginate(10);
+                        
+        
 
         return view('admin.batches.index', compact('batches'));
     }
@@ -82,7 +109,7 @@ class BatchController extends Controller
     /**
      * Update the specified batch.
      */
-    public function update(StoreBatchRequest $request, Batch $batch)
+    public function update(UpdateBatchRequest $request, Batch $batch)
     {
         $batch->update($request->validated());
 
@@ -104,6 +131,46 @@ class BatchController extends Controller
 
         return redirect()->route('admin.batches.index')
                         ->with('success', 'Batch deleted successfully.');
+    }
+    
+    
+    /**
+     * Bulk delete students.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'batch_ids' => 'required|array',
+            'batch_ids.*' => 'exists:batches,id',
+        ]);
+
+        $batches = Batch::whereIn('id', $request->batch_ids)
+            ->get();
+
+        foreach ($batches as $batch) {
+            $batch->delete();
+        }
+
+        return redirect()->route('admin.batches.index')
+                        ->with('success', 'Batch deleted successfully.');
+    }
+
+    /**
+     * Bulk activate/deactivate students.
+     */
+    public function bulkStatus(Request $request)
+    {
+        // $request->validate([
+        //     'batch_ids' => 'required|array',
+        //     'batch_ids.*' => 'exists:batches,id',
+        //     'status' => 'required|in:active,inactive',
+        // ]);
+
+        // Batch::whereIn('id', $request->batch_ids)
+        //     ->update(['status' => $request->status === 'active']);
+
+        // return redirect()->route('admin.batches.index')
+        //                 ->with('success', 'Batch status updated successfully.');
     }
 
     /**
@@ -320,12 +387,13 @@ class BatchController extends Controller
         'Content-Disposition' => 'attachment; filename="student_import_template.csv"',
     ];
 
-    $columns = ['name', 'email', 'phone'];
+    // $columns = ['name', 'email', 'phone'];
+    $columns = ['name', 'email', 'phone', 'organization_name', 'address'];
 
     $callback = function() use ($columns) {
         $file = fopen('php://output', 'w');
         fputcsv($file, $columns);
-        fputcsv($file, ['Amit Kumar Singh', 'amitk2@cbt.com', '1234567890']);
+        fputcsv($file, ['Amit Kumar Singh', 'amitk2@cbt.com', '1234567890', 'AAI', 'NSCBIA Kolkata']);
         fclose($file);
     };
 

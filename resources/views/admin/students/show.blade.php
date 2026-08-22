@@ -27,6 +27,8 @@
                     <p class="text-muted">{{ $student->email }}</p>
                     <p class="text-muted">Roll No: {{ $student->roll_no ?? 'N/A' }}</p>
                     <p class="text-muted">Phone: {{ $student->phone ?? 'N/A' }}</p>
+                    <p class="text-muted">Company: {{ $student->organization_name ?? 'N/A' }}</p>
+                    <p class="text-muted">Address: {{ $student->address ?? 'N/A' }}</p>
 
                     <div class="mb-3">
                         <span class="badge bg-success">Student</span>

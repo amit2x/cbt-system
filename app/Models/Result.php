@@ -3,22 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class Result extends Model
+
+class Result extends BaseModel
 {
-    // protected $fillable = [
-    //     'student_exam_id', 'student_id', 'exam_id', 'batch_id',
-    //     'total_marks', 'obtained_marks', 'percentage', 'status',
-    //     'total_questions', 'correct_answers', 'incorrect_answers', 'unanswered', 'marked_for_review',
-    //     'time_taken_seconds', 'speed_per_minute',
-    //     'rank', 'percentile', 'total_participants',
-    //     'sectional_analysis', 'topic_analysis', 'difficulty_analysis', 'accuracy_by_type',
-    //     'accuracy_percentage', 'speed_score', 'consistency_score',
-    //     'certificate_url', 'certificate_generated_at'
-    // ];
-    
-    
-     protected $fillable = [
+    use HasAirport;
+   protected $fillable = [
         'student_exam_id', 'student_id', 'exam_id', 'batch_id',
         'total_questions', 'total_marks', 'obtained_marks', 'percentage', 'status',
         'correct_answers', 'incorrect_answers', 'unanswered', 'marked_for_review',
@@ -279,4 +270,158 @@ public function getFormattedTimeAttribute()
 
         return $difficulties;
     }
+    
+    // app/Models/Result.php
+
+/**
+ * Get topic analysis as array
+ */
+// public function getTopicAnalysisAttribute($value)
+// {
+//     if (is_null($value)) {
+//         return [];
+//     }
+
+//     if (is_array($value)) {
+//         return $value;
+//     }
+
+//     if (is_string($value)) {
+//         $decoded = json_decode($value, true);
+//         return is_array($decoded) ? $decoded : [];
+//     }
+
+//     return [];
+// }
+
+/**
+ * Get sectional analysis as array
+ */
+public function getSectionalAnalysisAttribute($value)
+{
+    if (is_null($value)) {
+        return [];
+    }
+
+    if (is_array($value)) {
+        return $value;
+    }
+
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    return [];
+}
+
+/**
+ * Get difficulty analysis as array
+ */
+public function getDifficultyAnalysisAttribute($value)
+{
+    if (is_null($value)) {
+        return [];
+    }
+
+    if (is_array($value)) {
+        return $value;
+    }
+
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    return [];
+}
+
+/**
+ * Get accuracy by type as array
+ */
+public function getAccuracyByTypeAttribute($value)
+{
+    if (is_null($value)) {
+        return [];
+    }
+
+    if (is_array($value)) {
+        return $value;
+    }
+
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    return [];
+}
+
+
+// app/Models/Result.php
+
+/**
+ * Get topic analysis as array - with transformation
+ */
+public function getTopicAnalysisAttribute($value)
+{
+    if (empty($value)) {
+        return [];
+    }
+
+    $data = $this->parseJsonData($value);
+    
+    // If it's already in array format (has numeric keys with name field)
+    if (isset($data[0]) && is_array($data[0]) && isset($data[0]['name'])) {
+        return $data;
+    }
+    
+    // Transform object-style to array-style
+    $transformed = [];
+    foreach ($data as $topicName => $topicData) {
+        if (is_array($topicData)) {
+            $total = (int) ($topicData['total'] ?? 0);
+            $correct = (int) ($topicData['correct'] ?? 0);
+            $incorrect = (int) ($topicData['incorrect'] ?? 0);
+            $unanswered = (int) ($topicData['unanswered'] ?? ($total - $correct - $incorrect));
+            
+            $transformed[] = [
+                'name' => $topicName,
+                'total' => $total,
+                'correct' => $correct,
+                'incorrect' => $incorrect,
+                'unanswered' => $unanswered,
+                'accuracy' => $total > 0 ? round(($correct / $total) * 100, 2) : 0
+            ];
+        }
+    }
+    
+    // Sort by total descending
+    usort($transformed, function($a, $b) {
+        return $b['total'] - $a['total'];
+    });
+    
+    return $transformed;
+}
+
+/**
+ * Parse JSON data helper
+ */
+protected function parseJsonData($data)
+{
+    if (is_null($data)) {
+        return [];
+    }
+    
+    if (is_array($data)) {
+        return $data;
+    }
+    
+    if (is_string($data)) {
+        $decoded = json_decode($data, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+    
+    return [];
+}
 }

@@ -107,14 +107,14 @@
                                 <span class="badge bg-primary">{{ $exam->student_exams_count }}</span>
                             </td>
                             <td>
-                                @php
-                                $avgScore = $exam->average_score ?? 0;
-                                @endphp
-                                <span
-                                    class="badge bg-{{ $avgScore >= 70 ? 'success' : ($avgScore >= 50 ? 'warning' : 'danger') }}">
-                                    {{ $avgScore }}%
-                                </span>
-                            </td>
+    @php
+        $avgScore = (float) ($exam->average_score ?? 0);
+    @endphp
+    <span class="badge bg-{{ $avgScore >= 70 ? 'success' : ($avgScore >= 50 ? 'warning' : 'danger') }}">
+        {{ number_format($avgScore, 1) }}%
+    </span>
+</td>
+
                             <td>
                                 <span
                                     class="badge bg-{{ $exam->status == 'published' ? 'success' : ($exam->status == 'draft' ? 'secondary' : 'info') }}">

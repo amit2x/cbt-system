@@ -28,7 +28,7 @@ class StudentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::role('student')
+        $query = User::currentAirport()->role('student')
             ->with(['batches.course'])
             ->withCount(['results', 'exams']);
 
@@ -213,7 +213,7 @@ class StudentController extends Controller
             'batch_ids' => 'nullable|array',
             'batch_ids.*' => 'exists:batches,id',
             'is_active' => 'boolean',
-            'avatar' => 'nullable|image|max:2048',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:4096',
         ]);
 
         $data = [
@@ -346,22 +346,51 @@ class StudentController extends Controller
     /**
      * Import students from Excel.
      */
+    // public function importStudents(Request $request)
+    // {
+    //     // dd($request->all());
+    //     $request->validate([
+    //         'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+    //         'batch_id' => 'required|exists:batches,id',
+    //     ]);
+
+    //     try {
+    //         Excel::import(new StudentsImport($request->batch_id), $request->file('file'));
+
+    //         return redirect()->route('admin.students.index')
+    //             ->with('success', 'Students imported successfully.');
+    //     } catch (\Exception $e) {
+    //         return back()->with('error', 'Error importing students: '.$e->getMessage());
+    //     }
+    // }
+    
     public function importStudents(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-            'batch_id' => 'required|exists:batches,id',
-        ]);
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        'batch_id' => 'required|exists:batches,id',
+    ]);
 
-        try {
-            Excel::import(new StudentsImport($request->batch_id), $request->file('file'));
+    try {
 
-            return redirect()->route('admin.students.index')
-                ->with('success', 'Students imported successfully.');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error importing students: '.$e->getMessage());
-        }
+        $batch = Batch::findOrFail($request->batch_id);
+
+        Excel::import(
+            new StudentsImport($batch),
+            $request->file('file')
+        );
+
+        return redirect()->route('admin.students.index')
+            ->with('success', 'Students imported successfully.');
+
+    } catch (\Exception $e) {
+
+        return back()->with(
+            'error',
+            'Error importing students: ' . $e->getMessage()
+        );
     }
+}
 
     /**
      * Export students to Excel.
@@ -386,7 +415,7 @@ class StudentController extends Controller
      */
     public function downloadTemplate()
     {
-        $columns = ['name', 'email', 'phone', 'roll_no'];
+        $columns = ['name', 'email', 'phone', 'organization_name', 'address'];
         $filename = 'student_import_template.csv';
 
         $headers = [
@@ -397,7 +426,7 @@ class StudentController extends Controller
         $callback = function () use ($columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
-            fputcsv($file, ['John Doe', 'john@example.com', '1234567890', 'STU001']);
+            fputcsv($file, ['Amit Kumar', 'amitk2@aai.aero', '7633947548', 'Airports Authority of India', 'NSCBI Airport Kolkata']);
             fclose($file);
         };
 

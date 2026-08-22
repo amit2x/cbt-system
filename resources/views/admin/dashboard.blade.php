@@ -281,7 +281,7 @@
                     <h6 class="m-0 font-weight-bold text-primary">Monthly Trend (Last 6 Months)</h6>
                 </div>
                 <div class="card-body">
-                    <canvas id="monthlyTrendChart" height="100"></canvas>
+                    <canvas id="monthlyTrendChart" height="300"></canvas>
                 </div>
             </div>
         </div>

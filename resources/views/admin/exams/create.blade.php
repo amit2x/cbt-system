@@ -41,14 +41,25 @@
                             @enderror
                         </div>
 
+                        <!--<div class="mb-3">-->
+                        <!--    <label for="instructions" class="form-label">Instructions for Students</label>-->
+                        <!--    <textarea class="form-control @error('instructions') is-invalid @enderror"-->
+                        <!--              id="instructions" name="instructions" rows="3">{{ old('instructions') }}</textarea>-->
+                        <!--    @error('instructions')-->
+                        <!--        <div class="invalid-feedback">{{ $message }}</div>-->
+                        <!--    @enderror-->
+                        <!--</div>-->
                         <div class="mb-3">
-                            <label for="instructions" class="form-label">Instructions for Students</label>
-                            <textarea class="form-control @error('instructions') is-invalid @enderror"
-                                      id="instructions" name="instructions" rows="3">{{ old('instructions') }}</textarea>
-                            @error('instructions')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+    <label for="instructions" class="form-label fw-semibold">Instructions for Students</label>
+    <textarea class="form-control @error('instructions') is-invalid @enderror"
+              id="instructions" 
+              name="instructions" 
+              rows="8">{{ old('instructions', "1. Ensure you have a stable internet connection before starting the examination.\n2. Do not refresh the browser page, navigate backward, or close the exam tab once the assessment begins.\n3. All questions are mandatory unless specified otherwise. Keep track of the countdown timer visible on your screen.\n4. Copying, pasting, printing, or attempting to inspect elements/shortcuts is strictly monitored and blocked.\n5. Switching tabs or minimizing the browser window during the test will flag your account for suspicious activity.\n6. Review your marked answers before clicking the final 'Submit Examination' button. Once submitted, answers cannot be edited.") }}</textarea>
+    @error('instructions')
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
+</div>
+
 
                         <!-- Type and Category -->
                         <div class="row">
@@ -169,7 +180,7 @@
                         <div class="mb-3">
                             <label for="passing_percentage" class="form-label">Passing Percentage <span class="text-danger">*</span></label>
                             <input type="number" class="form-control @error('passing_percentage') is-invalid @enderror"
-                                   id="passing_percentage" name="passing_percentage" value="{{ old('passing_percentage', 40) }}"
+                                   id="passing_percentage" name="passing_percentage" value="{{ old('passing_percentage', 80) }}"
                                    min="0" max="100" step="0.1" required>
                             @error('passing_percentage')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -342,22 +353,13 @@
 @endpush
 
 @push('scripts')
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    (function($) {
-        'use strict';
-        
+document.addEventListener('DOMContentLoaded', function() {
+
         $(document).ready(function() {
             console.log('Exam form initialized');
             
-            // Initialize Select2 for all select elements
-            $('.select2').select2({
-                placeholder: 'Select an option',
-                allowClear: true,
-                width: '100%'
-            });
 
             const $courseSelect = $('#course_id');
             const $moduleSelect = $('#module_id');
@@ -527,8 +529,8 @@
                 return false;
             };
         });
+    });
         
-    })(window.jQuery || window.$);
 
     function toggleSchedule() {
         const isChecked = document.getElementById('is_scheduled').checked;

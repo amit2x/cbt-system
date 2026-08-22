@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\Question;
 use App\Models\Batch;
+use App\Models\Module;
 use App\Models\Result;
 use Illuminate\Http\Request;
 use App\Services\Exam\ExamEngineService;
 use App\Traits\ApiResponse;
+use Illuminate\Support\Facades\Log;
 
 class QuizController extends Controller
 {
@@ -75,82 +77,411 @@ class QuizController extends Controller
             ->get();
 
         // Get recent questions for quick selection
-        $recentQuestions = Question::where('created_by', $instructor->id)
-            ->where('status', 'active')
+        // $recentQuestions = Question::where('created_by', $instructor->id)
+        $recentQuestions = Question::where('status', 'active')
             ->latest()
             ->take(50)
             ->get();
 
         return view('instructor.quizzes.create', compact('batches', 'recentQuestions'));
     }
+    
+    /**
+     * Get questions by batch
+     */
+    public function getQuestionsByBatch(Request $request, $batchId)
+    {
+        // $instructor = auth()->user();
+        
+        // // Verify instructor owns this batch
+        // $batch = Batch::where('id', $batchId)
+        //     ->where('instructor_id', $instructor->id)
+        //     ->first();
+        
+        // if (!$batch) {
+        //     return $this->errorResponse('Batch not found or unauthorized', 403);
+        // }
+        
+        // $subject_ids = Module::where('course_id', $batch->course_id)->pluck('id');
+        
+        
+        // // Get questions created by this instructor
+        // // You can also filter by course/module if needed
+        // // $questions = Question::where('created_by', $instructor->id)
+        // $questions = Question::whereIn('subject_id', $subject_ids)
+        //     ->where('status', 'active')
+        //     ->latest()
+        //     ->get()
+        //     ->map(function($q) {
+        //         $plainText = strip_tags($q->question_text);
+        //         return [
+        //             'id' => $q->id,
+        //             'text' => $plainText,
+        //             'full_text' => \Str::limit($plainText, 100),
+        //             'type' => $q->type_name,
+        //             'type_class' => $q->type === 'multiple_choice' ? 'info' : 'primary',
+        //             'marks' => $q->marks,
+        //             'difficulty' => $q->difficulty ?? 'medium',
+        //             'created_at' => $q->created_at ? $q->created_at->format('d M Y') : now()->format('d M Y')
+        //         ];
+        //     });
+        
+        // return $this->successResponse([
+        //     'questions' => $questions,
+        //     'count' => $questions->count()
+        // ]);
+        
+        $request->validate([
+        'batch_id' => 'required|exists:batches,id',
+        'total_questions' => 'required|integer|min:1|max:100',
+        'subject_id' => 'nullable|exists:modules,id',
+        'difficulty' => 'nullable|in:easy,medium,hard',
+        'question_type' => 'nullable|in:multiple_choice,single_choice,numerical'
+    ]);
+
+    $instructor = auth()->user();
+    
+    // Verify instructor owns this batch
+    $batch = Batch::where('id', $request->batch_id)
+        ->where('instructor_id', $instructor->id)
+        ->first();
+    
+    if (!$batch) {
+        return $this->errorResponse('Batch not found or unauthorized', 403);
+    }
+    
+    // Get subject IDs for this batch's course
+    $subjectIds = Module::where('course_id', $batch->course_id)->pluck('id');
+    
+    // Build query
+    $query = Question::whereIn('subject_id', $subjectIds)
+        ->where('status', 'active');
+    
+    // Apply filters
+    if ($request->filled('subject_id')) {
+        $query->where('subject_id', $request->subject_id);
+    }
+    
+    if ($request->filled('difficulty')) {
+        $query->where('difficulty', $request->difficulty);
+    }
+    
+    if ($request->filled('question_type')) {
+        $query->where('type', $request->question_type);
+    }
+    
+    // Get total available
+    $totalAvailable = $query->count();
+    
+    if ($totalAvailable === 0) {
+        return $this->errorResponse('No questions found matching your criteria', 404);
+    }
+    
+    // Get random questions
+    $totalToPick = min($request->total_questions, $totalAvailable);
+    
+    $questions = $query->inRandomOrder()
+        ->take($totalToPick)
+        ->get()
+        ->map(function($q) {
+            $plainText = strip_tags($q->question_text);
+            return [
+                'id' => $q->id,
+                'text' => $plainText,
+                'full_text' => \Str::limit($plainText, 100),
+                'type' => $q->type,
+                'type_name' => $q->type_name,
+                'type_class' => $q->type === 'multiple_choice' ? 'info' : 'primary',
+                'marks' => $q->marks,
+                'difficulty' => $q->difficulty ?? 'medium',
+                'difficulty_class' => $this->getDifficultyClass($q->difficulty),
+            ];
+        });
+    
+    return $this->successResponse([
+        'questions' => $questions,
+        'count' => $questions->count(),
+        'total_available' => $totalAvailable,
+        'message' => "Generated {$questions->count()} questions out of {$totalAvailable} available"
+    ]);
+    }
+    
+    /**
+ * Get modules by course ID
+ */
+// public function getCourseModules($courseId)
+// {
+//     $instructor = auth()->user();
+    
+//     $modules = Module::where('course_id', $courseId)
+//         ->where('status', 'active')
+//         ->get()
+//         ->map(function($module) {
+//             return [
+//                 'id' => $module->id,
+//                 'title' => $module->title
+//             ];
+//         });
+    
+//     return $this->successResponse($modules);
+// }
+
+/**
+ * Auto-generate questions based on criteria
+ */
+public function generateQuestions(Request $request)
+{
+    $request->validate([
+        'batch_id' => 'required|exists:batches,id',
+        'total_questions' => 'required|integer|min:1|max:100',
+        'subject_id' => 'nullable|exists:modules,id',
+        'difficulty' => 'nullable|in:easy,medium,hard',
+        'question_type' => 'nullable|in:multiple_choice,single_choice,numerical'
+    ]);
+
+    $instructor = auth()->user();
+    
+    // Verify instructor owns this batch
+    $batch = Batch::where('id', $request->batch_id)
+        ->where('instructor_id', $instructor->id)
+        ->first();
+    
+    if (!$batch) {
+        return $this->errorResponse('Batch not found or unauthorized', 403);
+    }
+    
+    // Get subject IDs for this batch's course
+    $subjectIds = Module::where('course_id', $batch->course_id)->pluck('id');
+    
+    // Build query
+    $query = Question::whereIn('subject_id', $subjectIds)
+        ->where('status', 'active');
+    
+    // Apply filters
+    if ($request->filled('subject_id')) {
+        $query->where('subject_id', $request->subject_id);
+    }
+    
+    if ($request->filled('difficulty')) {
+        $query->where('difficulty', $request->difficulty);
+    }
+    
+    if ($request->filled('question_type')) {
+        $query->where('type', $request->question_type);
+    }
+    
+    // Get total available
+    $totalAvailable = $query->count();
+    
+    if ($totalAvailable === 0) {
+        return $this->errorResponse('No questions found matching your criteria', 404);
+    }
+    
+    // Get random questions
+    $totalToPick = min($request->total_questions, $totalAvailable);
+    
+    $questions = $query->inRandomOrder()
+        ->take($totalToPick)
+        ->get()
+        ->map(function($q) {
+            $plainText = strip_tags($q->question_text);
+            return [
+                'id' => $q->id,
+                'text' => $plainText,
+                'full_text' => \Str::limit($plainText, 100),
+                'type' => $q->type,
+                'type_name' => $q->type_name,
+                'type_class' => $q->type === 'multiple_choice' ? 'info' : 'primary',
+                'marks' => $q->marks,
+                'difficulty' => $q->difficulty ?? 'medium',
+                'difficulty_class' => $this->getDifficultyClass($q->difficulty),
+            ];
+        });
+    
+    return $this->successResponse([
+        'questions' => $questions,
+        'count' => $questions->count(),
+        'total_available' => $totalAvailable,
+        'message' => "Generated {$questions->count()} questions out of {$totalAvailable} available"
+    ]);
+}
+
+/**
+ * Get difficulty badge class
+ */
+private function getDifficultyClass($difficulty)
+{
+    return match(strtolower($difficulty ?? '')) {
+        'easy' => 'success',
+        'medium' => 'warning',
+        'hard' => 'danger',
+        default => 'secondary'
+    };
+}
 
     /**
      * Launch a quick quiz
      */
-    public function launch(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'batch_id' => 'required|exists:batches,id',
-            'duration_minutes' => 'required|integer|min:1|max:60',
-            'question_ids' => 'required|array',
-            'question_ids.*' => 'exists:questions,id',
-            'randomize' => 'nullable|boolean'
+    // public function launch(Request $request)
+    // {
+    //     $request->validate([
+    //         'title' => 'required|string|max:255',
+    //         'batch_id' => 'required|exists:batches,id',
+    //         'duration_minutes' => 'required|integer|min:1|max:60',
+    //         'question_ids' => 'required|array',
+    //         'question_ids.*' => 'exists:questions,id',
+    //         'randomize' => 'nullable|boolean'
+    //     ]);
+
+    //     try {
+    //         $instructor = auth()->user();
+    //         $batch = Batch::findOrFail($request->batch_id);
+
+    //         // Verify instructor owns this batch
+    //         if ($batch->instructor_id !== $instructor->id) {
+    //             return back()->with('error', 'You are not authorized to create quizzes for this batch.');
+    //         }
+
+    //         $questions = Question::whereIn('id', $request->question_ids)->get();
+
+    //         if ($questions->isEmpty()) {
+    //             return back()->with('error', 'No valid questions selected.');
+    //         }
+
+    //         // Create quiz
+    //         $exam = Exam::create([
+    //             'title' => $request->title,
+    //             'type' => 'quiz',
+    //             'category' => 'custom',
+    //             'batch_id' => $request->batch_id,
+    //             'duration_minutes' => $request->duration_minutes,
+    //             'total_marks' => $questions->sum('marks'),
+    //             'passing_percentage' => 40,
+    //             'negative_marking' => 0,
+    //             'randomize_questions' => $request->boolean('randomize', true),
+    //             'randomize_options' => true,
+    //             'show_result_immediately' => true,
+    //             'allow_review' => true,
+    //             'attempts_allowed' => 1,
+    //             'status' => 'published',
+    //             'instructions' => 'Quick quiz created by instructor.',
+    //             'created_by' => $instructor->id
+    //         ]);
+
+    //         // Attach questions
+    //         foreach ($questions as $index => $question) {
+    //             $exam->questions()->attach($question->id, [
+    //                 'order' => $index,
+    //                 'marks' => $question->marks,
+    //                 'negative_marks' => 0
+    //             ]);
+    //         }
+
+    //         // Update total marks
+    //         $exam->updateTotalMarks();
+
+    //         return redirect()->route('instructor.quizzes.show', $exam)
+    //             ->with('success', 'Quiz launched successfully!');
+    //     } catch (\Exception $e) {
+    //         return back()->with('error', 'Error launching quiz: ' . $e->getMessage());
+    //     }
+    // }
+/**
+ * Launch a quick quiz
+ */
+public function launch(Request $request)
+{
+    // ✅ DEBUG: Log the incoming request
+    \Log::info('Quiz launch request:', $request->all());
+    
+    // ✅ Handle JSON string from form
+    if ($request->has('selected_question_ids') && is_string($request->selected_question_ids)) {
+        $questionIds = json_decode($request->selected_question_ids, true);
+        if (is_array($questionIds) && count($questionIds) > 0) {
+            $request->merge(['question_ids' => $questionIds]);
+        } else {
+            return back()->with('error', 'No valid questions selected. Please select questions first.')->withInput();
+        }
+    }
+    
+    // ✅ If question_ids is still not present or empty
+    if (!$request->has('question_ids') || !is_array($request->question_ids) || count($request->question_ids) === 0) {
+        return back()->with('error', 'Please select at least one question before launching the quiz.')->withInput();
+    }
+
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'batch_id' => 'required|exists:batches,id',
+        'duration_minutes' => 'required|integer|min:1|max:180',
+        'question_ids' => 'required|array|min:1',
+        'question_ids.*' => 'integer|exists:questions,id',  // ✅ Changed to integer
+        'randomize_questions' => 'nullable|boolean',
+        'randomize_options' => 'nullable|boolean',
+        'show_result_immediately' => 'nullable|boolean',
+        'allow_review' => 'nullable|boolean',
+    ]);
+
+    try {
+        $instructor = auth()->user();
+        $batch = Batch::findOrFail($request->batch_id);
+
+        if ($batch->instructor_id !== $instructor->id) {
+            return back()->with('error', 'You are not authorized.')->withInput();
+        }
+
+        $questions = Question::whereIn('id', $request->question_ids)
+            ->where('status', 'active')
+            ->get();
+
+        if ($questions->isEmpty()) {
+            return back()->with('error', 'No valid active questions found.')->withInput();
+        }
+
+        // Create quiz
+        $exam = Exam::create([
+            'title' => $request->title,
+            'type' => 'quiz',
+            'category' => 'custom',
+            'batch_id' => $request->batch_id,
+            'duration_minutes' => $request->duration_minutes,
+            'total_marks' => $questions->sum('marks'),
+            'passing_percentage' => 40,
+            'negative_marking' => 0,
+            'randomize_questions' => $request->boolean('randomize_questions', true),
+            'randomize_options' => $request->boolean('randomize_options', true),
+            'show_result_immediately' => $request->boolean('show_result_immediately', true),
+            'allow_review' => $request->boolean('allow_review', true),
+            'attempts_allowed' => 1,
+            'status' => 'published',
+            'instructions' => 'Quick quiz created by instructor.',
+            'created_by' => $instructor->id
         ]);
 
-        try {
-            $instructor = auth()->user();
-            $batch = Batch::findOrFail($request->batch_id);
-
-            // Verify instructor owns this batch
-            if ($batch->instructor_id !== $instructor->id) {
-                return back()->with('error', 'You are not authorized to create quizzes for this batch.');
-            }
-
-            $questions = Question::whereIn('id', $request->question_ids)->get();
-
-            if ($questions->isEmpty()) {
-                return back()->with('error', 'No valid questions selected.');
-            }
-
-            // Create quiz
-            $exam = Exam::create([
-                'title' => $request->title,
-                'type' => 'quiz',
-                'category' => 'custom',
-                'batch_id' => $request->batch_id,
-                'duration_minutes' => $request->duration_minutes,
-                'total_marks' => $questions->sum('marks'),
-                'passing_percentage' => 40,
-                'negative_marking' => 0,
-                'randomize_questions' => $request->boolean('randomize', true),
-                'randomize_options' => true,
-                'show_result_immediately' => true,
-                'allow_review' => true,
-                'attempts_allowed' => 1,
-                'status' => 'published',
-                'instructions' => 'Quick quiz created by instructor.',
-                'created_by' => $instructor->id
-            ]);
-
-            // Attach questions
-            foreach ($questions as $index => $question) {
+        // Attach questions
+        foreach ($request->question_ids as $index => $questionId) {
+            $question = $questions->find($questionId);
+            if ($question) {
                 $exam->questions()->attach($question->id, [
-                    'order' => $index,
+                    'order' => $index + 1,
                     'marks' => $question->marks,
                     'negative_marks' => 0
                 ]);
             }
-
-            // Update total marks
-            $exam->updateTotalMarks();
-
-            return redirect()->route('instructor.quizzes.show', $exam)
-                ->with('success', 'Quiz launched successfully!');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error launching quiz: ' . $e->getMessage());
         }
+
+        $exam->updateTotalMarks();
+
+        return redirect()->route('instructor.quizzes.show', $exam)
+            ->with('success', 'Quiz launched successfully! Quiz ID: ' . $exam->id);
+
+    } catch (\Exception $e) {
+        \Log::error('Quiz launch error: ' . $e->getMessage(), [
+            'request' => $request->all(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return back()->with('error', 'Error launching quiz: ' . $e->getMessage())->withInput();
     }
+}
 
     /**
      * Launch instant quiz during class

@@ -1,9 +1,11 @@
 <?php
+// app/Http/Controllers/Student/DashboardController.php
 
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
+use App\Models\Course;
 use App\Models\Exam;
 use App\Models\Feedback;
 use App\Models\Result;
@@ -31,11 +33,16 @@ class DashboardController extends Controller
             ->pluck('batches.id')
             ->toArray();
 
-        // Basic statistics
-        $enrolledCourses = $student->batches()
-            ->distinct('course_id')
-            ->count('course_id');
+        // Get all courses from student's batches
+        $courses = Course::whereHas('batches', function($q) use ($batchIds) {
+            $q->whereIn('batches.id', $batchIds);
+        })->with(['batches', 'exams', 'modules'])->get();
 
+        // Get all batches
+        $batches = $student->batches()->with(['course', 'instructor'])->get();
+
+        // Basic statistics
+        $enrolledCourses = $courses->count();
         $examsTaken = StudentExam::where('student_id', $student->id)
             ->where('status', 'completed')
             ->count();
@@ -112,6 +119,11 @@ class DashboardController extends Controller
 
         // Upcoming exams
         $upcomingExams = Exam::whereIn('batch_id', $batchIds)
+            ->whereHas('batch', function ($q) {
+                $today = now()->toDateString();
+                $q->whereDate('start_date', '<=', $today)
+                  ->whereDate('end_date', '>=', $today);
+            })
             ->where('status', 'published')
             ->whereDoesntHave('studentExams', function($q) use ($student) {
                 $q->where('student_id', $student->id)
@@ -136,21 +148,34 @@ class DashboardController extends Controller
 
         // Study streak calculation
         $streakDays = $this->calculateStreak($student->id);
-        $totalStudyTime = round($results->sum('time_taken_seconds') / 3600, 1); // Convert to hours
-        $weeklyGoal = 10; // Default weekly goal in hours
+        $totalStudyTime = round($results->sum('time_taken_seconds') / 3600, 1);
+        $weeklyGoal = 10;
         $weeklyProgress = min(100, round(($totalStudyTime / $weeklyGoal) * 100, 2));
 
-        $streakMessage = $streakDays >= 7 ? 'Amazing streak!' : ($streakDays >= 3 ? 'Good progress!' : 'Keep going!');
+        $streakMessage = $streakDays >= 7 ? 'Amazing streak! 🔥' : ($streakDays >= 3 ? 'Good progress! 💪' : 'Keep going! 📚');
 
         // Achievements
         $achievements = $this->getAchievements($student->id, $results);
         $nextAchievement = $this->getNextAchievement($student->id, $results);
         $nextAchievementProgress = $this->getNextAchievementProgress($student->id, $results);
 
-        // Study materials (you can implement this based on your study materials system)
+        // Study materials
         $studyMaterials = $this->getRecommendedMaterials($student->id, $batchIds);
 
+        // Stats array for consistency
+        $stats = [
+            'total_exams' => $examsTaken + $pendingExams,
+            'completed_exams' => $examsTaken,
+            'pending_exams' => $pendingExams,
+            'avg_score' => $averageScore,
+        ];
+
+        // Recent activity
+        $recentActivities = $this->getRecentActivities($student);
+
         return view('student.dashboard', compact(
+            'courses',
+            'batches',
             'enrolledCourses',
             'examsTaken',
             'pendingExams',
@@ -172,7 +197,9 @@ class DashboardController extends Controller
             'achievements',
             'nextAchievement',
             'nextAchievementProgress',
-            'studyMaterials'
+            'studyMaterials',
+            'stats',
+            'recentActivities'
         ));
     }
 
@@ -259,8 +286,7 @@ class DashboardController extends Controller
             ];
         }
 
-        // Return only earned achievements (you might want to show locked ones too)
-        return array_slice($achievements, 0, 3);
+        return array_slice($achievements, 0, 4);
     }
 
     /**
@@ -296,26 +322,25 @@ class DashboardController extends Controller
             return ($results->where('percentage', 100)->count() / 3) * 100;
         } else {
             $avgScore = $results->avg('percentage');
-            return ($avgScore / 90) * 100;
+            return min(100, ($avgScore / 90) * 100);
         }
     }
 
-    
     /**
-     * Get recommended study materials for the student
+     * Get recommended study materials
      */
     private function getRecommendedMaterials($studentId, $batchIds)
     {
         // Get the student's enrolled courses from their batches
-        $courseIds = \DB::table('batches')
+        $courseIds = DB::table('batches')
             ->whereIn('id', $batchIds)
             ->pluck('course_id')
             ->toArray();
-    
+
         if (empty($courseIds)) {
             return collect([]);
         }
-    
+
         // Get published study materials for the student's courses
         $materials = StudyMaterial::with(['course', 'module', 'category'])
             ->whereIn('course_id', $courseIds)
@@ -323,33 +348,98 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
-    
-        // If no materials found, return empty collection
+
         if ($materials->isEmpty()) {
             return collect([]);
         }
-    
-        // Transform materials for dashboard display
+
         return $materials->map(function($material) {
             return [
                 'id' => $material->id,
                 'title' => $material->title,
                 'subject' => $material->course->title ?? 'General',
                 'type' => $material->material_type,
-                'file_path' => $material->file_path,
-                'file_url' => $material->file_url,
-                'external_url' => $material->external_url,
-                'views' => $material->views,
-                'downloads' => $material->downloads,
-                'created_at' => $material->created_at,
-                'url' => route('student.study-materials.show', $material),
-                'download_url' => $material->file_path ? route('student.study-materials.download', $material) : null,
                 'category_name' => $material->category->name ?? 'Uncategorized',
-                'type_badge' => $material->material_type_badge,
-                'formatted_size' => $material->formatted_file_size,
-                'has_file' => !is_null($material->file_path),
-                'is_link' => $material->material_type === 'link'
+                'created_at' => $material->created_at->diffForHumans(),
+                'download_url' => $material->file_path ? route('student.study-materials.download', $material) : null,
             ];
         });
+    }
+
+    /**
+     * Get recent activities
+     */
+    private function getRecentActivities($student)
+    {
+        $activities = [];
+
+        // Recent exams taken
+        $recentExams = StudentExam::where('student_id', $student->id)
+            ->where('status', 'completed')
+            ->with('exam')
+            ->orderBy('updated_at', 'desc')
+            ->take(5)
+            ->get();
+
+        foreach ($recentExams as $exam) {
+            $activities[] = [
+                'title' => 'Completed Exam: ' . ($exam->exam->title ?? 'N/A'),
+                'description' => 'Score: ' . ($exam->percentage ?? 0) . '%',
+                'color' => 'success',
+                'time' => $exam->updated_at->diffForHumans()
+            ];
+        }
+
+        // Recent batch enrollments
+        $recentBatches = $student->batches()
+            ->orderBy('batch_student.created_at', 'desc')
+            ->take(3)
+            ->get();
+
+        foreach ($recentBatches as $batch) {
+            $activities[] = [
+                'title' => 'Enrolled in Batch: ' . $batch->name,
+                'description' => $batch->course->title ?? '',
+                'color' => 'info',
+                'time' => $batch->pivot->created_at->diffForHumans()
+            ];
+        }
+
+        // Sort by time descending
+        usort($activities, function($a, $b) {
+            return strtotime($b['time']) - strtotime($a['time']);
+        });
+
+        return array_slice($activities, 0, 10);
+    }
+
+    // ==================== ADDITIONAL VIEW METHODS ====================
+
+    /**
+     * Show course detail
+     */
+    public function courseDetail(Course $course)
+    {
+        $course->load(['batches.instructor', 'modules', 'exams']);
+        return view('student.course-detail', compact('course'));
+    }
+
+    /**
+     * Show batch detail
+     */
+    public function batchDetail(Batch $batch)
+    {
+        $batch->load(['course', 'instructor', 'students']);
+        $exams = $batch->exams()->where('status', 'published')->get();
+        return view('student.batch-detail', compact('batch', 'exams'));
+    }
+
+    /**
+     * Show batch exams
+     */
+    public function batchExams(Batch $batch)
+    {
+        $exams = $batch->exams()->where('status', 'published')->get();
+        return view('student.batch-exams', compact('batch', 'exams'));
     }
 }

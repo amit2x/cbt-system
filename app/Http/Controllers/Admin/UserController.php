@@ -161,19 +161,25 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'role' => 'required|exists:roles,name',
+            'password' => 'nullable|string|min:8|confirmed',
             'is_active' => 'boolean',
             'batch_ids' => 'nullable|array',
             'batch_ids.*' => 'exists:batches,id',
             'avatar' => 'nullable|image|max:2048'
         ]);
-
+    
         $data = [
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
             'is_active' => $request->boolean('is_active', true),
         ];
-
+    
+        // Handle password update if provided
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+    
         // Handle avatar upload
         if ($request->hasFile('avatar')) {
             // Delete old avatar
@@ -183,12 +189,12 @@ class UserController extends Controller
             $path = $request->file('avatar')->store('avatars', 'public');
             $data['avatar'] = $path;
         }
-
+    
         $user->update($data);
-
+    
         // Sync role
         $user->syncRoles([$request->role]);
-
+    
         // Sync batches for students
         if ($request->role === 'student') {
             $batchData = [];
@@ -201,7 +207,7 @@ class UserController extends Controller
         } else {
             $user->batches()->detach();
         }
-
+    
         return redirect()->route('admin.users.index')
             ->with('success', 'User updated successfully.');
     }
@@ -394,5 +400,36 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Returned to your account.');
+    }
+    
+    
+    
+    /**
+     * Reset user password
+     */
+    public function resetPassword(Request $request, User $user)
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+    
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+    
+        if ($request->ajax()) {
+            return $this->successResponse(null, 'Password reset successfully.');
+        }
+    
+        return redirect()->route('admin.users.show', $user)
+            ->with('success', 'Password reset successfully.');
+    }
+    
+    /**
+     * Show password reset form
+     */
+    public function showResetPasswordForm(User $user)
+    {
+        return view('admin.users.reset-password', compact('user'));
     }
 }

@@ -3,9 +3,9 @@
 @section('title', 'Exam Result')
 
 @section('content')
-<div class="container">
+<div class="container-fluid">
     <div class="row justify-content-center">
-        <div class="col-md-10">
+        <div class="col-md-12">
             <!-- Result Card -->
             <div class="card shadow mb-4">
                 <div class="card-header bg-{{ $studentExam->result->status == 'passed' ? 'success' : 'danger' }} text-white">
@@ -66,42 +66,16 @@
                                     <td>Total Marks:</td>
                                     <td><strong>{{ $studentExam->obtained_marks }} / {{ $studentExam->exam->total_marks }}</strong></td>
                                 </tr>
-                                <!--<tr>-->
-                                <!--    <td>Time Taken:</td>-->
-                                <!--    <td><strong>-->
-                                <!--        @php-->
-                                <!--            $hours = floor($studentExam->total_seconds_taken / 3600);-->
-                                <!--            $minutes = floor(($studentExam->total_seconds_taken % 3600) / 60);-->
-                                <!--            $seconds = $studentExam->total_seconds_taken % 60;-->
-                                <!--            echo sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);-->
-                                <!--        @endphp-->
-                                <!--    </strong></td>-->
-                                <!--</tr>-->
-<!--                                <tr>-->
-<!--    <td>Time Taken:</td>-->
-<!--    <td><strong>-->
-<!--        {{ gmdate("H:i:s", $studentExam->total_seconds_taken) }}-->
-<!--    </strong></td>-->
-<!--</tr>-->
-
-<!--<tr>-->
-<!--    <td>Time Taken:</td>-->
-<!--    <td><strong>-->
-<!--        {{ \Carbon\CarbonInterval::seconds($studentExam->total_seconds_taken)->cascade()->format('%H:%I:%S') }}-->
-<!--    </strong></td>-->
-<!--</tr>-->
-
-<tr>
-    <td>Time Taken:</td>
-    <td><strong>
-        @if($studentExam->total_seconds_taken < 0)
-            Invalid Time Data
-        @else
-            {{ \Carbon\CarbonInterval::seconds($studentExam->total_seconds_taken)->cascade()->format('%H:%I:%S') }}
-        @endif
-    </strong></td>
-</tr>
-
+                                <tr>
+                                    <td>Time Taken:</td>
+                                    <td><strong>
+                                        @if($studentExam->total_seconds_taken < 0)
+                                            Invalid Time Data
+                                        @else
+                                            {{ \Carbon\CarbonInterval::seconds($studentExam->total_seconds_taken)->cascade()->format('%H:%I:%S') }}
+                                        @endif
+                                    </strong></td>
+                                </tr>
                                 @if($studentExam->result->rank)
                                 <tr>
                                     <td>Rank:</td>
@@ -231,17 +205,69 @@
                                 @foreach($studentExam->answers as $index => $answer)
                                     @php
                                         $question = $answer->question;
+                                        $isCorrect = $answer->is_correct;
+                                        $hasAnswer = $answer->selected_options || $answer->answer_text;
                                     @endphp
                                     <div class="card mb-3 {{ $answer->is_correct ? 'border-success' : ($answer->selected_options ? 'border-danger' : 'border-secondary') }}">
                                         <div class="card-header bg-light">
-                                            <strong>Question {{ $index + 1 }}</strong>
-                                            <span class="badge bg-{{ $answer->is_correct ? 'success' : ($answer->selected_options ? 'danger' : 'secondary') }} float-end">
-                                                {{ $answer->is_correct ? 'Correct' : ($answer->selected_options ? 'Incorrect' : 'Unanswered') }}
-                                            </span>
+                                            <!-- Main Flex Header Wrapper -->
+                                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                                                
+                                                <!-- Left Side: Question Title & Verdict Status -->
+                                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                                    <h6 class="mb-0">Question {{ $index + 1 }}</h6>
+                                                    @if($isCorrect)
+                                                        <span class="badge bg-success">Correct</span>
+                                                    @elseif($hasAnswer)
+                                                        <span class="badge bg-danger">Incorrect</span>
+                                                    @else
+                                                        <span class="badge bg-secondary">Unanswered</span>
+                                                    @endif
+                                                </div>
+                                
+                                                <!-- Right Side: Performance & Analytics Metrics Container -->
+                                                <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+                                                    <span class="badge bg-info text-dark bg-opacity-10 border border-info">
+                                                        <i class="bi bi-star-fill me-1 text-info"></i> Max: {{ $question->marks }} Marks
+                                                    </span>
+                                                    <span class="badge bg-success text-dark bg-opacity-10 border {{ $isCorrect ? 'border-success' : 'border-danger'}} ">
+                                                        <i class="bi bi-award-fill me-1 {{ $isCorrect ? 'text-success' : 'text-danger'}}"></i> Obtained: {{ $answer->marks_obtained ?? 0 }}
+                                                    </span>
+                                                    <span class="badge bg-dark text-dark bg-opacity-10 border border-dark">
+                                                        <i class="bi bi-clock me-1 text-dark"></i> {{ $answer->time_taken_seconds ?? 0 }} Sec
+                                                    </span>
+                                                    
+                                                    @if($answer->is_marked_for_review)
+                                                        <span class="badge bg-warning text-dark">
+                                                            <i class="bi bi-bookmark-star-fill me-1"></i> Reviewed
+                                                        </span>
+                                                    @endif
+                                
+                                                    <span class="badge bg-secondary text-dark bg-opacity-10 border border-secondary">
+                                                        <i class="bi bi-eye me-1 text-secondary"></i> 
+                                                        {{ $answer->is_visited ? 'Visited' : 'Not Visited' }} 
+                                                        @if($answer->visit_count > 0)
+                                                            ({{ $answer->visit_count }}x)
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="card-body">
-                                            <p>{{ $question->question_text }}</p>
+                                            <!-- Question Text with Image -->
+                                            <div class="question-content mb-3">
+                                                @if($question->question_image)
+                                                    <div class="mb-2">
+                                                        <img src="{{ asset('storage/' . $question->question_image) }}" 
+                                                             alt="{{ $question->question_image_alt ?? 'Question image' }}" 
+                                                             class="img-fluid question_image" 
+                                                             >
+                                                    </div>
+                                                @endif
+                                                <p>{{ $question->question_text }}</p>
+                                            </div>
 
+                                            <!-- Options with Images -->
                                             @if($question->type == 'single_choice' || $question->type == 'multiple_choice')
                                                 <div class="row">
                                                     @foreach($question->options as $option)
@@ -249,10 +275,26 @@
                                                             <div class="p-2 rounded
                                                                 {{ $option->is_correct ? 'bg-success text-white' : '' }}
                                                                 {{ in_array($option->id, $answer->selected_options ?? []) && !$option->is_correct ? 'bg-danger text-white' : '' }}">
-                                                                {{ $option->option_text }}
+                                                                
+                                                                <!-- Option Image -->
+                                                                @if($option->option_image)
+                                                                    <div class="mb-1">
+                                                                        <img src="{{ asset('storage/' . $option->option_image) }}" 
+                                                                             alt="{{ $option->option_image_alt ?? 'Option image' }}" 
+                                                                             class="img-fluid option_image" 
+                                                                             >
+                                                                    </div>
+                                                                @endif
+                                                                
+                                                                <!-- Option Text -->
+                                                                <span>{{ $option->option_text }}</span>
+                                                                
+                                                                <!-- Correct Answer Icon -->
                                                                 @if($option->is_correct)
                                                                     <i class="bi bi-check-circle-fill float-end"></i>
                                                                 @endif
+                                                                
+                                                                <!-- Selected Answer Icon -->
                                                                 @if(in_array($option->id, $answer->selected_options ?? []))
                                                                     <i class="bi bi-check-square-fill float-end me-2"></i>
                                                                 @endif
@@ -263,14 +305,26 @@
                                             @elseif($question->type == 'numerical')
                                                 <div class="alert alert-info">
                                                     <strong>Your Answer:</strong> {{ $answer->answer_text ?? 'Not answered' }}<br>
-                                                    <strong>Correct Answer:</strong> {{ $question->options->first()->option_text ?? 'N/A' }}
+                                                    <strong>Correct Answer:</strong> 
+                                                    @php
+                                                        $correctOption = $question->options->where('is_correct', true)->first();
+                                                    @endphp
+                                                    {{ $correctOption->option_text ?? 'N/A' }}
+                                                    @if($correctOption && $correctOption->option_image)
+                                                        <br>
+                                                        <img src="{{ asset('storage/' . $correctOption->option_image) }}" 
+                                                             alt="{{ $correctOption->option_image_alt ?? 'Correct answer image' }}" 
+                                                             class="img-fluid mt-1" 
+                                                             style="max-height: 80px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                                                    @endif
                                                 </div>
                                             @endif
 
+                                            <!-- Explanation -->
                                             @if($question->explanation && ($answer->selected_options || $answer->answer_text))
                                                 <div class="mt-3 p-3 bg-light rounded">
                                                     <strong>Explanation:</strong><br>
-                                                    {{ $question->explanation }}
+                                                    {!! nl2br(e($question->explanation)) !!}
                                                 </div>
                                             @endif
                                         </div>
@@ -294,7 +348,69 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .question-content img {
+        max-height: 200px;
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    
+    .option-image-thumb {
+        max-height: 60px;
+        border: 1px solid #ddd;
+        padding: 3px;
+        border-radius: 4px;
+        margin-bottom: 5px;
+    }
+    
+    .bg-success.text-white .option-image-thumb {
+        border-color: #fff;
+    }
+    
+    .bg-danger.text-white .option-image-thumb {
+        border-color: #fff;
+    }
+    
+    .score-circle {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        background: #f8f9fa;
+        border: 5px solid #dee2e6;
+    }
+    
+    .card.border-success {
+        border-left: 4px solid #28a745 !important;
+    }
+    
+    .card.border-danger {
+        border-left: 4px solid #dc3545 !important;
+    }
+    
+    .card.border-secondary {
+        border-left: 4px solid #6c757d !important;
+    }
+    
+    .question_image{
+        min-height: 400px; width:auto; border: 1px solid #ddd; padding: 5px; border-radius: 5px;
+    }
+    
+    .option_image{
+        min-height: 200px; width:auto; border: 1px solid #ddd; padding: 5px; border-radius: 5px;
+    }
+</style>
+@endpush
+
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Question Analysis Chart

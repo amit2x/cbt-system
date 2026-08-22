@@ -8,6 +8,8 @@ use App\Models\Batch;
 use App\Models\Course;
 use App\Models\Question;
 use App\Models\Module;
+use App\Exports\ExamReportExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 use App\Models\ExamSection;
 use App\Http\Requests\Exam\StoreExamRequest;
@@ -455,30 +457,36 @@ public function show(Exam $exam)
  */
 public function addQuestions(Exam $exam)
 {
+    //show only exam related modules, questions.
+    // step-1 exams table contain course_id, module_id, batch_ids
+    // i will use module_id to find questions  question->where(subjec_id, $exam->module_id)
+    
     $exam->load(['course']);
     
     // Get questions based on exam's course and modules
     $query = Question::with(['subject', 'options'])
-        ->where('status', 'active');
+        // ->where('status', 'active');
+        ->where('status', 'active')
+        ->where('subject_id', $exam->module_id);
     
     // Filter by course if exam has one
-    if ($exam->course_id) {
-        // Get modules for this course
-        $moduleIds = Module::where('course_id', $exam->course_id)->pluck('id')->toArray();
+    // if ($exam->course_id) {
+    //     // Get modules for this course
+    //     $moduleIds = Module::where('course_id', $exam->course_id)->pluck('id')->toArray();
         
-        if (!empty($moduleIds)) {
-            // Filter questions that belong to this course's modules
-            $query->whereIn('subject_id', $moduleIds);
-        }
-    }
+    //     if (!empty($moduleIds)) {
+    //         // Filter questions that belong to this course's modules
+    //         $query->whereIn('subject_id', $moduleIds);
+    //     }
+    // }
     
     // If exam has specific modules (via pivot table)
-    if (method_exists($exam, 'modules') && $exam->modules()->count() > 0) {
-        $moduleIds = $exam->modules()->pluck('id')->toArray();
-        if (!empty($moduleIds)) {
-            $query->whereIn('subject_id', $moduleIds);
-        }
-    }
+    // if (method_exists($exam, 'modules') && $exam->modules()->count() > 0) {
+    //     $moduleIds = $exam->modules()->pluck('id')->toArray();
+    //     if (!empty($moduleIds)) {
+    //         $query->whereIn('subject_id', $moduleIds);
+    //     }
+    // }
     
     // Exclude questions already added to this exam
     $existingQuestionIds = $exam->questions()->pluck('question_id')->toArray();
@@ -486,7 +494,7 @@ public function addQuestions(Exam $exam)
         $query->whereNotIn('id', $existingQuestionIds);
     }
     
-    $questions = $query->latest()->paginate(20);
+    $questions = $query->latest()->paginate(40);
     
     // Get sections for this exam
     $sections = $exam->sections;
@@ -497,34 +505,181 @@ public function addQuestions(Exam $exam)
     /**
      * Store questions for exam.
      */
-    public function storeQuestions(AddQuestionsRequest $request, Exam $exam)
-    {
-        DB::beginTransaction();
-        try {
-            $exam->questions()->detach();
+    // public function storeQuestions(AddQuestionsRequest $request, Exam $exam)
+    // {
+    //     // dd($request->all());
+    //     DB::beginTransaction();
+    //     try {
+    //         // $exam->questions()->detach();
+    //         foreach ($request->questions as $index => $questionData) {
+        
+    //         if (!$exam->questions()->where('question_id', $questionData['question_id'])->exists()) {
+        
+    //             $exam->questions()->attach(
+    //                 $questionData['question_id'],
+    //                 [
+    //                     'section_id' => $questionData['section_id'] ?? null,
+    //                     'order' => $index,
+    //                     'marks' => $questionData['marks'] ?? 1,
+    //                     'negative_marks' => $questionData['negative_marks'] ?? 0,
+    //                     'time_limit_seconds' => $questionData['time_limit_seconds'] ?? null,
+    //                 ]
+    //             );
+    //         }
+    //     }
 
-            foreach ($request->questions as $index => $questionData) {
-                $exam->questions()->attach($questionData['question_id'], [
-                    'section_id' => $questionData['section_id'] ?? null,
-                    'order' => $index,
-                    'marks' => $questionData['marks'] ?? null,
-                    'negative_marks' => $questionData['negative_marks'] ?? null,
-                    'time_limit_seconds' => $questionData['time_limit_seconds'] ?? null
-                ]);
+    //         foreach ($request->questions as $index => $questionData) {
+    //             $exam->questions()->attach($questionData['question_id'], [
+    //                 'section_id' => $questionData['section_id'] ?? null,
+    //                 'order' => $index,
+    //                 'marks' => $questionData['marks'] ?? null,
+    //                 'negative_marks' => $questionData['negative_marks'] ?? null,
+    //                 'time_limit_seconds' => $questionData['time_limit_seconds'] ?? null
+    //             ]);
+    //         }
+
+    //         // Update exam total marks
+    //         $exam->updateTotalMarks();
+    //         $exam->load('questions');
+    //         DB::commit();
+
+    //         return redirect()->route('admin.exams.show', $exam)
+    //                         ->with('success', 'Questions added to exam successfully.');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return back()->with('error', 'Error adding questions: ' . $e->getMessage());
+    //     }
+    // }
+    
+    public function storeQuestions(AddQuestionsRequest $request, Exam $exam)
+{
+    DB::beginTransaction();
+
+    try {
+
+        $syncData = [];
+
+        foreach ($request->questions as $index => $questionData) {
+
+            if (empty($questionData['question_id'])) {
+                continue;
             }
 
-            // Update exam total marks
-            $exam->updateTotalMarks();
-
-            DB::commit();
-
-            return redirect()->route('admin.exams.show', $exam)
-                            ->with('success', 'Questions added to exam successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Error adding questions: ' . $e->getMessage());
+            $syncData[$questionData['question_id']] = [
+                'section_id' => $questionData['section_id'] ?? null,
+                'order' => $index,
+                'marks' => $questionData['marks'] ?? 1,
+                'negative_marks' => $questionData['negative_marks'] ?? 0,
+                'time_limit_seconds' => $questionData['time_limit_seconds'] ?? null,
+            ];
         }
+
+        // Add only new questions, don't remove existing ones
+        $exam->questions()->syncWithoutDetaching($syncData);
+
+        // Update total marks
+        $exam->updateTotalMarks();
+
+        DB::commit();
+
+        return redirect()
+            ->route('admin.exams.show', $exam)
+            ->with('success', 'Questions added successfully.');
+
+    } catch (\Exception $e) {
+
+        DB::rollBack();
+
+        return back()->with(
+            'error',
+            'Error adding questions: ' . $e->getMessage()
+        );
     }
+}
+
+public function addRandomQuestions(Request $request, Exam $exam)
+{
+    try {
+
+        $request->validate([
+            'count' => 'required|integer|min:1'
+        ]);
+
+        $count = (int) $request->count;
+
+        $availableQuestionQuery = Question::whereNotIn(
+            'id',
+            $exam->questions()->pluck('questions.id')
+        )
+        ->where('subject_id', $exam->module_id);
+
+        $availableCount = $availableQuestionQuery->count();
+
+        if ($availableCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No questions available to add.'
+            ], 422);
+        }
+
+        if ($count > $availableCount) {
+            return response()->json([
+                'success' => false,
+                'message' => "Only {$availableCount} questions are available."
+            ], 422);
+        }
+
+        $availableQuestionIds = $availableQuestionQuery
+            ->inRandomOrder()
+            ->limit($count)
+            ->pluck('id');
+
+        $currentOrder = (int) $exam->questions()->max('exam_questions.order');
+
+        $syncData = [];
+
+        foreach ($availableQuestionIds as $index => $id) {
+
+            $question = Question::find($id);
+
+            $syncData[$id] = [
+                'marks' => $question->marks ?? 1,
+                'negative_marks' => 0,
+                'order' => $currentOrder + $index + 1,
+                'section_id' => null,
+                'time_limit_seconds' => null
+            ];
+        }
+
+        $exam->questions()->syncWithoutDetaching($syncData);
+
+        $exam->updateTotalMarks();
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$count} questions added successfully."
+        ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+
+        return response()->json([
+            'success' => false,
+            'message' => collect($e->errors())->flatten()->first()
+        ], 422);
+
+    } catch (\Exception $e) {
+
+        \Log::error('Random Question Add Error', [
+            'exam_id' => $exam->id,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to add random questions.'
+        ], 500);
+    }
+}
 
     /**
      * Remove question from exam.
@@ -545,6 +700,24 @@ public function addQuestions(Exam $exam)
                 'message' => 'Error removing question'
             ], 500);
         }
+    }
+    
+    public function bulkRemoveQuestions(Request $request, Exam $exam)
+    {
+        $request->validate([
+            'question_ids' => 'required|array|min:1'
+        ]);
+    
+        $exam->questions()->detach( $request->question_ids );
+    
+        $exam->updateTotalMarks();
+    
+        return response()->json([
+            'success' => true,
+            'message' =>
+                count($request->question_ids)
+                . ' question(s) removed successfully.'
+        ]);
     }
 
     /**
@@ -742,7 +915,13 @@ public function addQuestions(Exam $exam)
      */
     public function exportResults(Exam $exam)
     {
-        // Implementation for exporting results to Excel
-        // Will be implemented when we reach reporting phase
+        try {
+            $fileName = 'exam_report_' . $exam->id . '_' . date('Y-m-d') . '.xlsx';
+            
+            return Excel::download(new ExamReportExport($exam), $fileName);
+            
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to export exam report: ' . $e->getMessage());
+        }
     }
 }

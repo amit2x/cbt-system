@@ -78,76 +78,261 @@ class AdvancedAnalyticsService
     /**
      * Generate student performance profile
      */
-    public function generateStudentProfile($studentId, $batchId = null)
-    {
-        $query = Result::where('student_id', $studentId);
+    // public function generateStudentProfile($studentId, $batchId = null)
+    // {
+    //     $query = Result::where('student_id', $studentId);
 
-        if ($batchId) {
-            $query->where('batch_id', $batchId);
-        }
+    //     if ($batchId) {
+    //         $query->where('batch_id', $batchId);
+    //     }
 
-        $results = $query->with('exam')->orderBy('created_at')->get();
+    //     $results = $query->with('exam')->orderBy('created_at')->get();
 
-        if ($results->isEmpty()) {
-            return null;
-        }
+    //     if ($results->isEmpty()) {
+    //         return null;
+    //     }
 
-        // Calculate performance metrics
-        $scores = $results->pluck('percentage')->toArray();
-        $accuracies = $results->pluck('accuracy_percentage')->toArray();
-        $speeds = $results->pluck('speed_per_minute')->toArray();
+    //     // Calculate performance metrics
+    //     $scores = $results->pluck('percentage')->toArray();
+    //     $accuracies = $results->pluck('accuracy_percentage')->toArray();
+    //     $speeds = $results->pluck('speed_per_minute')->toArray();
 
-        // Identify strengths and weaknesses
-        $topicPerformance = $this->analyzeTopicPerformance($studentId);
-        $strengths = collect($topicPerformance)->filter(function($item) {
-            return $item['accuracy'] >= 70;
-        })->values()->toArray();
+    //     // Identify strengths and weaknesses
+    //     $topicPerformance = $this->analyzeTopicPerformance($studentId);
+    //     $strengths = collect($topicPerformance)->filter(function($item) {
+    //         return $item['accuracy'] >= 70;
+    //     })->values()->toArray();
 
-        $weaknesses = collect($topicPerformance)->filter(function($item) {
-            return $item['accuracy'] < 50;
-        })->values()->toArray();
+    //     $weaknesses = collect($topicPerformance)->filter(function($item) {
+    //         return $item['accuracy'] < 50;
+    //     })->values()->toArray();
 
-        // Calculate improvement rate
-        $improvementRate = $this->calculateImprovementRate($scores);
+    //     // Calculate improvement rate
+    //     $improvementRate = $this->calculateImprovementRate($scores);
 
-        // Predict future performance
-        $prediction = $this->predictPerformance($scores);
+    //     // Predict future performance
+    //     $prediction = $this->predictPerformance($scores);
 
-        $profile = [
-            'student_info' => [
-                'total_exams' => $results->count(),
-                'exams_passed' => $results->where('status', 'passed')->count(),
-                'exams_failed' => $results->where('status', 'failed')->count(),
-                'pass_rate' => round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2),
-                'total_time_spent' => round($results->sum('time_taken_seconds') / 3600, 1) . ' hours'
-            ],
-            'performance' => [
-                'average_score' => round(collect($scores)->avg(), 2),
-                'highest_score' => collect($scores)->max(),
-                'lowest_score' => collect($scores)->min(),
-                'average_accuracy' => round(collect($accuracies)->avg(), 2),
-                'average_speed' => round(collect($speeds)->avg(), 2),
-                'consistency_score' => $this->calculateConsistencyScore($scores),
-                'improvement_rate' => $improvementRate
-            ],
-            'strengths' => $strengths,
-            'weaknesses' => $weaknesses,
-            'topic_analysis' => $topicPerformance,
-            'trends' => [
-                'scores' => $results->pluck('percentage')->toArray(),
-                'accuracies' => $results->pluck('accuracy_percentage')->toArray(),
-                'dates' => $results->pluck('created_at')->map(function($date) {
-                    return $date->format('d M');
-                })->toArray()
-            ],
-            'prediction' => $prediction
-        ];
+    //     $profile = [
+    //         'student_info' => [
+    //             'total_exams' => $results->count(),
+    //             'exams_passed' => $results->where('status', 'passed')->count(),
+    //             'exams_failed' => $results->where('status', 'failed')->count(),
+    //             'pass_rate' => round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2),
+    //             'total_time_spent' => round($results->sum('time_taken_seconds') / 3600, 1) . ' hours'
+    //         ],
+    //         'performance' => [
+    //             'average_score' => round(collect($scores)->avg(), 2),
+    //             'highest_score' => collect($scores)->max(),
+    //             'lowest_score' => collect($scores)->min(),
+    //             'average_accuracy' => round(collect($accuracies)->avg(), 2),
+    //             'average_speed' => round(collect($speeds)->avg(), 2),
+    //             'consistency_score' => $this->calculateConsistencyScore($scores),
+    //             'improvement_rate' => $improvementRate
+    //         ],
+    //         'strengths' => $strengths,
+    //         'weaknesses' => $weaknesses,
+    //         'topic_analysis' => $topicPerformance,
+    //         'trends' => [
+    //             'scores' => $results->pluck('percentage')->toArray(),
+    //             'accuracies' => $results->pluck('accuracy_percentage')->toArray(),
+    //             'dates' => $results->pluck('created_at')->map(function($date) {
+    //                 return $date->format('d M');
+    //             })->toArray()
+    //         ],
+    //         'prediction' => $prediction
+    //     ];
 
-        // Update or create tracking record
-        $this->updatePerformanceTracking($studentId, $batchId, $profile);
+    //     // Update or create tracking record
+    //     $this->updatePerformanceTracking($studentId, $batchId, $profile);
 
-        return $profile;
+    //     return $profile;
+    // }
+    
+        /**
+     * Generate student performance profile
+     */
+    // public function generateStudentProfile($studentId, $batchId = null)
+    // {
+    //     $query = Result::where('student_id', $studentId);
+
+    //     if ($batchId) {
+    //         $query->where('batch_id', $batchId);
+    //     }
+
+    //     $results = $query->with('exam')->orderBy('created_at')->get();
+
+    //     if ($results->isEmpty()) {
+    //         return null;
+    //     }
+
+    //     // Calculate performance metrics
+    //     $scores = $results->pluck('percentage')->toArray();
+    //     $accuracies = $results->pluck('accuracy_percentage')->toArray();
+    //     $speeds = $results->pluck('speed_per_minute')->toArray();
+
+    //     // Identify strengths and weaknesses
+    //     $topicPerformance = $this->analyzeTopicPerformance($studentId);
+    //     $strengths = collect($topicPerformance)->filter(function($item) {
+    //         return $item['accuracy'] >= 70;
+    //     })->values()->toArray();
+
+    //     $weaknesses = collect($topicPerformance)->filter(function($item) {
+    //         return $item['accuracy'] < 50;
+    //     })->values()->toArray();
+
+    //     // Calculate improvement rate
+    //     $improvementRate = $this->calculateImprovementRate($scores);
+
+    //     // Predict future performance
+    //     $prediction = $this->predictPerformance($scores);
+
+    //     // FIX 1: Calculate raw hours as a float value for the database tracking
+    //     $rawHours = round($results->sum('time_taken_seconds') / 3600, 2);
+
+    //     $profile = [
+    //         'student_info' => [
+    //             'total_exams' => $results->count(),
+    //             'exams_passed' => $results->where('status', 'passed')->count(),
+    //             'exams_failed' => $results->where('status', 'failed')->count(),
+    //             'pass_rate' => round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2),
+    //             'total_time_spent_raw' => $rawHours, // Added for database updates
+    //             'total_time_spent' => round($rawHours, 1) . ' hours' // Kept clean for frontend UI
+    //         ],
+    //         'performance' => [
+    //             'average_score' => round(collect($scores)->avg(), 2),
+    //             'highest_score' => collect($scores)->max(),
+    //             'lowest_score' => collect($scores)->min(),
+    //             'average_accuracy' => round(collect($accuracies)->avg(), 2),
+    //             'average_speed' => round(collect($speeds)->avg(), 2),
+    //             'consistency_score' => $this->calculateConsistencyScore($scores),
+    //             'improvement_rate' => $improvementRate
+    //         ],
+    //         // FIX 2: Convert arrays to JSON strings if database fields do not automatically cast arrays
+    //         'strengths' => json_encode($strengths),
+    //         'weaknesses' => json_encode($weaknesses),
+    //         'topic_analysis' => $topicPerformance,
+    //         'trends' => [
+    //             'scores' => $results->pluck('percentage')->toArray(),
+    //             'accuracies' => $results->pluck('accuracy_percentage')->toArray(),
+    //             'dates' => $results->pluck('created_at')->map(function($date) {
+    //                 return $date->format('d M');
+    //             })->toArray()
+    //         ],
+    //         'prediction' => $prediction
+    //     ];
+
+    //     // Update or create tracking record
+    //     $this->updatePerformanceTracking($studentId, $batchId, $profile);
+
+    //     return $profile;
+    // }
+    
+    /**
+ * Generate student performance profile
+ */
+public function generateStudentProfile($studentId, $batchId = null)
+{
+    $query = Result::where('student_id', $studentId);
+
+    if ($batchId) {
+        $query->where('batch_id', $batchId);
     }
+
+    $results = $query->with('exam')->orderBy('created_at')->get();
+
+    if ($results->isEmpty()) {
+        return null;
+    }
+
+    // Calculate performance metrics
+    $scores = $results->pluck('percentage')->toArray();
+    $accuracies = $results->pluck('accuracy_percentage')->toArray();
+    $speeds = $results->pluck('speed_per_minute')->toArray();
+
+    // Identify strengths and weaknesses
+    $topicPerformance = $this->analyzeTopicPerformance($studentId);
+    
+    $strengths = collect($topicPerformance)->filter(function($item) {
+        return ($item['accuracy'] ?? 0) >= 70 && ($item['total'] ?? 0) >= 2;
+    })->values()->toArray();
+
+    $weaknesses = collect($topicPerformance)->filter(function($item) {
+        return ($item['accuracy'] ?? 0) < 50 && ($item['total'] ?? 0) >= 2;
+    })->values()->toArray();
+
+    // Calculate improvement rate
+    $improvementRate = $this->calculateImprovementRate($scores);
+
+    // Predict future performance
+    $prediction = $this->predictPerformance($scores);
+
+    $rawHours = round($results->sum('time_taken_seconds') / 3600, 2);
+
+    $profile = [
+        'student_info' => [
+            'total_exams' => $results->count(),
+            'exams_passed' => $results->where('status', 'passed')->count(),
+            'exams_failed' => $results->where('status', 'failed')->count(),
+            'pass_rate' => round(($results->where('status', 'passed')->count() / max($results->count(), 1)) * 100, 2),
+            'total_time_spent_raw' => $rawHours,
+            'total_time_spent' => round($rawHours, 1) . ' hours'
+        ],
+        'performance' => [
+            'average_score' => round(collect($scores)->avg(), 2),
+            'highest_score' => collect($scores)->max() ?? 0,
+            'lowest_score' => collect($scores)->min() ?? 0,
+            'average_accuracy' => round(collect($accuracies)->avg(), 2),
+            'average_speed' => round(collect($speeds)->avg(), 2),
+            'consistency_score' => $this->calculateConsistencyScore($scores),
+            'improvement_rate' => $improvementRate
+        ],
+        // ✅ Store as arrays (not JSON strings) - they will be encoded when saving to database
+        'strengths' => $strengths,
+        'weaknesses' => $weaknesses,
+        'topic_analysis' => $topicPerformance,
+        'trends' => [
+            'scores' => $results->pluck('percentage')->toArray(),
+            'accuracies' => $results->pluck('accuracy_percentage')->toArray(),
+            'dates' => $results->pluck('created_at')->map(function($date) {
+                return $date->format('d M');
+            })->toArray()
+        ],
+        'prediction' => $prediction
+    ];
+
+    // Update or create tracking record (this will encode arrays to JSON)
+    $this->updatePerformanceTracking($studentId, $batchId, $profile);
+
+    return $profile;
+}
+
+/**
+ * Update performance tracking for student
+ */
+protected function updatePerformanceTracking($studentId, $batchId, $profile)
+{
+    StudentPerformanceTracking::updateOrCreate(
+        ['student_id' => $studentId, 'batch_id' => $batchId],
+        [
+            'accuracy_trend' => $profile['performance']['average_accuracy'] ?? 0,
+            'speed_trend' => $profile['performance']['average_speed'] ?? 0,
+            'consistency_score' => $profile['performance']['consistency_score'] ?? 0,
+            'improvement_rate' => $profile['performance']['improvement_rate'] ?? 0,
+            // ✅ Encode to JSON for database storage
+            'strengths' => json_encode($profile['strengths'] ?? []),
+            'weaknesses' => json_encode($profile['weaknesses'] ?? []),
+            'total_time_spent' => $profile['student_info']['total_time_spent_raw'] ?? 0,
+            'exams_attempted' => $profile['student_info']['total_exams'] ?? 0,
+            'exams_passed' => $profile['student_info']['exams_passed'] ?? 0,
+            'pass_rate' => $profile['student_info']['pass_rate'] ?? 0,
+            'predicted_score' => $profile['prediction']['predicted_score'] ?? null,
+            'prediction_confidence' => $profile['prediction']['confidence'] ?? null,
+            'calculated_at' => now()
+        ]
+    );
+}
+
 
     /**
      * Generate batch performance report
@@ -367,27 +552,27 @@ class AdvancedAnalyticsService
     /**
      * Update performance tracking for student
      */
-    protected function updatePerformanceTracking($studentId, $batchId, $profile)
-    {
-        StudentPerformanceTracking::updateOrCreate(
-            ['student_id' => $studentId, 'batch_id' => $batchId],
-            [
-                'accuracy_trend' => $profile['performance']['average_accuracy'],
-                'speed_trend' => $profile['performance']['average_speed'],
-                'consistency_score' => $profile['performance']['consistency_score'],
-                'improvement_rate' => $profile['performance']['improvement_rate'],
-                'strengths' => $profile['strengths'],
-                'weaknesses' => $profile['weaknesses'],
-                'total_time_spent' => $profile['student_info']['total_time_spent'],
-                'exams_attempted' => $profile['student_info']['total_exams'],
-                'exams_passed' => $profile['student_info']['exams_passed'],
-                'pass_rate' => $profile['student_info']['pass_rate'],
-                'predicted_score' => $profile['prediction']['predicted_score'] ?? null,
-                'prediction_confidence' => $profile['prediction']['confidence'] ?? null,
-                'calculated_at' => now()
-            ]
-        );
-    }
+    // protected function updatePerformanceTracking($studentId, $batchId, $profile)
+    // {
+    //     StudentPerformanceTracking::updateOrCreate(
+    //         ['student_id' => $studentId, 'batch_id' => $batchId],
+    //         [
+    //             'accuracy_trend' => $profile['performance']['average_accuracy'],
+    //             'speed_trend' => $profile['performance']['average_speed'],
+    //             'consistency_score' => $profile['performance']['consistency_score'],
+    //             'improvement_rate' => $profile['performance']['improvement_rate'],
+    //             'strengths' => $profile['strengths'],
+    //             'weaknesses' => $profile['weaknesses'],
+    //             'total_time_spent' => $profile['student_info']['total_time_spent_raw'],
+    //             'exams_attempted' => $profile['student_info']['total_exams'],
+    //             'exams_passed' => $profile['student_info']['exams_passed'],
+    //             'pass_rate' => $profile['student_info']['pass_rate'],
+    //             'predicted_score' => $profile['prediction']['predicted_score'] ?? null,
+    //             'prediction_confidence' => $profile['prediction']['confidence'] ?? null,
+    //             'calculated_at' => now()
+    //         ]
+    //     );
+    // }
 
     /**
      * Calculate median
@@ -428,52 +613,151 @@ class AdvancedAnalyticsService
     /**
      * Analyze topic performance
      */
-    protected function analyzeTopicPerformance($studentId)
-    {
-        $answers = DB::table('student_answers')
-            ->join('student_exams', 'student_answers.student_exam_id', '=', 'student_exams.id')
-            ->join('questions', 'student_answers.question_id', '=', 'questions.id')
-            ->where('student_exams.student_id', $studentId)
-            ->select(
-                'questions.tags',
-                'student_answers.is_correct',
-                'questions.id as question_id'
-            )
-            ->get();
+    // protected function analyzeTopicPerformance($studentId)
+    // {
+    //     $answers = DB::table('student_answers')
+    //         ->join('student_exams', 'student_answers.student_exam_id', '=', 'student_exams.id')
+    //         ->join('questions', 'student_answers.question_id', '=', 'questions.id')
+    //         ->where('student_exams.student_id', $studentId)
+    //         ->select(
+    //             'questions.tags',
+    //             'student_answers.is_correct',
+    //             'questions.id as question_id'
+    //         )
+    //         ->get();
 
-        $topics = [];
+    //     $topics = [];
 
-        foreach ($answers as $answer) {
-            if ($answer->tags) {
-                $tags = json_decode($answer->tags, true) ?? [];
-                foreach ($tags as $tag) {
-                    if (!isset($topics[$tag])) {
-                        $topics[$tag] = ['total' => 0, 'correct' => 0];
-                    }
-                    $topics[$tag]['total']++;
-                    if ($answer->is_correct) {
-                        $topics[$tag]['correct']++;
-                    }
-                }
+    //     foreach ($answers as $answer) {
+    //         if ($answer->tags) {
+    //             $tags = json_decode($answer->tags, true) ?? [];
+    //             foreach ($tags as $tag) {
+    //                 if (!isset($topics[$tag])) {
+    //                     $topics[$tag] = ['total' => 0, 'correct' => 0];
+    //                 }
+    //                 $topics[$tag]['total']++;
+    //                 if ($answer->is_correct) {
+    //                     $topics[$tag]['correct']++;
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     $result = [];
+    //     foreach ($topics as $topic => $data) {
+    //         $result[] = [
+    //             'topic' => $topic,
+    //             'total' => $data['total'],
+    //             'correct' => $data['correct'],
+    //             'accuracy' => round(($data['correct'] / max($data['total'], 1)) * 100, 2)
+    //         ];
+    //     }
+
+    //     usort($result, function($a, $b) {
+    //         return $b['accuracy'] <=> $a['accuracy'];
+    //     });
+
+    //     return $result;
+    // }
+    
+    /**
+ * Analyze topic performance - FIXED
+ */
+protected function analyzeTopicPerformance($studentId)
+{
+    $answers = DB::table('student_answers')
+        ->join('student_exams', 'student_answers.student_exam_id', '=', 'student_exams.id')
+        ->join('questions', 'student_answers.question_id', '=', 'questions.id')
+        ->where('student_exams.student_id', $studentId)
+        ->select(
+            'questions.tags',
+            'student_answers.is_correct',
+            'questions.id as question_id'
+        )
+        ->get();
+
+    $topics = [];
+
+    foreach ($answers as $answer) {
+        // Handle tags - could be JSON, array, or null
+        $tags = $this->parseTags($answer->tags);
+        
+        if (empty($tags)) {
+            // If no tags, use 'General' as default
+            $tags = ['General'];
+        }
+        
+        foreach ($tags as $tag) {
+            $tag = trim($tag);
+            if (empty($tag)) continue;
+            
+            if (!isset($topics[$tag])) {
+                $topics[$tag] = ['total' => 0, 'correct' => 0];
+            }
+            $topics[$tag]['total']++;
+            if ($answer->is_correct) {
+                $topics[$tag]['correct']++;
             }
         }
-
-        $result = [];
-        foreach ($topics as $topic => $data) {
-            $result[] = [
-                'topic' => $topic,
-                'total' => $data['total'],
-                'correct' => $data['correct'],
-                'accuracy' => round(($data['correct'] / max($data['total'], 1)) * 100, 2)
-            ];
-        }
-
-        usort($result, function($a, $b) {
-            return $b['accuracy'] <=> $a['accuracy'];
-        });
-
-        return $result;
     }
+
+    $result = [];
+    foreach ($topics as $topic => $data) {
+        $accuracy = $data['total'] > 0 
+            ? round(($data['correct'] / $data['total']) * 100, 2) 
+            : 0;
+            
+        $result[] = [
+            'topic' => $topic,
+            'total' => $data['total'],
+            'correct' => $data['correct'],
+            'incorrect' => $data['total'] - $data['correct'],
+            'accuracy' => $accuracy
+        ];
+    }
+
+    // Sort by total questions descending, then by accuracy
+    usort($result, function($a, $b) {
+        if ($a['total'] == $b['total']) {
+            return $b['accuracy'] <=> $a['accuracy'];
+        }
+        return $b['total'] <=> $a['total'];
+    });
+
+    return $result;
+}
+
+/**
+ * Parse tags from various formats
+ */
+protected function parseTags($tags)
+{
+    if (is_null($tags)) {
+        return [];
+    }
+    
+    if (is_array($tags)) {
+        return $tags;
+    }
+    
+    if (is_string($tags)) {
+        // Try JSON decode
+        $decoded = json_decode($tags, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+        
+        // Try comma-separated
+        if (strpos($tags, ',') !== false) {
+            return array_map('trim', explode(',', $tags));
+        }
+        
+        // Single tag
+        return [trim($tags)];
+    }
+    
+    return [];
+}
 
     /**
      * Calculate improvement rate

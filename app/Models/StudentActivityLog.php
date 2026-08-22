@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class StudentActivityLog extends Model
+class StudentActivityLog extends BaseModel
 {
+    use HasAirport;
     protected $fillable = [
         'student_exam_id', 'student_id', 'exam_id', 'monitoring_session_id',
         'activity_type', 'activity_data', 'description', 'severity', 'occurred_at'

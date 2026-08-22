@@ -1,3 +1,5 @@
+{{-- resources/views/admin/questions/create.blade.php --}}
+
 @extends('layouts.admin')
 
 @section('title', 'Create Question')
@@ -17,7 +19,7 @@
             <h6 class="m-0 font-weight-bold text-primary">Question Details</h6>
         </div>
         <div class="card-body">
-            <form action="{{ route('admin.questions.store') }}" method="POST" id="questionForm">
+            <form action="{{ route('admin.questions.store') }}" method="POST" id="questionForm" enctype="multipart/form-data">
                 @csrf
 
                 <div class="row">
@@ -32,6 +34,36 @@
                             @enderror
                         </div>
 
+                        <!-- Question Image -->
+                        <div class="mb-3">
+                            <label for="question_image" class="form-label">Question Image</label>
+                            <input type="file" class="form-control @error('question_image') is-invalid @enderror"
+                                   id="question_image" name="question_image" accept="image/*"
+                                   onchange="previewQuestionImage(this)">
+                            @error('question_image')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">Supported formats: JPG, PNG, GIF, SVG (Max: 2MB)</small>
+                            <div id="questionImagePreview" class="mt-2" style="display: none;">
+                                <img id="questionImagePreviewImg" src="#" alt="Question Image Preview" class="img-fluid" style="max-height: 200px;">
+                                <button type="button" class="btn btn-sm btn-danger mt-1" onclick="removeQuestionImage()">
+                                    <i class="bi bi-x"></i> Remove Image
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Question Image Alt Text -->
+                        <div class="mb-3">
+                            <label for="question_image_alt" class="form-label">Image Alt Text</label>
+                            <input type="text" class="form-control @error('question_image_alt') is-invalid @enderror"
+                                   id="question_image_alt" name="question_image_alt" 
+                                   value="{{ old('question_image_alt') }}"
+                                   placeholder="Descriptive text for accessibility">
+                            @error('question_image_alt')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <!-- Explanation -->
                         <div class="mb-3">
                             <label for="explanation" class="form-label">Explanation</label>
@@ -42,7 +74,6 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                        <input type="hidden" id="correct_option_value" name="correct_option_value" value="">
 
                         <!-- Options Container (for choice questions) -->
                         <div id="options-container" style="display: none;">
@@ -62,13 +93,13 @@
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="correct_numerical" class="form-label">Numerical Answer <span class="text-danger">*</span></label>
-                                        <input type="number" class="form-control" id="correct_numerical" name="correct_numerical" step="any">
+                                        <input type="number" class="form-control" id="correct_numerical" name="correct_numerical" step="any" value="{{ old('correct_numerical') }}">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="tolerance" class="form-label">Tolerance (±)</label>
-                                        <input type="number" class="form-control" id="tolerance" name="tolerance" step="0.001" value="0.001">
+                                        <input type="number" class="form-control" id="tolerance" name="tolerance" step="0.001" value="{{ old('tolerance', 0.001) }}">
                                         <small class="text-muted">Allowed deviation for correct answer</small>
                                     </div>
                                 </div>
@@ -234,6 +265,7 @@
         padding: 10px;
         margin-bottom: 10px;
         border-radius: 5px;
+        border: 1px solid #e9ecef;
     }
     .correct-badge {
         background: #28a745;
@@ -242,13 +274,19 @@
         border-radius: 3px;
         font-size: 12px;
     }
+    .option-image-preview {
+        max-height: 80px;
+        margin-top: 5px;
+    }
 </style>
 @endpush
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     let optionCount = 0;
+    let tempOptionImages = {};
 
     $(document).ready(function() {
         $('.select2').select2({
@@ -256,60 +294,21 @@
             allowClear: true
         });
 
-        // Initialize type change handler
         handleTypeChange();
-
-        // Fix: Ensure correct_option is handled properly on form submit
-        // $('#questionForm').on('submit', function(e) {
-        //     const type = $('#type').val();
-            
-        //     if (type === 'single_choice') {
-        //         // Find which radio is selected
-        //         const selectedRadio = $('input[name="correct_option"]:checked');
-        //         if (selectedRadio.length === 0) {
-        //             toastr.error('Please select the correct answer');
-        //             e.preventDefault();
-        //             return false;
-        //         }
-                
-        //         const selectedIndex = parseInt(selectedRadio.val());
-                
-        //         // Set ALL options to is_correct=0 first
-        //         $('.option-row').each(function(index) {
-        //             $(`input[name="options[${index}][is_correct]"]`).val(0);
-        //         });
-                
-        //         // Set the selected option to is_correct=1
-        //         $(`input[name="options[${selectedIndex}][is_correct]"]`).val(1);
-                
-        //         // Debug: Log the values
-        //         console.log('Selected index:', selectedIndex);
-        //         $('.option-row').each(function(index) {
-        //             console.log(`Option ${index} is_correct:`, $(`input[name="options[${index}][is_correct]"]`).val());
-        //         });
-                
-        //         // Remove the correct_option field from submission to avoid confusion
-        //         // We already have the is_correct values set
-        //     }
-            
-        //     return true; // Allow form submission
-        // });
     });
 
     function handleTypeChange() {
         const type = $('#type').val();
 
-        // Hide all containers
         $('#options-container').hide();
         $('#numerical-container').hide();
 
-        // Reset option count and clear list when type changes
         if (type === 'single_choice' || type === 'multiple_choice') {
             $('#options-list').empty();
             optionCount = 0;
             $('#options-container').show();
-            addOption(); // Add first option
-            addOption(); // Add second option
+            addOption();
+            addOption();
         } else if (type === 'numerical') {
             $('#numerical-container').show();
         }
@@ -322,47 +321,75 @@
         
         let correctInput = '';
         if (isMultiple) {
-            // Multiple choice - use checkbox with hidden field
             correctInput = `
                 <input class="form-check-input" type="checkbox" 
-                       name="options[${optionCount}][is_correct]" 
-                       value="1">
-                <input type="hidden" name="options[${optionCount}][is_correct]" value="0">
+                       name="correct_options[]" 
+                       value="${optionCount}"
+                       id="correct_option_${optionCount}"
+                       onchange="updateCorrectStatus(${optionCount}, this.checked)">
+                <label class="form-check-label" for="correct_option_${optionCount}">
+                    Correct Answer
+                </label>
             `;
         } else {
-            // Single choice - use radio button with hidden field
             correctInput = `
                 <input class="form-check-input" type="radio" 
                        name="correct_option" 
                        value="${optionCount}"
-                       id="correct_option_${optionCount}">
+                       id="correct_option_${optionCount}"
+                       onchange="updateCorrectStatus(${optionCount}, true)">
                 <label class="form-check-label" for="correct_option_${optionCount}">
                     Correct Answer
                 </label>
-                <input type="hidden" name="options[${optionCount}][is_correct]" value="0">
             `;
         }
         
         const optionHtml = `
             <div class="option-row" id="option-${optionCount}">
                 <div class="row">
-                    <div class="col-md-8">
+                    <div class="col-md-7">
                         <input type="text" class="form-control"
                                name="options[${optionCount}][option_text]"
-                               placeholder="Option ${letter}" required>
+                               placeholder="Option ${letter} text" 
+                               id="option_text_${optionCount}">
                     </div>
                     <div class="col-md-3">
+                        <input type="file" class="form-control form-control-sm"
+                               name="options[${optionCount}][option_image]"
+                               accept="image/*"
+                               onchange="previewOptionImage(${optionCount}, this)"
+                               id="option_image_${optionCount}">
+                    </div>
+                    <div class="col-md-2">
                         <div class="form-check mt-2">
                             ${correctInput}
                         </div>
                     </div>
-                    <div class="col-md-1">
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-7">
+                        <input type="text" class="form-control form-control-sm"
+                               name="options[${optionCount}][option_image_alt]"
+                               placeholder="Image alt text"
+                               id="option_image_alt_${optionCount}">
+                    </div>
+                    <div class="col-md-3">
+                        <div id="option_image_preview_${optionCount}" style="display: none;">
+                            <img src="#" alt="Option Image" class="option-image-preview">
+                            <button type="button" class="btn btn-sm btn-danger" 
+                                    onclick="removeOptionImage(${optionCount})">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
                         <button type="button" class="btn btn-sm btn-danger" onclick="removeOption(${optionCount})">
-                            <i class="bi bi-x"></i>
+                            <i class="bi bi-x-circle"></i>
                         </button>
                     </div>
                 </div>
                 <input type="hidden" name="options[${optionCount}][order]" value="${optionCount}">
+                <input type="hidden" name="options[${optionCount}][is_correct]" value="0" class="is-correct-hidden">
             </div>
         `;
 
@@ -370,22 +397,69 @@
         optionCount++;
     }
 
+    function updateCorrectStatus(optionId, isChecked) {
+        const type = $('#type').val();
+        
+        if (type === 'single_choice') {
+            // Single choice - only one can be correct
+            $('input[name="correct_option"]').not(`[value="${optionId}"]`).prop('checked', false);
+            $('.is-correct-hidden').val(0);
+            $(`#option-${optionId} .is-correct-hidden`).val(isChecked ? 1 : 0);
+        } else {
+            // Multiple choice - can have multiple correct
+            $(`#option-${optionId} .is-correct-hidden`).val(isChecked ? 1 : 0);
+        }
+    }
+
     function removeOption(id) {
         if ($('.option-row').length > 2) {
-            // If the removed option was selected, clear the radio selection
-            $(`input[name="correct_option"][value="${id}"]`).prop('checked', false);
             $(`#option-${id}`).remove();
         } else {
             toastr.warning('Minimum 2 options required');
         }
     }
 
+    function previewOptionImage(optionId, input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewDiv = $(`#option_image_preview_${optionId}`);
+                previewDiv.find('img').attr('src', e.target.result);
+                previewDiv.show();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function removeOptionImage(optionId) {
+        $(`#option_image_${optionId}`).val('');
+        $(`#option_image_preview_${optionId}`).hide();
+        $(`#option_image_preview_${optionId} img`).attr('src', '#');
+    }
+
+    function previewQuestionImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#questionImagePreviewImg').attr('src', e.target.result);
+                $('#questionImagePreview').show();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function removeQuestionImage() {
+        $('#question_image').val('');
+        $('#questionImagePreview').hide();
+        $('#questionImagePreviewImg').attr('src', '#');
+    }
+
     function previewQuestion() {
-        // Collect form data
         const questionText = $('#question_text').val();
         const type = $('#type option:selected').text();
         const difficulty = $('#difficulty option:selected').text();
         const marks = $('#marks').val();
+        const questionImage = $('#questionImagePreviewImg').attr('src');
 
         let preview = `
             <div class="card">
@@ -398,6 +472,7 @@
                     </div>
                     <div class="question-text mb-4">
                         ${questionText}
+                        ${questionImage && questionImage !== '#' ? `<br><img src="${questionImage}" alt="Question image" class="img-fluid mt-2" style="max-height: 200px;">` : ''}
                     </div>
         `;
 
@@ -406,10 +481,12 @@
             preview += '<h6>Options:</h6><div class="options-preview">';
             $('.option-row').each(function() {
                 const optionText = $(this).find('input[name*="[option_text]"]').val();
+                const optionImage = $(this).find('img').attr('src');
                 const isChecked = $(this).find('input[type="checkbox"]:checked, input[type="radio"]:checked').length > 0;
                 preview += `
                     <div class="option-item mb-2 p-2 ${isChecked ? 'bg-success text-white' : 'bg-light'}">
-                        ${optionText}
+                        ${optionText || ''}
+                        ${optionImage && optionImage !== '#' ? `<br><img src="${optionImage}" alt="Option image" class="img-fluid mt-1" style="max-height: 80px;">` : ''}
                         ${isChecked ? '<span class="correct-badge ms-2">✓ Correct</span>' : ''}
                     </div>
                 `;
@@ -445,13 +522,53 @@
         $('#previewModal').modal('show');
     }
 
-    // Debug: Log form data before submit
-    $(document).on('submit', '#questionForm', function(e) {
-        console.log('Form submitting...');
-        const formData = new FormData(this);
-        for (let pair of formData.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
+    // Form validation before submit
+    $('#questionForm').on('submit', function(e) {
+        const type = $('#type').val();
+        
+        if (type === 'single_choice' || type === 'multiple_choice') {
+            // Check if at least one option has text or image
+            let hasOption = false;
+            $('.option-row').each(function() {
+                const text = $(this).find('input[name*="[option_text]"]').val();
+                const image = $(this).find('input[name*="[option_image]"]').val();
+                if (text || image) {
+                    hasOption = true;
+                }
+            });
+            
+            if (!hasOption) {
+                toastr.error('Please add at least one option with text or image');
+                e.preventDefault();
+                return false;
+            }
+            
+            // Check correct answer selection
+            if (type === 'single_choice') {
+                if ($('input[name="correct_option"]:checked').length === 0) {
+                    toastr.error('Please select the correct answer');
+                    e.preventDefault();
+                    return false;
+                }
+            } else {
+                if ($('input[name="correct_options[]"]:checked').length === 0) {
+                    toastr.error('Please select at least one correct answer');
+                    e.preventDefault();
+                    return false;
+                }
+            }
         }
+        
+        if (type === 'numerical') {
+            const numericalAnswer = $('#correct_numerical').val();
+            if (!numericalAnswer && numericalAnswer !== '0') {
+                toastr.error('Please enter the correct numerical answer');
+                e.preventDefault();
+                return false;
+            }
+        }
+        
+        return true;
     });
 </script>
 @endpush

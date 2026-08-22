@@ -46,11 +46,29 @@
                         @endif
                     </div>
 
-                    <!-- Question Text -->
+                    <!-- Question Text & Image -->
                     <div class="mb-4">
                         <h6 class="text-muted mb-2">Question:</h6>
                         <div class="p-3 bg-light rounded">
-                            {!! nl2br(e($question->question_text)) !!}
+                            @if($question->question_text)
+                                {!! nl2br(e($question->question_text)) !!}
+                            @endif
+                            
+                            @if($question->question_text_hi)
+                            </br>
+                                {!! nl2br(e($question->question_text_hi)) !!}
+                            @endif
+                            @if($question->question_image)
+                                <div class="mt-2">
+                                    <img src="{{ asset('storage/' . $question->question_image) }}" 
+                                         alt="{{ $question->question_image_alt ?? 'Question image' }}" 
+                                         class="img-fluid" 
+                                         style="max-height: 300px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                                    @if($question->question_image_alt)
+                                        <br><small class="text-muted">Alt: {{ $question->question_image_alt }}</small>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </div>
 
@@ -63,11 +81,30 @@
                                     <div class="col-md-6 mb-2">
                                         <div class="card {{ $option->is_correct ? 'border-success bg-success-light' : '' }}">
                                             <div class="card-body py-2">
-                                                <div class="d-flex align-items-center">
-                                                    <span class="badge bg-secondary me-2">{{ chr(65 + $index) }}</span>
-                                                    <span class="flex-grow-1">{{ $option->option_text }}</span>
+                                                <div class="d-flex align-items-start">
+                                                    <span class="badge bg-secondary me-2 mt-1">{{ chr(65 + $index) }}</span>
+                                                    <div class="flex-grow-1">
+                                                        @if($option->option_text)
+                                                            <div class="option-text">{{ $option->option_text }}</div>
+                                                        @endif
+                                                         @if($option->option_text_hi)
+                                                        </br>
+                                                            {{ $option->option_text_hi }}
+                                                        @endif
+                                                        @if($option->option_image)
+                                                            <div class="mt-1">
+                                                                <img src="{{ asset('storage/' . $option->option_image) }}" 
+                                                                     alt="{{ $option->option_image_alt ?? 'Option ' . chr(65 + $index) . ' image' }}" 
+                                                                     class="img-fluid option-image" 
+                                                                     style="max-height: 100px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                                                                @if($option->option_image_alt)
+                                                                    <br><small class="text-muted">Alt: {{ $option->option_image_alt }}</small>
+                                                                @endif
+                                                            </div>
+                                                        @endif
+                                                    </div>
                                                     @if($option->is_correct)
-                                                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                                        <i class="bi bi-check-circle-fill text-success fs-5 ms-2"></i>
                                                     @endif
                                                 </div>
                                             </div>
@@ -94,12 +131,27 @@
                         </div>
                     @endif
 
-                    <!-- Explanation -->
+                    <!-- Explanation with Image Support -->
                     @if($question->explanation)
                         <div class="mb-4">
                             <h6 class="text-muted mb-2">Explanation:</h6>
-                            <div class="p-3 bg-info-light rounded">
-                                {!! nl2br(e($question->explanation)) !!}
+                            <div class="p-3 bg-info-light rounded explanation-content">
+                                {!! $question->explanation !!}
+                                
+                                @if($question->explanation_hi)
+                                   <br> {!! $question->explanation_hi !!}                                    
+                                @endif
+                                  @if($question->explanation_image)
+                                <div class="mt-2">
+                                    <img src="{{ asset('storage/' . $question->explanation_image) }}" 
+                                         alt="{{ $question->explanation_image_alt ?? 'Explanation image' }}" 
+                                         class="img-fluid" 
+                                         style="max-height: 300px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                                    @if($question->explanation_image_alt)
+                                        <br><small class="text-muted">Alt: {{ $question->explanation_image_alt }}</small>
+                                    @endif
+                                </div>
+                            @endif
                             </div>
                         </div>
                     @endif
@@ -170,7 +222,7 @@
                     @if($question->categories->count() > 0)
                         @foreach($question->categories as $category)
                             <span class="badge bg-info d-inline-block mb-1 p-2">
-                                {{ $category->full_path }}
+                                {{ $category->name }}
                             </span>
                         @endforeach
                     @else
@@ -193,6 +245,52 @@
                     @endif
                 </div>
             </div>
+
+            <!-- Question Image Preview -->
+            @if($question->question_image)
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Question Image</h6>
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="{{ asset('storage/' . $question->question_image) }}" 
+                             alt="{{ $question->question_image_alt ?? 'Question image' }}" 
+                             class="img-fluid rounded" 
+                             style="max-height: 200px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                        @if($question->question_image_alt)
+                            <p class="text-muted mt-2"><small>Alt: {{ $question->question_image_alt }}</small></p>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            <!-- Option Images Preview -->
+            @if($question->options->whereNotNull('option_image')->count() > 0)
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Option Images</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @foreach($question->options->whereNotNull('option_image') as $option)
+                                <div class="col-6 mb-2">
+                                    <div class="text-center">
+                                        <img src="{{ asset('storage/' . $option->option_image) }}" 
+                                             alt="{{ $option->option_image_alt ?? 'Option image' }}" 
+                                             class="img-fluid rounded" 
+                                             style="max-height: 80px; border: 1px solid #ddd; padding: 3px; border-radius: 5px;">
+                                        <br>
+                                        <small class="text-muted">Option {{ chr(65 + $option->order) }}</small>
+                                        @if($option->is_correct)
+                                            <span class="badge bg-success">✓</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <!-- Metadata -->
             <div class="card shadow mb-4">
@@ -276,13 +374,43 @@
 @push('styles')
 <style>
     .bg-success-light {
-        background-color: #d4edda;
+        background-color: #d4edda !important;
     }
     .bg-info-light {
-        background-color: #e1f5fe;
+        background-color: #e1f5fe !important;
     }
     .border-success {
         border-color: #28a745 !important;
+    }
+    .option-item {
+        border-radius: 5px;
+    }
+    .option-text {
+        word-wrap: break-word;
+        white-space: pre-wrap;
+    }
+    .explanation-content img {
+        max-height: 200px;
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 5px;
+        margin: 5px 0;
+        display: block;
+        max-width: 100%;
+    }
+    .explanation-content {
+        /*white-space: pre-wrap;*/
+        word-wrap: break-word;
+    }
+    .explanation-content p {
+        margin-bottom: 10px;
+    }
+    .option-image {
+        max-width: 100%;
+        height: auto;
+    }
+    .card-body .d-flex.align-items-start {
+        gap: 8px;
     }
 </style>
 @endpush
@@ -291,6 +419,7 @@
 <script>
     function previewQuestion() {
         const questionText = `{!! addslashes($question->question_text) !!}`;
+        const questionImage = `{{ $question->question_image ? asset('storage/' . $question->question_image) : '' }}`;
         const type = '{{ $question->type_name }}';
         const difficulty = '{{ $question->difficulty_name }}';
         const marks = '{{ $question->marks }}';
@@ -305,16 +434,20 @@
                         <span class="badge bg-primary">${marks} Mark(s)</span>
                     </div>
                     <div class="question-text mb-4">
-                        ${questionText}
+                        ${questionText || ''}
+                        ${questionImage ? `<br><img src="${questionImage}" alt="Question image" class="img-fluid mt-2" style="max-height: 200px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">` : ''}
                     </div>
         `;
 
         @if(in_array($question->type, ['single_choice', 'multiple_choice']))
             preview += '<h6>Options:</h6><div class="options-preview">';
             @foreach($question->options as $option)
+                const optionText = `{!! addslashes($option->option_text) !!}`;
+                const optionImage = `{{ $option->option_image ? asset('storage/' . $option->option_image) : '' }}`;
                 preview += `
-                    <div class="option-item mb-2 p-2 {{ $option->is_correct ? 'bg-success text-white' : 'bg-light' }}">
-                        {{ $option->option_text }}
+                    <div class="option-item mb-2 p-2 {{ $option->is_correct ? 'bg-success text-white' : 'bg-light' }}" style="border-radius: 5px;">
+                        ${optionText || ''}
+                        ${optionImage ? `<br><img src="${optionImage}" alt="Option image" class="img-fluid mt-1" style="max-height: 80px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">` : ''}
                         @if($option->is_correct)
                             <span class="badge bg-light text-success ms-2">✓ Correct</span>
                         @endif
@@ -336,7 +469,7 @@
             preview += `
                 <div class="mt-3">
                     <h6>Explanation:</h6>
-                    <div class="text-muted">{{ $question->explanation }}</div>
+                    <div class="text-muted p-2 bg-light rounded" style="white-space: pre-wrap;">{{ $question->explanation }}</div>
                 </div>
             `;
         @endif
@@ -371,9 +504,23 @@
     }
 
     function deleteQuestion() {
-        if (confirm('Are you sure you want to delete this question?')) {
+        if (confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
             document.getElementById('delete-form').submit();
         }
     }
+
+    // Handle image loading errors
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('img').forEach(function(img) {
+            img.addEventListener('error', function() {
+                this.style.display = 'none';
+                const parent = this.parentElement;
+                const errorMsg = document.createElement('span');
+                errorMsg.className = 'text-muted';
+                errorMsg.textContent = '⚠️ Image could not be loaded';
+                parent.appendChild(errorMsg);
+            });
+        });
+    });
 </script>
 @endpush

@@ -102,7 +102,7 @@
                     @error('avatar')
                     <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">Max size: 2MB. Leave empty to keep current</small>
+                    <small class="text-muted">Max size: 4MB. Leave empty to keep current</small>
                 </div>
 
                 <div class="form-check mb-3">

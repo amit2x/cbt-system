@@ -9,61 +9,63 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Feedback</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-chat-dots-fill fs-2 text-gray-300"></i>
-                        </div>
+<div class="row mb-4">
+    <!-- Total Feedback -->
+    <div class="col-6 col-md-4 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Feedback</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total'] }}</div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Average Rating</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $stats['average_rating'] ? number_format($stats['average_rating'], 1) . ' / 5' :
-                                'N/A' }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-star-fill fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Last 30 Days</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['recent'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-calendar-check fs-2 text-gray-300"></i>
-                        </div>
+                    <div class="col-auto">
+                        <i class="bi bi-chat-dots-fill fs-2 text-primary"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Average Rating -->
+    <div class="col-6 col-md-4 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Average Rating</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $stats['average_rating'] ? number_format($stats['average_rating'], 1) . ' / 5' : 'N/A' }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-star-fill fs-2 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Last 30 Days -->
+    <div class="col-6 col-md-4 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Last 30 Days</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['recent'] }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-calendar-check fs-2 text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Feedback List -->
     <div class="card shadow mb-4">

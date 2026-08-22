@@ -145,45 +145,121 @@ class ResultAnalysisService
     /**
      * Calculate topic analysis
      */
-    protected function calculateTopicAnalysis($answers)
-    {
-        $topics = [];
+    // protected function calculateTopicAnalysis($answers)
+    // {
+    //     $topics = [];
 
-        foreach ($answers as $answer) {
-            if ($answer->question->tags) {
-                foreach ($answer->question->tags as $tag) {
-                    if (!isset($topics[$tag])) {
-                        $topics[$tag] = [
-                            'name' => $tag,
-                            'total' => 0,
-                            'correct' => 0,
-                            'incorrect' => 0,
-                            'unanswered' => 0
-                        ];
-                    }
+    //     foreach ($answers as $answer) {
+    //         if ($answer->question->tags) {
+    //             foreach ($answer->question->tags as $tag) {
+    //                 if (!isset($topics[$tag])) {
+    //                     $topics[$tag] = [
+    //                         'name' => $tag,
+    //                         'total' => 0,
+    //                         'correct' => 0,
+    //                         'incorrect' => 0,
+    //                         'unanswered' => 0
+    //                     ];
+    //                 }
 
-                    $topics[$tag]['total']++;
-                    if ($answer->is_correct) {
-                        $topics[$tag]['correct']++;
-                    } elseif ($answer->selected_options || $answer->answer_text) {
-                        $topics[$tag]['incorrect']++;
-                    } else {
-                        $topics[$tag]['unanswered']++;
-                    }
-                }
+    //                 $topics[$tag]['total']++;
+    //                 if ($answer->is_correct) {
+    //                     $topics[$tag]['correct']++;
+    //                 } elseif ($answer->selected_options || $answer->answer_text) {
+    //                     $topics[$tag]['incorrect']++;
+    //                 } else {
+    //                     $topics[$tag]['unanswered']++;
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     // Calculate percentages
+    //     foreach ($topics as &$topic) {
+    //         $topic['accuracy'] = $topic['total'] > 0
+    //             ? round(($topic['correct'] / $topic['total']) * 100, 2)
+    //             : 0;
+    //     }
+
+    //     return array_values($topics);
+    // }
+
+/**
+ * Calculate topic analysis - FIXED
+ */
+protected function calculateTopicAnalysis($answers)
+{
+    $topics = [];
+
+    foreach ($answers as $answer) {
+        // Get the question
+        $question = $answer->question;
+        if (!$question) continue;
+        
+        // Get tags - handle both string and array formats
+        $tags = $question->tags;
+        
+        // If tags is a JSON string, decode it
+        if (is_string($tags)) {
+            $tags = json_decode($tags, true);
+        }
+        
+        // If tags is null or empty, use a default topic name
+        if (empty($tags) || !is_array($tags)) {
+            $tags = ['General'];
+        }
+        
+        foreach ($tags as $tag) {
+            // Skip empty tags
+            if (empty($tag) || $tag === '') continue;
+            
+            $topicKey = trim($tag);
+            
+            if (!isset($topics[$topicKey])) {
+                $topics[$topicKey] = [
+                    'name' => $topicKey,
+                    'total' => 0,
+                    'correct' => 0,
+                    'incorrect' => 0,
+                    'unanswered' => 0,
+                    'accuracy' => 0
+                ];
+            }
+
+            $topics[$topicKey]['total']++;
+            
+            // Check if answer is correct
+            if ($answer->is_correct) {
+                $topics[$topicKey]['correct']++;
+            } elseif ($answer->selected_options || $answer->answer_text) {
+                $topics[$topicKey]['incorrect']++;
+            } else {
+                $topics[$topicKey]['unanswered']++;
             }
         }
-
-        // Calculate percentages
-        foreach ($topics as &$topic) {
-            $topic['accuracy'] = $topic['total'] > 0
-                ? round(($topic['correct'] / $topic['total']) * 100, 2)
-                : 0;
-        }
-
-        return array_values($topics);
     }
 
+    // Calculate accuracy and ensure integer values
+    foreach ($topics as &$topic) {
+        // Ensure values are integers
+        $topic['total'] = (int) $topic['total'];
+        $topic['correct'] = (int) $topic['correct'];
+        $topic['incorrect'] = (int) $topic['incorrect'];
+        $topic['unanswered'] = (int) $topic['unanswered'];
+        
+        // Calculate accuracy
+        $topic['accuracy'] = $topic['total'] > 0 
+            ? round(($topic['correct'] / $topic['total']) * 100, 2) 
+            : 0;
+    }
+
+    // Sort by total questions descending
+    usort($topics, function($a, $b) {
+        return $b['total'] - $a['total'];
+    });
+
+    return array_values($topics);
+}
     /**
      * Calculate difficulty analysis
      */

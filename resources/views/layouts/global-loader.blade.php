@@ -1,4 +1,4 @@
-{{-- resources/views/components/global-loader.blade.php --}}
+{{-- resources/views/layouts/global-loader.blade.php --}}
 <div id="globalLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; pointer-events: none;">
     {{-- Backdrop --}}
     <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); pointer-events: auto;"></div>

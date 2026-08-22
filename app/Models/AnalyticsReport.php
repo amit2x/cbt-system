@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
 class AnalyticsReport extends Model
 {
+    use HasAirport;
     protected $table = 'analytics_reports';
 
     protected $fillable = [

@@ -28,7 +28,7 @@
 
     <div class="row">
         <!-- Question Bank -->
-        <div class="col-md-8">
+        <div class="col-md-8 g-1">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">
@@ -91,7 +91,7 @@
                     <!-- Questions List -->
                     <form id="addQuestionsForm" method="POST" action="{{ route('admin.exams.store-questions', $exam) }}">
                         @csrf
-                        <div class="table-responsive">
+                        <div class="table-responsive"  style="max-height:500px; overflow-y:scroll;">
                             <table class="table table-bordered table-hover">
                                 <thead class="table-light">
                                     <tr>
@@ -118,7 +118,7 @@
                                                    value="{{ $question->id }}"
                                                    {{ $isSelected ? 'checked' : '' }}
                                                    {{ $exam->status == 'published' || $exam->status == 'in_progress' ? 'disabled' : '' }}>
-                                            <input type="hidden" name="questions[{{ $loop->index }}][question_id]" value="{{ $question->id }}">
+                                            <!--<input type="hidden" name="questions[{{ $loop->index }}][question_id]" value="{{ $question->id }}">-->
                                         </td>
                                         <td>
                                             {{ Str::limit(strip_tags($question->question_text), 100) }}
@@ -166,7 +166,7 @@
                             </table>
                         </div>
 
-                        {{ $questions->withQueryString()->links() }}
+                        {{ $questions->withQueryString()->links('pagination::bootstrap-5') }}
 
                         <hr>
 
@@ -225,11 +225,47 @@
                                 </div>
                             </div>
 
-                            <div class="text-end mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-                                    <i class="bi bi-save"></i> Save Questions to Exam
-                                </button>
-                            </div>
+                            <!--<div class="text-end mt-4">-->
+                            <!--    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">-->
+                            <!--        <i class="bi bi-save"></i> Save Questions to Exam-->
+                            <!--    </button>-->
+                            <!--</div>-->
+                            
+                            <!-- need to add max-->
+                            <div class="row mt-4">
+
+    <div class="col-md-7 g-1">
+        <div class="input-group">
+            <input type="number"
+                   class="form-control"
+                   id="randomQuestionCount"
+                   min="1"
+                   max= "{{ $questions->total() }}"
+                   placeholder=" Max questions can be  {{ $questions->total() }}">
+
+            <button type="button"
+                    class="btn btn-warning fw-bold"
+                    onclick="addRandomQuestions()">
+                <i class="bi bi-shuffle"></i>
+                Add Random
+            </button>
+        </div>
+
+        <small class="text-muted">
+            Maximum available: {{ $questions->total() }}
+        </small>
+    </div>
+
+    <div class="col-md-5 text-end g-1">
+        <button type="submit"
+                class="btn btn-success btn-md fw-bold"
+                id="submitBtn">
+            <i class="bi bi-save"></i>
+            Save Questions to Exam
+        </button>
+    </div>
+
+</div>
                         @else
                             <div class="alert alert-warning">
                                 <i class="bi bi-lock-fill me-2"></i>
@@ -242,8 +278,8 @@
         </div>
 
         <!-- Selected Questions Sidebar -->
-        <div class="col-md-4">
-            <div class="card shadow mb-4">
+        <div class="col-md-4 g-1">
+            <div class="card shadow mb-4" style="max-height:600px; overflow-y:scroll;">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
                         Selected Questions 
@@ -251,9 +287,34 @@
                     </h6>
                 </div>
                 <div class="card-body">
+                    @if($exam->questions->count() > 0)
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+
+                                    <div>
+                                        <input type="checkbox"
+                                               id="selectAllSelectedQuestions">
+                                
+                                        <label for="selectAllSelectedQuestions">
+                                            Select All
+                                        </label>
+                                    </div>
+                                
+                                    <button type="button"
+                                            class="btn btn-danger btn-sm"
+                                            onclick="removeSelectedQuestions()">
+                                
+                                        <i class="bi bi-trash"></i>
+                                        Remove Selected
+                                    </button>
+                                
+                                </div>
+                    @endif
                     <div id="selected-questions-list">
+                        
                         @if($exam->questions->count() > 0)
+                        
                             <div class="list-group">
+                                
                                 @foreach($exam->questions as $index => $question)
                                     <div class="list-group-item selected-question-item" data-id="{{ $question->id }}">
                                         <div class="d-flex justify-content-between align-items-center">
@@ -466,93 +527,10 @@
 @push('scripts')
 <script>
     let selectedQuestions = [];
+    
     let removeQuestionId = null;
 
-    // Helper function to safely get Bootstrap modal
-    function getModalInstance(elementId) {
-        const element = document.getElementById(elementId);
-        if (!element) return null;
-        
-        try {
-            // Check if bootstrap is available globally
-            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                // Try to get existing instance or create new one
-                let modal = bootstrap.Modal.getInstance(element);
-                if (!modal) {
-                    modal = new bootstrap.Modal(element);
-                }
-                return modal;
-            } else {
-                // Fallback: Use jQuery if bootstrap is not available
-                if (typeof $ !== 'undefined' && $.fn.modal) {
-                    return {
-                        show: function() {
-                            $(element).modal('show');
-                        },
-                        hide: function() {
-                            $(element).modal('hide');
-                        }
-                    };
-                } else {
-                    console.error('Bootstrap or jQuery modal not available');
-                    return null;
-                }
-            }
-        } catch (e) {
-            console.error('Error getting modal instance:', e);
-            return null;
-        }
-    }
-
-    // Helper function to show modal
-    function showModal(elementId) {
-        const modal = getModalInstance(elementId);
-        if (modal) {
-            modal.show();
-        } else {
-            toastr.error('Modal not available');
-            // Fallback: show alert
-            console.log('Modal not available, showing alert instead');
-            // You could also use a custom modal or alert here
-        }
-    }
-
-    // Helper function to hide modal
-    function hideModal(elementId) {
-        const modal = getModalInstance(elementId);
-        if (modal) {
-            modal.hide();
-        }else{
-            toastr.error('Modal not available');
-        }
-    }
-
     document.addEventListener('DOMContentLoaded', function() {
-        
-          // Check if bootstrap is loaded
-        if (typeof bootstrap === 'undefined') {
-            console.warn('Bootstrap not loaded, waiting...');
-            // Wait for bootstrap to load
-            const checkBootstrap = setInterval(function() {
-                if (typeof bootstrap !== 'undefined') {
-                    clearInterval(checkBootstrap);
-                    toastr.success('Bootstrap loaded:', bootstrap.Modal.VERSION);
-                    console.log('Bootstrap loaded:', bootstrap.Modal.VERSION);
-                    initPage();
-                }
-            }, 100);
-            // Timeout after 5 seconds
-            setTimeout(function() {
-                clearInterval(checkBootstrap);
-                if (typeof bootstrap === 'undefined') {
-                    console.error('Bootstrap failed to load');
-                }
-            }, 5000);
-        } else {
-            console.log('Bootstrap already loaded:', bootstrap.Modal.VERSION);
-            initPage();
-        }
-        
         // Initialize selected questions from existing exam questions
         @foreach($exam->questions as $question)
             selectedQuestions.push({
@@ -562,6 +540,7 @@
             });
         @endforeach
         updateSelectedList();
+        updateSelectedBadge();
 
         // Select all checkbox
         const selectAllCheckbox = document.getElementById('select-all');
@@ -590,6 +569,20 @@
                 }
             });
         });
+        
+        document.addEventListener('change', function(e){
+
+            if(e.target.id === 'selectAllSelectedQuestions'){
+        
+                document
+                    .querySelectorAll('.selected-question-checkbox')
+                    .forEach(cb => {
+        
+                        cb.checked = e.target.checked;
+        
+                    });
+            }
+        });
 
         // Add Section Form
         const addSectionForm = document.getElementById('addSectionForm');
@@ -616,7 +609,8 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        hideModal('addSectionModal');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addSectionModal'));
+                        if (modal) modal.hide();
                         addSectionForm.reset();
                         toastr.success(data.message);
                         setTimeout(() => {
@@ -627,7 +621,6 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
                     toastr.error('Error adding section');
                 })
                 .finally(() => {
@@ -643,7 +636,8 @@
             confirmRemoveBtn.addEventListener('click', function() {
                 if (removeQuestionId) {
                     removeQuestionFromExam(removeQuestionId);
-                    hideModal('removeConfirmModal');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('removeConfirmModal'));
+                    if (modal) modal.hide();
                 }
             });
         }
@@ -681,21 +675,22 @@
                 submitBtn.innerHTML = '<span class="loading-spinner me-2"></span>Updating...';
 
                 const formData = new FormData(this);
-                formData.append('_method', 'PUT');
                 const url = `/admin/exams/{{ $exam->id }}/sections/${id}`;
 
                 fetch(url, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-HTTP-Method-Override': 'PUT'
                     },
                     body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        hideModal('editSectionModal');
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('editSectionModal'));
+                        if (modal) modal.hide();
                         toastr.success(data.message);
                         setTimeout(() => {
                             location.reload();
@@ -705,22 +700,12 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
                     toastr.error('Error updating section');
                 })
                 .finally(() => {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalText;
                 });
-            });
-        }
-
-        // Add Section button click handler
-        const addSectionBtn = document.querySelector('[data-bs-target="#addSectionModal"]');
-        if (addSectionBtn) {
-            addSectionBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                showModal('addSectionModal');
             });
         }
     });
@@ -734,23 +719,64 @@
         }
     }
 
+    // function updateSelectedQuestions() {
+    //     // selectedQuestions = [];
+    //     document.querySelectorAll('.question-checkbox:checked').forEach(function(checkbox) {
+    //         const row = checkbox.closest('tr');
+    //         const questionId = checkbox.value;
+    //         const questionText = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+    //         const marksInput = row.querySelector('.marks-input');
+    //         const marks = marksInput ? parseFloat(marksInput.value) || 0 : 0;
+    //         selectedQuestions.push({
+    //             id: parseInt(questionId),
+    //             text: questionText.substring(0, 50),
+    //             marks: marks
+    //         });
+    //     });
+    //     updateSelectedList();
+    //     updateSelectedBadge();
+    // }
     function updateSelectedQuestions() {
-        selectedQuestions = [];
-        document.querySelectorAll('.question-checkbox:checked').forEach(function(checkbox) {
-            const row = checkbox.closest('tr');
-            const questionId = checkbox.value;
-            const questionText = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
-            const marksInput = row.querySelector('.marks-input');
-            const marks = marksInput ? parseFloat(marksInput.value) || 0 : 0;
-            selectedQuestions.push({
-                id: parseInt(questionId),
-                text: questionText.substring(0, 50),
-                marks: marks
-            });
-        });
-        updateSelectedList();
-        updateSelectedBadge();
-    }
+
+    document.querySelectorAll('.question-checkbox').forEach(function(checkbox) {
+
+        const questionId = parseInt(checkbox.value);
+
+        if (checkbox.checked) {
+
+            // Add only if not already present
+            if (!selectedQuestions.some(q => q.id === questionId)) {
+
+                const row = checkbox.closest('tr');
+                const questionText =
+                    row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+
+                const marksInput =
+                    row.querySelector('.marks-input');
+
+                const marks =
+                    marksInput ? parseFloat(marksInput.value) || 0 : 0;
+
+                selectedQuestions.push({
+                    id: questionId,
+                    text: questionText.substring(0, 50),
+                    marks: marks
+                });
+            }
+
+        } else {
+
+            // Remove from array when unchecked
+            selectedQuestions = selectedQuestions.filter(
+                q => q.id !== questionId
+            );
+        }
+
+    });
+
+    updateSelectedList();
+    updateSelectedBadge();
+}
 
     function updateSelectedList() {
         const container = document.getElementById('selected-questions-list');
@@ -768,7 +794,13 @@
         let html = '<div class="list-group">';
         selectedQuestions.forEach((q, index) => {
             html += `
-                <div class="list-group-item selected-question-item" data-id="${q.id}">
+                <div class="list-group-item selected-question-item"
+                 data-id="${q.id}">
+            
+                <div class="form-check">
+                    <input class="form-check-input selected-question-checkbox"
+                           type="checkbox"
+                           value="${q.id}">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <small class="fw-bold">Q${index + 1}</small>
@@ -784,6 +816,7 @@
                             @endif
                         </div>
                     </div>
+                </div>
                 </div>
             `;
         });
@@ -809,7 +842,11 @@
 
     function confirmRemoveQuestion(questionId) {
         removeQuestionId = questionId;
-        showModal('removeConfirmModal');
+        const modalElement = document.getElementById('removeConfirmModal');
+        if (modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
     }
 
     function removeSelectedQuestion(questionId) {
@@ -847,7 +884,6 @@
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             toastr.error('Error removing question');
         });
     }
@@ -938,10 +974,13 @@
             document.getElementById('edit_section_duration').value = section.duration_minutes;
             document.getElementById('edit_randomize_section').checked = section.randomize_questions || false;
             
-            showModal('editSectionModal');
+            const modalElement = document.getElementById('editSectionModal');
+            if (modalElement) {
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
         })
         .catch(error => {
-            console.error('Error:', error);
             toastr.error('Error loading section details');
         });
     }
@@ -969,13 +1008,205 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
                 toastr.error('Error deleting section');
             });
         }
     }
+    
+  
+  function addRandomQuestions()
+    {
+        let count = parseInt(
+            document.getElementById('randomQuestionCount').value
+        );
+    
+        let availableQuestions =
+            document.querySelectorAll('.question-checkbox:not(:checked)');
+    
+        let totalAvailable =
+            availableQuestions.length;
+    
+        if (!count || count < 1) {
+            toastr.warning('Enter a valid number');
+            return;
+        }
+    
+        // if (count > totalAvailable) {
+        //     toastr.error(
+        //         `Only ${totalAvailable} questions available`
+        //     );
+        //     return;
+        // }
+    
+        // Clear current page selection
+        document.querySelectorAll('.question-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
+    
+        // Shuffle available questions
+        let shuffled =
+            Array.from(availableQuestions)
+                .sort(() => Math.random() - 0.5);
+    
+        // Select required count
+        let selected =
+            shuffled.slice(0, count);
+    
+        selected.forEach(cb => {
+            cb.checked = true;
+        });
+    
+        updateSelectedQuestions();
+        updateMarksInputs();
+    
+        if (
+            !confirm(
+                `${count} random questions have been selected.\n\nDo you want to add them to the exam?`
+            )
+        ) {
+            return;
+        }
+    
+        fetch(
+            '{{ route("admin.exams.add-random-questions", $exam) }}',
+            {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN':
+                        document.querySelector('meta[name="csrf-token"]').content,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    count: count
+                })
+            }
+        )
+        .then(response => response.json())
+        .then(data => {
+    
+            if (data.success) {
+    
+                toastr.success(
+                    `${count} questions added successfully`
+                );
+    
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+    
+            } else {
+    
+                toastr.error(
+                    data.message || 'Failed to add questions'
+                );
+    
+            }
+    
+        })
+        .catch(error => {
+    
+            console.error(error);
+    
+            toastr.error(
+                'Error while adding random questions'
+            );
+    
+        });
+    }
+    
+   function removeSelectedQuestions()
+{
+    let ids = [];
 
-    // Modal cleanup
+    document
+        .querySelectorAll('.selected-question-checkbox:checked')
+        .forEach(cb => {
+            ids.push(cb.value);
+        });
+
+    if (ids.length === 0) {
+
+        toastr.warning(
+            'Please select at least one question.'
+        );
+
+        return;
+    }
+
+    if (
+        !confirm(
+            `Remove ${ids.length} question(s) from exam?`
+        )
+    ) {
+        return;
+    }
+
+    toastr.info('Removing selected questions...');
+
+    fetch(
+        '/admin/exams/{{ $exam->id }}/questions/bulk-remove',
+        {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN':
+                    document.querySelector(
+                        'meta[name="csrf-token"]'
+                    ).content,
+
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+
+            body: JSON.stringify({
+                question_ids: ids
+            })
+        }
+    )
+    .then(response => {
+
+        if (!response.ok) {
+            throw new Error(
+                `HTTP Error ${response.status}`
+            );
+        }
+
+        return response.json();
+    })
+    .then(data => {
+
+        if (data.success) {
+
+            toastr.success(
+                data.message ||
+                `${ids.length} question(s) removed successfully.`
+            );
+
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+
+        } else {
+
+            toastr.error(
+                data.message ||
+                'Failed to remove questions.'
+            );
+        }
+
+    })
+    .catch(error => {
+
+        console.error(error);
+
+        toastr.error(
+            'An error occurred while removing questions.'
+        );
+
+    });
+}
+
+    // Modal event listeners for cleanup
     document.addEventListener('hidden.bs.modal', function(e) {
         if (e.target.id === 'addSectionModal') {
             document.getElementById('addSectionForm')?.reset();
@@ -984,17 +1215,5 @@
             document.getElementById('editSectionForm')?.reset();
         }
     });
-
-    // Fallback for modal close buttons
-    document.querySelectorAll('[data-bs-dismiss="modal"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            const target = this.closest('.modal');
-            if (target) {
-                hideModal(target.id);
-            }
-        });
-    });
-
-    console.log('Add Questions page loaded successfully');
 </script>
 @endpush

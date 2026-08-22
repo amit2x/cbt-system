@@ -122,5 +122,9 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+    
+    
+    'multi_airport' => env('MULTI_AIRPORT', true),
+    'default_airport_code' => env('DEFAULT_AIRPORT_CODE', 'CCU'),
 
 ];

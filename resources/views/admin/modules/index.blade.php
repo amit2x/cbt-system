@@ -31,6 +31,7 @@
                                 </th>
                                 <th>#</th>
                                 <th>Title</th>
+                                <th>Subject_id</th>
                                 <th>Description</th>
                                 <th>Status</th>
                                 <th>Created</th>
@@ -52,6 +53,7 @@
                                         {{ $module->title }}
                                     </a>
                                 </td>
+                                <td class="text-center text-bold"> {{ $module->id }}  </td>
                                 <td>{{ Str::limit($module->description, 50) }}</td>
                                 <td>
                                     <span class="badge bg-{{ $module->status == 'active' ? 'success' : 'secondary' }}">

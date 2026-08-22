@@ -261,3 +261,63 @@
     </div>
 </nav>
 @endsection
+
+@push('scripts')
+<script>
+    // 1. Disable Right-Click (Prevents inspect element via mouse)
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // 2. Disable Keyboard Shortcuts (Ctrl / Cmd modifiers)
+    document.addEventListener('keydown', function(event) {
+        // Detect Ctrl key (Windows/Linux) or Cmd key (Mac)
+        const isModifier = event.ctrlKey || event.metaKey;
+
+        if (isModifier) {
+            switch (event.key.toLowerCase()) {
+                case 'c': // Prevent Copy
+                case 'v': // Prevent Paste
+                case 'x': // Prevent Cut
+                case 'p': // Prevent Print
+                case 's': // Prevent Save (Ctrl+S)
+                case 'a': // Optional: Prevent Select All
+                case 'o':
+                    event.preventDefault();
+                    event.stopPropagation();
+                    alert('Action not allowed.');
+                    break;
+                
+                case 'u': // Prevent View Source
+                    event.preventDefault();
+                    break;
+            }
+
+            // Fallback for older browsers or specific layouts (F-keys and Inspect combinations)
+            if (event.shiftKey && (event.key === 'I' || event.key === 'J' || event.key === 'C')) {
+                event.preventDefault();
+            }
+        }
+
+        // 3. Disable F12 (Direct Inspect Element shortcut)
+        if (event.key === 'F12' || event.key === 'F5') {
+            event.preventDefault();
+        }
+    });
+
+    // 4. Disable Drag and Drop (Prevents dragging text out to desktop/notes)
+    document.addEventListener('dragstart', event => event.preventDefault());
+    document.addEventListener('drop', event => event.preventDefault());
+</script>
+
+@endpush
+
+@push('styles')
+<style>
+    /* 5. CSS Protection: Prevent text selection and highlighting */
+    body {
+        -webkit-user-select: none;  /* Safari */
+        -moz-user-select: none;     /* Firefox */
+        -ms-user-select: none;      /* IE 10+ */
+        user-select: none;          /* Standard */
+    }
+</style>
+@endpush

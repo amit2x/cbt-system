@@ -128,9 +128,28 @@
 
 @push('scripts')
 <script>
-    function deleteFeedback(id) {
-        $('#deleteForm').attr('action', '/instructor/feedback/' + id);
-        $('#deleteModal').modal('show');
+    document.addEventListener('DOMContentLoaded', function () {
+    const deleteModalEl = document.getElementById('deleteModal');
+    let deleteModalInstance = null;
+    
+    if (deleteModalEl) {
+        deleteModalInstance = new bootstrap.Modal(deleteModalEl);
     }
+
+    /**
+     * Set up and trigger the feedback deletion confirmation modal
+     * @param {number|string} id - The ID of the feedback to delete
+     */
+    window.deleteFeedback = function (id) {
+        $('#deleteForm').attr('action', '/instructor/feedback/' + id);
+        
+        if (deleteModalInstance) {
+            deleteModalInstance.show();
+        } else {
+            console.error("Modal element #deleteModal not found in DOM.");
+        }
+    };
+});
+
 </script>
 @endpush

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class ResultSection extends Model
+class ResultSection extends BaseModel
 {
+    use HasAirport;
     protected $fillable = [
         'result_id', 'section_id', 'section_name',
         'total_questions', 'correct', 'incorrect', 'unanswered',

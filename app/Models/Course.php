@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\HasAirport;
 
-class Course extends Model
+
+class Course extends BaseModel
 {
-    use SoftDeletes;
+    use SoftDeletes, HasAirport;
 
     protected $fillable = [
         'title', 'slug', 'description', 'thumbnail', 'status', 'created_by',

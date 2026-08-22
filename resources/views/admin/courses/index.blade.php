@@ -14,81 +14,161 @@
     </div>
 
     <!-- Statistics Cards -->
+    <!--<div class="row mb-4">-->
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-primary shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">-->
+    <!--                            Total Courses</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $courses->total() }}</div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-book fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-success shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">-->
+    <!--                            Active Courses</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">-->
+    <!--                            {{ $courses->where('status', 'active')->count() }}-->
+    <!--                        </div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-check-circle fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-info shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">-->
+    <!--                            Total Modules</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">-->
+    <!--                            {{ $courses->sum('modules_count') }}-->
+    <!--                        </div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-grid-3x3-gap-fill fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-warning shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">-->
+    <!--                            Total Batches</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">-->
+    <!--                            {{ $courses->sum('batches_count') }}-->
+    <!--                        </div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-people fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+    <!--</div>-->
     <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Courses</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $courses->total() }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-book fs-2 text-gray-300"></i>
-                        </div>
+    <!-- Total Courses -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Courses</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $courses->total() }}</div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Active Courses</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $courses->where('status', 'active')->count() }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-check-circle fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Total Modules</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $courses->sum('modules_count') }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-grid-3x3-gap-fill fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Total Batches</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $courses->sum('batches_count') }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-people fs-2 text-gray-300"></i>
-                        </div>
+                    <div class="col-auto">
+                        <i class="bi bi-book fs-2 text-primary"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Active Courses -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Active Courses</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $courses->where('status', 'active')->count() }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fs-2 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Modules -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total Modules</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $courses->sum('modules_count') }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-grid-3x3-gap-fill fs-2 text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Batches -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Total Batches</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $courses->sum('batches_count') }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fs-2 text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
     <!-- Search and Filter -->
     <div class="card shadow mb-4">

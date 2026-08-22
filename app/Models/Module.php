@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class Module extends Model
+class Module extends BaseModel
 {
+    use HasAirport;
     protected $fillable = [
         'course_id', 'title', 'description', 'order', 'status'
     ];

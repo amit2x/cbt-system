@@ -3,7 +3,7 @@
 @section('title', 'Analytics Dashboard')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid p-1">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Analytics Dashboard</h1>
         <div>
@@ -17,74 +17,154 @@
     </div>
 
     <!-- Quick Access Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-2 col-md-4 mb-3">
-            <a href="{{ route('admin.analytics.exams') }}" class="text-decoration-none">
-                <div class="card shadow h-100 border-left-primary">
-                    <div class="card-body text-center">
-                        <i class="bi bi-pencil-square fs-1 text-primary"></i>
-                        <h6 class="mt-2 mb-0">Exam Analytics</h6>
-                        <small class="text-muted">View exam performance</small>
-                    </div>
+    <!--<div class="row mb-4">-->
+    <!--    <div class="col-xl-2 col-md-4 mb-3">-->
+    <!--        <a href="{{ route('admin.analytics.exams') }}" class="text-decoration-none">-->
+    <!--            <div class="card shadow h-100 border-left-primary">-->
+    <!--                <div class="card-body text-center">-->
+    <!--                    <i class="bi bi-pencil-square fs-1 text-primary"></i>-->
+    <!--                    <h6 class="mt-2 mb-0">Exam Analytics</h6>-->
+    <!--                    <small class="text-muted">View exam performance</small>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </a>-->
+    <!--    </div>-->
+    <!--    <div class="col-xl-2 col-md-4 mb-3">-->
+    <!--        <a href="{{ route('admin.analytics.students') }}" class="text-decoration-none">-->
+    <!--            <div class="card shadow h-100 border-left-success">-->
+    <!--                <div class="card-body text-center">-->
+    <!--                    <i class="bi bi-people fs-1 text-success"></i>-->
+    <!--                    <h6 class="mt-2 mb-0">Student Analytics</h6>-->
+    <!--                    <small class="text-muted">Track student progress</small>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </a>-->
+    <!--    </div>-->
+    <!--    <div class="col-xl-2 col-md-4 mb-3">-->
+    <!--        <a href="{{ route('admin.analytics.batches') }}" class="text-decoration-none">-->
+    <!--            <div class="card shadow h-100 border-left-info">-->
+    <!--                <div class="card-body text-center">-->
+    <!--                    <i class="bi bi-grid-3x3-gap-fill fs-1 text-info"></i>-->
+    <!--                    <h6 class="mt-2 mb-0">Batch Analytics</h6>-->
+    <!--                    <small class="text-muted">Batch performance</small>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </a>-->
+    <!--    </div>-->
+    <!--    <div class="col-xl-2 col-md-4 mb-3">-->
+    <!--        <a href="{{ route('admin.analytics.questions') }}" class="text-decoration-none">-->
+    <!--            <div class="card shadow h-100 border-left-warning">-->
+    <!--                <div class="card-body text-center">-->
+    <!--                    <i class="bi bi-question-circle fs-1 text-warning"></i>-->
+    <!--                    <h6 class="mt-2 mb-0">Question Analytics</h6>-->
+    <!--                    <small class="text-muted">Question analysis</small>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </a>-->
+    <!--    </div>-->
+    <!--    <div class="col-xl-2 col-md-4 mb-3">-->
+    <!--        <a href="{{ route('admin.analytics.dashboard') }}" class="text-decoration-none">-->
+    <!--            <div class="card shadow h-100 border-left-secondary">-->
+    <!--                <div class="card-body text-center">-->
+    <!--                    <i class="bi bi-speedometer2 fs-1 text-secondary"></i>-->
+    <!--                    <h6 class="mt-2 mb-0">Overview</h6>-->
+    <!--                    <small class="text-muted">Dashboard home</small>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </a>-->
+    <!--    </div>-->
+    <!--    <div class="col-xl-2 col-md-4 mb-3">-->
+    <!--        <a href="{{ route('admin.analytics.reports') }}" class="text-decoration-none">-->
+    <!--            <div class="card shadow h-100 border-left-danger">-->
+    <!--                <div class="card-body text-center">-->
+    <!--                    <i class="bi bi-file-text fs-1 text-danger"></i>-->
+    <!--                    <h6 class="mt-2 mb-0">Saved Reports</h6>-->
+    <!--                    <small class="text-muted">View saved reports</small>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </a>-->
+    <!--    </div>-->
+    <!--</div>-->
+
+<div class="row mb-4">
+    <!-- Exam Analytics -->
+    <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <a href="{{ route('admin.analytics.exams') }}" class="text-decoration-none">
+            <div class="card shadow h-100 border-left-primary">
+                <div class="card-body text-center px-1 px-sm-2">
+                    <i class="bi bi-pencil-square fs-1 text-primary"></i>
+                    <h6 class="mt-2 mb-0">Exam Analytics</h6>
+                    <small class="text-muted">View exam performance</small>
                 </div>
-            </a>
-        </div>
-        <div class="col-xl-2 col-md-4 mb-3">
-            <a href="{{ route('admin.analytics.students') }}" class="text-decoration-none">
-                <div class="card shadow h-100 border-left-success">
-                    <div class="card-body text-center">
-                        <i class="bi bi-people fs-1 text-success"></i>
-                        <h6 class="mt-2 mb-0">Student Analytics</h6>
-                        <small class="text-muted">Track student progress</small>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-xl-2 col-md-4 mb-3">
-            <a href="{{ route('admin.analytics.batches') }}" class="text-decoration-none">
-                <div class="card shadow h-100 border-left-info">
-                    <div class="card-body text-center">
-                        <i class="bi bi-grid-3x3-gap-fill fs-1 text-info"></i>
-                        <h6 class="mt-2 mb-0">Batch Analytics</h6>
-                        <small class="text-muted">Batch performance</small>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-xl-2 col-md-4 mb-3">
-            <a href="{{ route('admin.analytics.questions') }}" class="text-decoration-none">
-                <div class="card shadow h-100 border-left-warning">
-                    <div class="card-body text-center">
-                        <i class="bi bi-question-circle fs-1 text-warning"></i>
-                        <h6 class="mt-2 mb-0">Question Analytics</h6>
-                        <small class="text-muted">Question analysis</small>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-xl-2 col-md-4 mb-3">
-            <a href="{{ route('admin.analytics.dashboard') }}" class="text-decoration-none">
-                <div class="card shadow h-100 border-left-secondary">
-                    <div class="card-body text-center">
-                        <i class="bi bi-speedometer2 fs-1 text-secondary"></i>
-                        <h6 class="mt-2 mb-0">Overview</h6>
-                        <small class="text-muted">Dashboard home</small>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-xl-2 col-md-4 mb-3">
-            <a href="{{ route('admin.analytics.reports') }}" class="text-decoration-none">
-                <div class="card shadow h-100 border-left-danger">
-                    <div class="card-body text-center">
-                        <i class="bi bi-file-text fs-1 text-danger"></i>
-                        <h6 class="mt-2 mb-0">Saved Reports</h6>
-                        <small class="text-muted">View saved reports</small>
-                    </div>
-                </div>
-            </a>
-        </div>
+            </div>
+        </a>
     </div>
+
+    <!-- Student Analytics -->
+    <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <a href="{{ route('admin.analytics.students') }}" class="text-decoration-none">
+            <div class="card shadow h-100 border-left-success">
+                <div class="card-body text-center px-1 px-sm-2">
+                    <i class="bi bi-people fs-1 text-success"></i>
+                    <h6 class="mt-2 mb-0">Student Analytics</h6>
+                    <small class="text-muted">Track student progress</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Batch Analytics -->
+    <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <a href="{{ route('admin.analytics.batches') }}" class="text-decoration-none">
+            <div class="card shadow h-100 border-left-info">
+                <div class="card-body text-center px-1 px-sm-2">
+                    <i class="bi bi-grid-3x3-gap-fill fs-1 text-info"></i>
+                    <h6 class="mt-2 mb-0">Batch Analytics</h6>
+                    <small class="text-muted">Batch performance</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Question Analytics -->
+    <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <a href="{{ route('admin.analytics.questions') }}" class="text-decoration-none">
+            <div class="card shadow h-100 border-left-warning">
+                <div class="card-body text-center px-1 px-sm-2">
+                    <i class="bi bi-question-circle fs-1 text-warning"></i>
+                    <h6 class="mt-2 mb-0">Question Analytics</h6>
+                    <small class="text-muted">Question analysis</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Overview -->
+    <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <a href="{{ route('admin.analytics.dashboard') }}" class="text-decoration-none">
+            <div class="card shadow h-100 border-left-secondary">
+                <div class="card-body text-center px-1 px-sm-2">
+                    <i class="bi bi-speedometer2 fs-1 text-secondary"></i>
+                    <h6 class="mt-2 mb-0">Overview</h6>
+                    <small class="text-muted">Dashboard home</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Saved Reports -->
+    <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <a href="{{ route('admin.analytics.reports') }}" class="text-decoration-none">
+            <div class="card shadow h-100 border-left-danger">
+                <div class="card-body text-center px-1 px-sm-2">
+                    <i class="bi bi-file-text fs-1 text-danger"></i>
+                    <h6 class="mt-2 mb-0">Saved Reports</h6>
+                    <small class="text-muted">View saved reports</small>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
 
     <!-- Date Range Filter -->
     <div class="card shadow mb-4">
@@ -108,95 +188,188 @@
     </div>
 
     <!-- Overview Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Exams</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $overallAnalytics['overview']['total_exams'] ?? 0 }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-journal-bookmark-fill fa-2x text-gray-300"></i>
+    <!--<div class="row mb-4">-->
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-primary shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">-->
+    <!--                            Total Exams</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">-->
+    <!--                            {{ $overallAnalytics['overview']['total_exams'] ?? 0 }}-->
+    <!--                        </div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-journal-bookmark-fill fa-2x text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <a href="{{ route('admin.analytics.exams') }}" class="small text-primary">View all exams →</a>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-success shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">-->
+    <!--                            Total Results</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">-->
+    <!--                            {{ $overallAnalytics['overview']['total_results'] ?? 0 }}-->
+    <!--                        </div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-check-circle-fill fa-2x text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <span class="small text-success">Pass Rate: {{ $overallAnalytics['overview']['pass_rate'] ?? 0 }}%</span>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-info shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">-->
+    <!--                            Active Students</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">-->
+    <!--                            {{ $overallAnalytics['overview']['active_students'] ?? 0 }}-->
+    <!--                        </div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-people-fill fa-2x text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <a href="{{ route('admin.analytics.students') }}" class="small text-info">View all students →</a>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-warning shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">-->
+    <!--                            Average Score</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">-->
+    <!--                            {{ $overallAnalytics['overview']['average_score'] ?? 0 }}%-->
+    <!--                        </div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-bar-chart-fill fa-2x text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <a href="{{ route('admin.analytics.exams') }}" class="small text-warning">View detailed analysis →</a>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+    <!--</div>-->
+<div class="row mb-4">
+    <!-- Total Exams -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Exams</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $overallAnalytics['overview']['total_exams'] ?? 0 }}
                         </div>
                     </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('admin.analytics.exams') }}" class="small text-primary">View all exams →</a>
+                    <div class="col-auto">
+                        <i class="bi bi-journal-bookmark-fill fs-2 text-primary"></i>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Total Results</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $overallAnalytics['overview']['total_results'] ?? 0 }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-check-circle-fill fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <span class="small text-success">Pass Rate: {{ $overallAnalytics['overview']['pass_rate'] ?? 0 }}%</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Active Students</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $overallAnalytics['overview']['active_students'] ?? 0 }}
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-people-fill fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('admin.analytics.students') }}" class="small text-info">View all students →</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Average Score</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $overallAnalytics['overview']['average_score'] ?? 0 }}%
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-bar-chart-fill fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('admin.analytics.exams') }}" class="small text-warning">View detailed analysis →</a>
-                </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('admin.analytics.exams') }}" class="small text-primary text-nowrap">View all exams →</a>
             </div>
         </div>
     </div>
+
+    <!-- Total Results -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Total Results</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $overallAnalytics['overview']['total_results'] ?? 0 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle-fill fs-2 text-success"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <span class="small text-success text-nowrap">Pass Rate: {{ $overallAnalytics['overview']['pass_rate'] ?? 0 }}%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Students -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Active Students</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $overallAnalytics['overview']['active_students'] ?? 0 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people-fill fs-2 text-info"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('admin.analytics.students') }}" class="small text-info text-nowrap">View all students →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Average Score -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Average Score</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ $overallAnalytics['overview']['average_score'] ?? 0 }}%
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-bar-chart-fill fs-2 text-warning"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('admin.analytics.exams') }}" class="small text-warning text-nowrap">View details →</a>
+            </div>
+        </div>
+    </div>
+</div>
 
     <div class="row">
         <!-- Daily Activity Chart -->
@@ -389,95 +562,190 @@
     </div>
 
     <!-- Quick Statistics Row -->
+    <!--<div class="row">-->
+    <!--    <div class="col-lg-3 col-md-6 mb-4">-->
+    <!--        <div class="card shadow h-100">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="d-flex align-items-center">-->
+    <!--                    <div class="bg-primary bg-opacity-10 p-3 rounded me-3">-->
+    <!--                        <i class="bi bi-question-circle text-primary fs-2"></i>-->
+    <!--                    </div>-->
+    <!--                    <div>-->
+    <!--                        <h6 class="mb-0 text-muted">Question Bank</h6>-->
+    <!--                        <h4 class="mb-0">{{ $overallAnalytics['overview']['total_questions'] ?? 0 }}</h4>-->
+    <!--                        <small class="text-muted">Active: {{ $overallAnalytics['overview']['active_questions'] ?? 0 }}</small>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <a href="{{ route('admin.analytics.questions') }}" class="btn btn-sm btn-outline-primary w-100">-->
+    <!--                    View Question Analytics-->
+    <!--                </a>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+    
+    <!--    <div class="col-lg-3 col-md-6 mb-4">-->
+    <!--        <div class="card shadow h-100">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="d-flex align-items-center">-->
+    <!--                    <div class="bg-success bg-opacity-10 p-3 rounded me-3">-->
+    <!--                        <i class="bi bi-trophy text-success fs-2"></i>-->
+    <!--                    </div>-->
+    <!--                    <div>-->
+    <!--                        <h6 class="mb-0 text-muted">Top Performers</h6>-->
+    <!--                        <h4 class="mb-0">{{ $overallAnalytics['overview']['top_performers_count'] ?? 0 }}</h4>-->
+    <!--                        <small class="text-muted">Top students</small>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <a href="{{ route('admin.analytics.students') }}" class="btn btn-sm btn-outline-success w-100">-->
+    <!--                    View Top Performers-->
+    <!--                </a>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+    
+    <!--    <div class="col-lg-3 col-md-6 mb-4">-->
+    <!--        <div class="card shadow h-100">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="d-flex align-items-center">-->
+    <!--                    <div class="bg-info bg-opacity-10 p-3 rounded me-3">-->
+    <!--                        <i class="bi bi-grid-3x3-gap-fill text-info fs-2"></i>-->
+    <!--                    </div>-->
+    <!--                    <div>-->
+    <!--                        <h6 class="mb-0 text-muted">Active Batches</h6>-->
+    <!--                        <h4 class="mb-0">{{ $overallAnalytics['overview']['active_batches'] ?? 0 }}</h4>-->
+    <!--                        <small class="text-muted">Ongoing batches</small>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <a href="{{ route('admin.analytics.batches') }}" class="btn btn-sm btn-outline-info w-100">-->
+    <!--                    View Batch Analytics-->
+    <!--                </a>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+    
+    <!--    <div class="col-lg-3 col-md-6 mb-4">-->
+    <!--        <div class="card shadow h-100">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="d-flex align-items-center">-->
+    <!--                    <div class="bg-warning bg-opacity-10 p-3 rounded me-3">-->
+    <!--                        <i class="bi bi-file-text text-warning fs-2"></i>-->
+    <!--                    </div>-->
+    <!--                    <div>-->
+    <!--                        <h6 class="mb-0 text-muted">Saved Reports</h6>-->
+    <!--                        <h4 class="mb-0">{{ $overallAnalytics['overview']['saved_reports'] ?? 0 }}</h4>-->
+    <!--                        <small class="text-muted">Generated reports</small>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--            <div class="card-footer bg-transparent border-0">-->
+    <!--                <a href="{{ route('admin.analytics.reports') }}" class="btn btn-sm btn-outline-warning w-100">-->
+    <!--                    View All Reports-->
+    <!--                </a>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+    <!--</div>-->
+    
     <div class="row">
-        <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
-                            <i class="bi bi-question-circle text-primary fs-2"></i>
-                        </div>
-                        <div>
-                            <h6 class="mb-0 text-muted">Question Bank</h6>
-                            <h4 class="mb-0">{{ $overallAnalytics['overview']['total_questions'] ?? 0 }}</h4>
-                            <small class="text-muted">Active: {{ $overallAnalytics['overview']['active_questions'] ?? 0 }}</small>
-                        </div>
+    <!-- Question Bank -->
+    <div class="col-lg-3 col-md-6 col-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-25 p-3 rounded me-2 me-sm-3">
+                        <i class="bi bi-question-circle text-white fs-2"></i>
                     </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('admin.analytics.questions') }}" class="btn btn-sm btn-outline-primary w-100">
-                        View Question Analytics
-                    </a>
+                    <div class="text-truncate">
+                        <h6 class="mb-0 text-muted small fw-bold text-wrap">Question Bank</h6>
+                        <h4 class="mb-0 fw-bold">{{ $overallAnalytics['overview']['total_questions'] ?? 0 }}</h4>
+                        <small class="text-muted text-truncate d-block">Active: {{ $overallAnalytics['overview']['active_questions'] ?? 0 }}</small>
+                    </div>
                 </div>
             </div>
-        </div>
-    
-        <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-success bg-opacity-10 p-3 rounded me-3">
-                            <i class="bi bi-trophy text-success fs-2"></i>
-                        </div>
-                        <div>
-                            <h6 class="mb-0 text-muted">Top Performers</h6>
-                            <h4 class="mb-0">{{ $overallAnalytics['overview']['top_performers_count'] ?? 0 }}</h4>
-                            <small class="text-muted">Top students</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('admin.analytics.students') }}" class="btn btn-sm btn-outline-success w-100">
-                        View Top Performers
-                    </a>
-                </div>
-            </div>
-        </div>
-    
-        <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-info bg-opacity-10 p-3 rounded me-3">
-                            <i class="bi bi-grid-3x3-gap-fill text-info fs-2"></i>
-                        </div>
-                        <div>
-                            <h6 class="mb-0 text-muted">Active Batches</h6>
-                            <h4 class="mb-0">{{ $overallAnalytics['overview']['active_batches'] ?? 0 }}</h4>
-                            <small class="text-muted">Ongoing batches</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('admin.analytics.batches') }}" class="btn btn-sm btn-outline-info w-100">
-                        View Batch Analytics
-                    </a>
-                </div>
-            </div>
-        </div>
-    
-        <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card shadow h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
-                            <i class="bi bi-file-text text-warning fs-2"></i>
-                        </div>
-                        <div>
-                            <h6 class="mb-0 text-muted">Saved Reports</h6>
-                            <h4 class="mb-0">{{ $overallAnalytics['overview']['saved_reports'] ?? 0 }}</h4>
-                            <small class="text-muted">Generated reports</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('admin.analytics.reports') }}" class="btn btn-sm btn-outline-warning w-100">
-                        View All Reports
-                    </a>
-                </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('admin.analytics.questions') }}" class="btn btn-sm btn-outline-primary w-100 text-truncate">
+                    Questions
+                </a>
             </div>
         </div>
     </div>
+
+    <!-- Top Performers -->
+    <div class="col-lg-3 col-md-6 col-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success bg-opacity-25 p-3 rounded me-2 me-sm-3">
+                        <i class="bi bi-trophy text-success fs-2"></i>
+                    </div>
+                    <div class="text-truncate">
+                        <h6 class="mb-0 text-muted small fw-bold text-wrap">Top Performers</h6>
+                        <h4 class="mb-0 fw-bold">{{ $overallAnalytics['overview']['top_performers_count'] ?? 0 }}</h4>
+                        <small class="text-muted text-truncate d-block">Top students</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('admin.analytics.students') }}" class="btn btn-sm btn-outline-success w-100 text-truncate">
+                    Performers
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Batches -->
+    <div class="col-lg-3 col-md-6 col-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="bg-info bg-opacity-25 p-3 rounded me-2 me-sm-3">
+                        <i class="bi bi-grid-3x3-gap-fill text-info fs-2"></i>
+                    </div>
+                    <div class="text-truncate">
+                        <h6 class="mb-0 text-muted small fw-bold text-wrap">Active Batches</h6>
+                        <h4 class="mb-0 fw-bold">{{ $overallAnalytics['overview']['active_batches'] ?? 0 }}</h4>
+                        <small class="text-muted text-truncate d-block">Ongoing</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('admin.analytics.batches') }}" class="btn btn-sm btn-outline-info w-100 text-truncate">
+                    Batches
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Reports -->
+    <div class="col-lg-3 col-md-6 col-6 mb-4">
+        <div class="card shadow h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning bg-opacity-25 p-3 rounded me-2 me-sm-3">
+                        <i class="bi bi-file-text text-warning fs-2"></i>
+                    </div>
+                    <div class="text-truncate">
+                        <h6 class="mb-0 text-muted small fw-bold text-wrap">Saved Reports</h6>
+                        <h4 class="mb-0 fw-bold">{{ $overallAnalytics['overview']['saved_reports'] ?? 0 }}</h4>
+                        <small class="text-muted text-truncate d-block">Generated</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('admin.analytics.reports') }}" class="btn btn-sm btn-outline-warning w-100 text-truncate">
+                    Reports
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 
     <!-- Analytics Quick Links Banner -->
     <div class="card shadow mb-4 bg-gradient-primary text-white">
@@ -485,7 +753,7 @@
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Comprehensive Analytics</h5>
-                    <p class="mb-0 opacity-75 small">Explore detailed analytics across all aspects of your platform</p>
+                    <p class="mb-0 opacity-75 text-dark small">Explore detailed analytics across all aspects of your platform</p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <a href="{{ route('admin.analytics.exams') }}" class="btn btn-light btn-sm me-2">

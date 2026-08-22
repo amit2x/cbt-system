@@ -14,89 +14,177 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Exams Taken</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total_exams'] }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-pencil-square fs-2 text-gray-300"></i>
-                        </div>
+    <!--<div class="row mb-4">-->
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-primary shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">-->
+    <!--                            Exams Taken</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total_exams'] }}</div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-pencil-square fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--                <div class="mt-2 small">-->
+    <!--                    <span class="text-success">Passed: {{ $stats['passed'] }}</span>-->
+    <!--                    <span class="text-danger ms-2">Failed: {{ $stats['failed'] }}</span>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-success shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">-->
+    <!--                            Average Score</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['average_score'] }}%</div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-trophy fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--                <div class="mt-2 small">-->
+    <!--                    <span class="text-success">Best: {{ $stats['highest_score'] }}%</span>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-info shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">-->
+    <!--                            Accuracy</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['average_accuracy'] }}%</div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-bullseye fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--                <div class="mt-2 small">-->
+    <!--                    <span class="text-info">Correct: {{ $stats['total_correct'] }}</span>-->
+    <!--                    <span class="text-danger ms-2">Incorrect: {{ $stats['total_incorrect'] }}</span>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+
+    <!--    <div class="col-xl-3 col-md-6 mb-4">-->
+    <!--        <div class="card border-left-warning shadow h-100 py-2">-->
+    <!--            <div class="card-body">-->
+    <!--                <div class="row no-gutters align-items-center">-->
+    <!--                    <div class="col mr-2">-->
+    <!--                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">-->
+    <!--                            Pass Rate</div>-->
+    <!--                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['pass_rate'] }}%</div>-->
+    <!--                    </div>-->
+    <!--                    <div class="col-auto">-->
+    <!--                        <i class="bi bi-check-circle fs-2 text-gray-300"></i>-->
+    <!--                    </div>-->
+    <!--                </div>-->
+    <!--                <div class="mt-2 small">-->
+    <!--                    <span class="text-muted">Time: {{ $stats['total_time_spent'] }} hours</span>-->
+    <!--                </div>-->
+    <!--            </div>-->
+    <!--        </div>-->
+    <!--    </div>-->
+    <!--</div>-->
+
+<div class="row mb-4">
+    <!-- Exams Taken -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Exams Taken</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['total_exams'] }}</div>
                     </div>
-                    <div class="mt-2 small">
-                        <span class="text-success">Passed: {{ $stats['passed'] }}</span>
-                        <span class="text-danger ms-2">Failed: {{ $stats['failed'] }}</span>
+                    <div class="col-auto">
+                        <i class="bi bi-pencil-square fs-2 text-primary"></i>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Average Score</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['average_score'] }}%</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-trophy fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                    <div class="mt-2 small">
-                        <span class="text-success">Best: {{ $stats['highest_score'] }}%</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Accuracy</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['average_accuracy'] }}%</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-bullseye fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                    <div class="mt-2 small">
-                        <span class="text-info">Correct: {{ $stats['total_correct'] }}</span>
-                        <span class="text-danger ms-2">Incorrect: {{ $stats['total_incorrect'] }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pass Rate</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['pass_rate'] }}%</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-check-circle fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                    <div class="mt-2 small">
-                        <span class="text-muted">Time: {{ $stats['total_time_spent'] }} hours</span>
-                    </div>
+                <div class="mt-2 small d-flex flex-wrap">
+                    <span class="text-success me-2">Passed: {{ $stats['passed'] }}</span>
+                    <span class="text-danger">Failed: {{ $stats['failed'] }}</span>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Average Score -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Average Score</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['average_score'] }}%</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-trophy-fill fs-2 text-success"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small">
+                    <span class="text-success">Best: {{ $stats['highest_score'] }}%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accuracy -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Accuracy</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['average_accuracy'] }}%</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-bullseye fs-2 text-info"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small d-flex flex-wrap">
+                    <span class="text-info me-2">Correct: {{ $stats['total_correct'] }}</span>
+                    <span class="text-danger">Incorrect: {{ $stats['total_incorrect'] }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pass Rate -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Pass Rate</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $stats['pass_rate'] }}%</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle fs-2 text-warning"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small">
+                    <span class="text-muted">Time: {{ $stats['total_time_spent'] }} hours</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Performance Trend Chart -->
     <div class="row mb-4">
@@ -106,7 +194,7 @@
                     <h6 class="m-0 font-weight-bold text-primary">Performance Trend</h6>
                 </div>
                 <div class="card-body">
-                    <canvas id="trendChart" height="100"></canvas>
+                    <canvas id="trendChart" height="300"></canvas>
                 </div>
             </div>
         </div>

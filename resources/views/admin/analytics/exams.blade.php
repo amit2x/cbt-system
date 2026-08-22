@@ -93,8 +93,8 @@
                 </table>
             </div>
 
-            <div class="d-flex justify-content-center mt-4">
-                {{ $exams->links() }}
+            <div class="mt-4">
+                {{ $exams->links('pagination::bootstrap-5') }}
             </div>
         </div>
     </div>

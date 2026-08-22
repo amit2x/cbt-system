@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class FeedbackResponse extends Model
+class FeedbackResponse extends BaseModel
 {
+
+    use HasAirport;
     protected $fillable = [
         'feedback_id', 'student_id', 'answers', 'rating', 'submitted_at'
     ];

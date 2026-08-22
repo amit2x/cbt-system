@@ -21,7 +21,7 @@
             <h6 class="m-0 font-weight-bold text-primary">Batch Information</h6>
         </div>
         <div class="card-body">
-            <form action="{{ route('admin.batches.update', $batch) }}" method="POST">
+            <form action="{{ route('admin.batches.update', $batch) }}" method="POST" id="batchForm">
                 @csrf
                 @method('PUT')
 
@@ -30,7 +30,8 @@
                         <div class="mb-3">
                             <label for="name" class="form-label">Batch Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('name') is-invalid @enderror"
-                                   id="name" name="name" value="{{ old('name', $batch->name) }}" required>
+                                   id="name" name="name" value="{{ old('name', $batch->name) }}" 
+                                   maxlength="255" required>
                             @error('name')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -69,6 +70,20 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-control @error('status') is-invalid @enderror"
+                                    id="status" name="status" required>
+                                <option value="upcoming" {{ old('status', $batch->status) == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
+                                <option value="ongoing" {{ old('status', $batch->status) == 'ongoing' ? 'selected' : '' }}>Ongoing</option>
+                                <option value="completed" {{ old('status', $batch->status) == 'completed' ? 'selected' : '' }}>Completed</option>
+                            </select>
+                            @error('status')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted status-hint"></small>
+                        </div>
                     </div>
 
                     <div class="col-md-6">
@@ -76,8 +91,7 @@
                             <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control @error('start_date') is-invalid @enderror"
                                    id="start_date" name="start_date"
-                                   value="{{ old('start_date', $batch->start_date->format('Y-m-d')) }}"
-                                   min="{{ date('Y-m-d', strtotime('+1 day')) }}" required>
+                                   value="{{ old('start_date', $batch->start_date->format('Y-m-d')) }}" required>
                             @error('start_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -91,16 +105,19 @@
                             @error('end_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            <small class="text-muted end-date-hint"></small>
                         </div>
 
                         <div class="mb-3">
                             <label for="capacity" class="form-label">Capacity <span class="text-danger">*</span></label>
                             <input type="number" class="form-control @error('capacity') is-invalid @enderror"
-                                   id="capacity" name="capacity" value="{{ old('capacity', $batch->capacity) }}"
+                                   id="capacity" name="capacity" 
+                                   value="{{ old('capacity', $batch->capacity) }}"
                                    min="1" max="1000" required>
                             @error('capacity')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            <small class="text-muted">Current enrolled: {{ $batch->students_count ?? 0 }} students</small>
                         </div>
                     </div>
 
@@ -108,29 +125,19 @@
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
                             <textarea class="form-control @error('description') is-invalid @enderror"
-                                      id="description" name="description" rows="4">{{ old('description', $batch->description) }}</textarea>
+                                      id="description" name="description" rows="4" 
+                                      maxlength="1000">{{ old('description', $batch->description) }}</textarea>
                             @error('description')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                            <select class="form-control @error('status') is-invalid @enderror"
-                                    id="status" name="status" required>
-                                <option value="upcoming" {{ old('status', $batch->status) == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
-                                <option value="ongoing" {{ old('status', $batch->status) == 'ongoing' ? 'selected' : '' }}>Ongoing</option>
-                                <option value="completed" {{ old('status', $batch->status) == 'completed' ? 'selected' : '' }}>Completed</option>
-                            </select>
-                            @error('status')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <small class="text-muted"><span id="charCount">0</span>/1000 characters</small>
                         </div>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary">
+                    <a href="{{ route('admin.batches.index') }}" class="btn btn-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
                         <i class="bi bi-save"></i> Update Batch
                     </button>
                 </div>
@@ -147,25 +154,25 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="text-center">
-                        <h3 class="text-primary">{{ $batch->students_count ?? 0 }}</h3>
+                        <h3 class="text-primary">{{ $batch->students->count() ?? 0 }}</h3>
                         <p class="text-muted">Total Students</p>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="text-center">
-                        <h3 class="text-success">{{ $batch->available_seats }}</h3>
+                        <h3 class="text-success">{{ $batch->available_seats ?? 0 }}</h3>
                         <p class="text-muted">Available Seats</p>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="text-center">
-                        <h3 class="text-info">{{ round($batch->progress) }}%</h3>
+                        <h3 class="text-info">{{ round($batch->progress ?? 0) }}%</h3>
                         <p class="text-muted">Progress</p>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="text-center">
-                        <h3 class="text-warning">{{ $batch->exams_count ?? 0 }}</h3>
+                        <h3 class="text-warning">{{ $batch->exams->count() ?? 0 }}</h3>
                         <p class="text-muted">Exams Conducted</p>
                     </div>
                 </div>
@@ -175,30 +182,124 @@
 </div>
 @endsection
 
-
-
 @push('scripts')
 <script>
-
-
-
     document.addEventListener("DOMContentLoaded", function () {
-
-    if (window.$) {
-
-        $(document).ready(function() {
-            // Validate end date is after start date
-            $('#start_date, #end_date').on('change', function() {
-                const startDate = $('#start_date').val();
-                const endDate = $('#end_date').val();
-
-                if (startDate && endDate && endDate <= startDate) {
-                    toastr.error('End date must be after start date');
-                    $('#end_date').val('');
+        // Character counter for description
+        const description = document.getElementById('description');
+        const charCount = document.getElementById('charCount');
+        
+        if (description && charCount) {
+            charCount.textContent = description.value.length;
+            description.addEventListener('input', function() {
+                charCount.textContent = this.value.length;
+                if (this.value.length > 1000) {
+                    charCount.classList.add('text-danger');
+                } else {
+                    charCount.classList.remove('text-danger');
                 }
             });
+        }
+
+        // Date validation and status hints
+        const startDate = document.getElementById('start_date');
+        const endDate = document.getElementById('end_date');
+        const status = document.getElementById('status');
+        const statusHint = document.querySelector('.status-hint');
+        const endDateHint = document.querySelector('.end-date-hint');
+        
+        function validateDates() {
+            const start = new Date(startDate.value);
+            const end = new Date(endDate.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Clear previous states
+            endDate.classList.remove('is-invalid');
+            endDateHint.textContent = '';
+            status.classList.remove('is-invalid');
+            statusHint.textContent = '';
+            
+            // Validate end date is after start date
+            if (startDate.value && endDate.value) {
+                if (end <= start) {
+                    endDate.classList.add('is-invalid');
+                    endDateHint.textContent = 'End date must be after start date';
+                    endDateHint.classList.add('text-danger');
+                    return false;
+                } else {
+                    // Calculate duration
+                    const diffTime = Math.abs(end - start);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    endDateHint.textContent = `Duration: ${diffDays} days`;
+                    endDateHint.classList.remove('text-danger');
+                    endDateHint.classList.add('text-muted');
+                }
+                
+                // Show status suggestions based on dates
+                if (today < start) {
+                    statusHint.textContent = 'This batch should be "Upcoming"';
+                } else if (today >= start && today <= end) {
+                    statusHint.textContent = 'This batch should be "Ongoing"';
+                } else if (today > end) {
+                    statusHint.textContent = 'This batch should be "Completed"';
+                }
+                statusHint.classList.add('text-info');
+            }
+            
+            return true;
+        }
+        
+        // Validate capacity against enrolled students
+        function validateCapacity() {
+            const capacity = document.getElementById('capacity');
+            const enrolledStudents = {{ $batch->students_count ?? 0 }};
+            
+            if (capacity && enrolledStudents > 0) {
+                if (parseInt(capacity.value) < enrolledStudents) {
+                    capacity.classList.add('is-invalid');
+                    if (!capacity.nextElementSibling || !capacity.nextElementSibling.classList.contains('invalid-feedback')) {
+                        const feedback = document.createElement('div');
+                        feedback.classList.add('invalid-feedback');
+                        feedback.textContent = `Capacity cannot be less than enrolled students (${enrolledStudents})`;
+                        capacity.parentNode.appendChild(feedback);
+                    }
+                    return false;
+                } else {
+                    capacity.classList.remove('is-invalid');
+                    const existingFeedback = capacity.parentNode.querySelector('.invalid-feedback');
+                    if (existingFeedback) {
+                        existingFeedback.remove();
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // Event listeners
+        if (startDate && endDate) {
+            startDate.addEventListener('change', validateDates);
+            endDate.addEventListener('change', validateDates);
+        }
+        
+        if (document.getElementById('capacity')) {
+            document.getElementById('capacity').addEventListener('change', validateCapacity);
+        }
+        
+        // Form submission validation
+        document.getElementById('batchForm').addEventListener('submit', function(e) {
+            const isDatesValid = validateDates();
+            const isCapacityValid = validateCapacity();
+            
+            if (!isDatesValid || !isCapacityValid) {
+                e.preventDefault();
+                toastr.error('Please fix the validation errors before submitting.');
+            }
         });
-    }
-});
+        
+        // Run validation on page load
+        validateDates();
+        validateCapacity();
+    });
 </script>
 @endpush

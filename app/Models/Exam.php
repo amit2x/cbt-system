@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
+use App\Traits\HasAirport;
 
-class Exam extends Model
+class Exam extends BaseModel
 {
-    use SoftDeletes;
+    use SoftDeletes, HasAirport;
 
     protected $fillable = [
         'title', 'slug', 'description', 'type', 'category',
@@ -359,48 +360,24 @@ public function getModulesAttribute()
         return now()->diff($this->end_time)->format('%H:%I:%S');
     }
 
+    
+    
     /**
-     * Update total marks for the exam
+     * Update total marks for the exam.
      */
-    // public function updateTotalMarks()
-    // {
-    //     $total = $this->questions()->sum('marks') ?? 0;
-    //     $this->update(['total_marks' => $total]);
-
-    //     return $total;
-    // }
-    
-    /**
- * Update total marks for the exam.
- */
-// public function updateTotalMarks()
-// {
-//     // Specify which table's marks column to use
-//     $total = \DB::table('exam_questions')
-//         ->where('exam_id', $this->id)
-//         ->sum('marks');
-    
-//     $this->update(['total_marks' => $total ?? 0]);
-    
-//     return $total;
-// }
-
-/**
- * Update total marks for the exam.
- */
-public function updateTotalMarks()
-{
-    $total = $this->questions()
-        ->withPivot('marks')
-        ->get()
-        ->sum(function($question) {
-            return $question->pivot->marks ?? 0;
-        });
-    
-    $this->update(['total_marks' => $total ?? 0]);
-    
-    return $total;
-}
+    public function updateTotalMarks()
+    {
+        $total = $this->questions()
+            ->withPivot('marks')
+            ->get()
+            ->sum(function($question) {
+                return $question->pivot->marks ?? 0;
+            });
+        
+        $this->update(['total_marks' => $total ?? 0]);
+        
+        return $total;
+    }
 
     public function canBePublished()
     {
@@ -434,5 +411,26 @@ public function updateTotalMarks()
 
         // Check availability
         return $this->is_available;
+    }
+    
+    public function examQuestions()
+    {
+        return $this->hasMany(ExamQuestion::class, 'exam_id');
+    }
+    
+
+    public function getStatistics()
+    {
+        $results = $this->results;
+        
+        return [
+            'participants' => $results->count(),
+            'average_score' => round($results->avg('percentage'), 2),
+            'pass_rate' => $results->count() > 0 
+                ? round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2)
+                : 0,
+            'highest_score' => $results->max('percentage') ?? 0,
+            'lowest_score' => $results->min('percentage') ?? 0,
+        ];
     }
 }

@@ -79,6 +79,54 @@
                     </div>
                 </div>
 
+                <!-- Password Reset Section -->
+                <div class="card bg-light mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-key me-2"></i>Password Reset
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">New Password</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control @error('password') is-invalid @enderror"
+                                               id="password" name="password" placeholder="Leave blank to keep current password">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password')">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted">Leave blank to keep current password. Minimum 8 characters.</small>
+                                    @error('password')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="password_confirmation" class="form-label">Confirm New Password</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror"
+                                               id="password_confirmation" name="password_confirmation" placeholder="Confirm new password">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('password_confirmation')">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                    @error('password_confirmation')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-check mb-0">
+                            <input type="checkbox" class="form-check-input" id="show_password" onclick="toggleAllPasswords()">
+                            <label class="form-check-label" for="show_password">Show passwords</label>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Batches for students (hidden by default) -->
                 <div id="batch-section" style="{{ $user->hasRole('student') ? '' : 'display: none;' }}">
                     <div class="mb-3">
@@ -115,9 +163,18 @@
                     <label class="form-check-label" for="is_active">Active Account</label>
                 </div>
 
+                <!-- Password Reset Warning -->
+                <div class="alert alert-warning mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Note:</strong> If you change the password, the user will need to use the new password to log in.
+                </div>
+
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-save"></i> Update User
                 </button>
+                <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
             </form>
         </div>
     </div>
@@ -134,11 +191,56 @@
             batchSection.style.display = 'none';
         }
     }
+
+    function togglePasswordVisibility(fieldId) {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            if (field.type === 'password') {
+                field.type = 'text';
+            } else {
+                field.type = 'password';
+            }
+        }
+    }
+
+    function toggleAllPasswords() {
+        const show = document.getElementById('show_password').checked;
+        const passwordFields = ['password', 'password_confirmation'];
+        passwordFields.forEach(function(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.type = show ? 'text' : 'password';
+            }
+        });
+    }
+
+    // Auto-generate random password (optional)
+    function generateRandomPassword() {
+        const length = 12;
+        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+';
+        let password = '';
+        for (let i = 0; i < length; i++) {
+            password += charset.charAt(Math.floor(Math.random() * charset.length));
+        }
+        document.getElementById('password').value = password;
+        document.getElementById('password_confirmation').value = password;
+        
+        // Show a toast notification
+        toastr.success('Random password generated!');
+    }
 </script>
 @endsection
 
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .input-group .btn-outline-secondary {
+        border-left: none;
+    }
+    .input-group .form-control:focus + .btn-outline-secondary {
+        border-color: #86b7fe;
+    }
+</style>
 @endpush
 
 @push('scripts')

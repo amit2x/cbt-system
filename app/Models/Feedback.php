@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Traits\HasAirport;
 
-class Feedback extends Model
+
+class Feedback extends BaseModel
 {
+    use HasAirport;
     protected $fillable = [
         'instructor_id', 'batch_id', 'course_id', 'code',
         'type', 'questions', 'status', 'expires_at',
@@ -46,6 +49,11 @@ class Feedback extends Model
     public function responses()
     {
         return $this->hasMany(FeedbackResponse::class);
+    }
+    
+    public function student()
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**

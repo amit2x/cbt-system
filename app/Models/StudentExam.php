@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class StudentExam extends Model
+class StudentExam extends BaseModel
 {
+    use HasAirport;
     protected $fillable = [
         'student_id', 'exam_id', 'batch_id',
         'started_at', 'submitted_at', 'remaining_seconds', 'total_seconds_taken',
@@ -13,6 +15,7 @@ class StudentExam extends Model
         'status', 'ip_address', 'user_agent', 'tab_switch_log', 'tab_switch_count', 'is_proctored',
         'total_questions', 'answered_questions', 'marked_for_review_count', 'not_visited_count',
         'obtained_marks', 'percentage', 'correct_answers', 'incorrect_answers', 'unanswered',
+        'current_question_id','is_saved_exit','saved_at',
     ];
 
     protected $casts = [
@@ -34,6 +37,8 @@ class StudentExam extends Model
         'correct_answers' => 'integer',
         'incorrect_answers' => 'integer',
         'unanswered' => 'integer',
+        'current_question_id' => 'integer',
+        'is_saved_exit'=>'boolean',
     ];
 
     protected $appends = [

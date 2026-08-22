@@ -7,6 +7,7 @@ use App\Models\Question;
 use App\Models\Result;
 use App\Models\StudentAnswer;
 use App\Models\StudentExam;
+use App\Models\QuestionOption;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class ExamEngineService
         // Check if already started
         $existingExam = StudentExam::where('student_id', $studentId)
             ->where('exam_id', $exam->id)
-            ->whereIn('status', ['started', 'in_progress'])
+            ->whereIn('status', ['started', 'in_progress', 'paused'])
             ->first();
 
         if ($existingExam) {
@@ -184,44 +185,333 @@ class ExamEngineService
     //     }
     // }
     
-    public function saveAnswer(StudentExam $studentExam, $questionId, $answer, $isMarkedForReview = false)
+//     public function saveAnswer(StudentExam $studentExam, $questionId, $answer, $isMarkedForReview = false)
+// {
+//     try {
+//         $studentAnswer = $studentExam->answers()
+//             ->where('question_id', $questionId)
+//             ->first();
+
+//         if (! $studentAnswer) {
+//             \Log::error("Exam Error: Question {$questionId} not found in exam {$studentExam->id}");
+//             throw new \Exception('Question not found in exam');
+//         }
+
+//         // Log initial state for debugging
+//         \Log::info("Debug SaveAnswer Start:", [
+//             'student_answer_id' => $studentAnswer->id,
+//             'db_last_saved_at' => $studentAnswer->last_saved_at,
+//             'db_time_taken_seconds' => $studentAnswer->time_taken_seconds
+//         ]);
+
+//         // Delegate all saving and time calculations to the model method to avoid duplicate calculations
+//         $studentAnswer->saveAnswer($answer, $isMarkedForReview);
+
+//         // Update remaining time in cache
+//         $this->updateRemainingTime($studentExam);
+
+//         // Log answer saved
+//         $studentExam->log('answer_saved', 'Answer saved for question', [
+//             'question_id' => $questionId,
+//             'is_marked_for_review' => $isMarkedForReview,
+//         ]);
+
+//         return $studentAnswer;
+//     } catch (\Exception $e) {
+//         \Log::error("Exception in saveAnswer: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+//         throw $e;
+//     }
+// }
+
+
+// app/Services/Exam/ExamEngineService.php
+
+// /**
+//  * Save answer for a question
+//  */
+// public function saveAnswer($studentExam, $questionId, $answer, $isMarkedForReview = false, $answerText = null)
+// {
+//     try {
+//         // Get the question to determine its type
+//         $question = Question::findOrFail($questionId);
+        
+//         // Find or create student answer
+//         $studentAnswer = StudentAnswer::firstOrNew([
+//             'student_exam_id' => $studentExam->id,
+//             'question_id' => $questionId,
+//         ]);
+
+//         // ✅ Handle based on question type
+//         if ($question->type === 'numerical') {
+//             // Numerical questions - use answer_text
+//             $studentAnswer->answer_text = $answerText ?? $answer[0] ?? null;
+//             $studentAnswer->selected_options = null; // ✅ Clear selected_options for numerical
+            
+//             // Validate numerical answer
+//             if ($studentAnswer->answer_text !== null && !is_numeric($studentAnswer->answer_text)) {
+//                 throw new \Exception('Numerical answer must be a number');
+//             }
+//         } else {
+//             // Choice questions - use selected_options
+//             $studentAnswer->selected_options = is_array($answer) ? $answer : [];
+//             $studentAnswer->answer_text = null; // ✅ Clear answer_text for choice
+            
+//             // Validate choice answer
+//             if (!empty($studentAnswer->selected_options)) {
+//                 $options = QuestionOption::whereIn('id', $studentAnswer->selected_options)
+//                     ->where('question_id', $questionId)
+//                     ->count();
+                    
+//                 if ($options != count($studentAnswer->selected_options)) {
+//                     throw new \Exception('Invalid option(s) selected');
+//                 }
+//             }
+//         }
+
+//         // Set marked for review
+//         $studentAnswer->is_marked_for_review = $isMarkedForReview;
+        
+//         // Set is_visited
+//         $studentAnswer->is_visited = true;
+//         $studentAnswer->last_saved_at = now();
+        
+//          // Calculate time taken for this question
+//         $timeTaken = $studentAnswer->last_saved_at
+//                 ? now()->diffInSeconds($studentAnswer->last_saved_at)
+//                 : 0;
+//         // Save the answer
+//         $studentAnswer->save();
+        
+//          // Update time taken
+//             if ($timeTaken > 0) {
+//                 $studentAnswer->update([
+//                     'time_taken_seconds' => ($studentAnswer->time_taken_seconds ?? 0) + $timeTaken,
+//                 ]);
+//             }
+//         $studentAnswer->save();
+//         // Update student exam statistics
+//         $this->updateExamStatistics($studentExam);
+
+//         return $studentAnswer;
+//     } catch (\Exception $e) {
+//         Log::error('Save answer error: ' . $e->getMessage(), [
+//             'student_exam_id' => $studentExam->id,
+//             'question_id' => $questionId,
+//             'answer' => $answer,
+//             'answer_text' => $answerText,
+//             'trace' => $e->getTraceAsString()
+//         ]);
+//         throw $e;
+//     }
+// }
+
+// /**
+//  * Update exam statistics
+//  */
+// private function updateExamStatistics($studentExam)
+// {
+//     // Get all answers
+//     $answers = StudentAnswer::where('student_exam_id', $studentExam->id)->get();
+    
+//     $answered = 0;
+//     $markedForReview = 0;
+    
+//     foreach ($answers as $answer) {
+//         // Check if answered (based on question type)
+//         $hasAnswer = false;
+        
+//         // Get the question to determine type
+//         $question = Question::find($answer->question_id);
+//         if ($question) {
+//             if ($question->type === 'numerical') {
+//                 $hasAnswer = !empty($answer->answer_text) && $answer->answer_text !== '';
+//             } else {
+//                 $hasAnswer = !empty($answer->selected_options) && 
+//                              count($answer->selected_options) > 0 &&
+//                              !(count($answer->selected_options) === 1 && $answer->selected_options[0] === null);
+//             }
+//         }
+        
+//         if ($hasAnswer) {
+//             $answered++;
+//         }
+        
+//         if ($answer->is_marked_for_review) {
+//             $markedForReview++;
+//         }
+//     }
+    
+//     // Update student exam
+//     $studentExam->answered_questions = $answered;
+//     $studentExam->marked_for_review_count = $markedForReview;
+//     $studentExam->save();
+// }
+
+
+/**
+ * Save answer for a question - FIXED with proper time tracking
+ */
+public function saveAnswer($studentExam, $questionId, $answer, $isMarkedForReview = false, $answerText = null)
 {
     try {
-        $studentAnswer = $studentExam->answers()
-            ->where('question_id', $questionId)
-            ->first();
+        // Get the question to determine its type
+        $question = Question::findOrFail($questionId);
+        
+        // Find or create student answer
+        $studentAnswer = StudentAnswer::firstOrNew([
+            'student_exam_id' => $studentExam->id,
+            'question_id' => $questionId,
+        ]);
 
-        if (! $studentAnswer) {
-            \Log::error("Exam Error: Question {$questionId} not found in exam {$studentExam->id}");
-            throw new \Exception('Question not found in exam');
+        // ✅ Track visit count - increment each time
+        $studentAnswer->visit_count = ($studentAnswer->visit_count ?? 0) + 1;
+        
+        // ✅ Track last saved at for time calculation
+        $previousLastSaved = $studentAnswer->last_saved_at;
+        $currentTime = now();
+        
+        // ✅ Calculate time taken since last save - ACCUMULATE
+        if ($previousLastSaved) {
+            $timeSinceLastSave = $previousLastSaved->diffInSeconds($currentTime);
+            // ✅ Add to existing time_taken_seconds (accumulate)
+            $studentAnswer->time_taken_seconds = ($studentAnswer->time_taken_seconds ?? 0) + $timeSinceLastSave;
+        } else {
+            // ✅ First time saving - calculate from created_at if available
+            if ($studentAnswer->created_at) {
+                $timeSinceCreation = $studentAnswer->created_at->diffInSeconds($currentTime);
+                $studentAnswer->time_taken_seconds = ($studentAnswer->time_taken_seconds ?? 0) + $timeSinceCreation;
+            }
         }
 
-        // Log initial state for debugging
-        \Log::info("Debug SaveAnswer Start:", [
-            'student_answer_id' => $studentAnswer->id,
-            'db_last_saved_at' => $studentAnswer->last_saved_at,
-            'db_time_taken_seconds' => $studentAnswer->time_taken_seconds
-        ]);
+        // ✅ Handle based on question type
+        if ($question->type === 'numerical') {
+            // Numerical questions - use answer_text
+            $studentAnswer->answer_text = $answerText ?? (is_array($answer) ? ($answer[0] ?? null) : $answer);
+            $studentAnswer->selected_options = null; // Clear selected_options for numerical
+            
+            // Validate numerical answer
+            if ($studentAnswer->answer_text !== null && !is_numeric($studentAnswer->answer_text)) {
+                throw new \Exception('Numerical answer must be a number');
+            }
+        } else {
+            // Choice questions - use selected_options
+            $studentAnswer->selected_options = is_array($answer) ? $answer : (array) $answer;
+            $studentAnswer->answer_text = null; // Clear answer_text for choice
+            
+            // Filter out null values from selected_options
+            if (is_array($studentAnswer->selected_options)) {
+                $studentAnswer->selected_options = array_filter($studentAnswer->selected_options, function($val) {
+                    return $val !== null && $val !== '';
+                });
+                
+                // Re-index array
+                $studentAnswer->selected_options = array_values($studentAnswer->selected_options);
+            }
+            
+            // Validate choice answer
+            if (!empty($studentAnswer->selected_options)) {
+                $options = QuestionOption::whereIn('id', $studentAnswer->selected_options)
+                    ->where('question_id', $questionId)
+                    ->count();
+                    
+                if ($options != count($studentAnswer->selected_options)) {
+                    throw new \Exception('Invalid option(s) selected');
+                }
+            }
+        }
 
-        // Delegate all saving and time calculations to the model method to avoid duplicate calculations
-        $studentAnswer->saveAnswer($answer, $isMarkedForReview);
+        // ✅ Set marked for review
+        $studentAnswer->is_marked_for_review = $isMarkedForReview;
+        
+        // ✅ Set is_visited
+        $studentAnswer->is_visited = true;
+        
+        // ✅ Update last_saved_at to current time
+        $studentAnswer->last_saved_at = $currentTime;
+        
+        // ✅ Increment save_count
+        $studentAnswer->save_count = ($studentAnswer->save_count ?? 0) + 1;
+        
+        // ✅ Save the answer
+        $studentAnswer->save();
 
-        // Update remaining time in cache
-        $this->updateRemainingTime($studentExam);
-
-        // Log answer saved
-        $studentExam->log('answer_saved', 'Answer saved for question', [
-            'question_id' => $questionId,
-            'is_marked_for_review' => $isMarkedForReview,
-        ]);
+        // ✅ Update student exam statistics
+        $this->updateExamStatistics($studentExam);
 
         return $studentAnswer;
+        
     } catch (\Exception $e) {
-        \Log::error("Exception in saveAnswer: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        Log::error('Save answer error: ' . $e->getMessage(), [
+            'student_exam_id' => $studentExam->id,
+            'question_id' => $questionId,
+            'answer' => $answer,
+            'answer_text' => $answerText,
+            'trace' => $e->getTraceAsString()
+        ]);
         throw $e;
     }
 }
 
+/**
+ * Update exam statistics - FIXED with all metrics
+ */
+private function updateExamStatistics($studentExam)
+{
+    // Get all answers with their related questions
+    $answers = StudentAnswer::where('student_exam_id', $studentExam->id)
+        ->with('question')
+        ->get();
+    
+    $answered = 0;
+    $markedForReview = 0;
+    $totalTimeTaken = 0;
+    
+    foreach ($answers as $answer) {
+        // Check if answered (based on question type)
+        $hasAnswer = false;
+        
+        if ($answer->question) {
+            if ($answer->question->type === 'numerical') {
+                $hasAnswer = !empty($answer->answer_text) && trim($answer->answer_text) !== '';
+            } else {
+                $hasAnswer = !empty($answer->selected_options) && 
+                             count($answer->selected_options) > 0 &&
+                             !(count($answer->selected_options) === 1 && 
+                               ($answer->selected_options[0] === null || $answer->selected_options[0] === ''));
+            }
+        }
+        
+        if ($hasAnswer) {
+            $answered++;
+        }
+        
+        if ($answer->is_marked_for_review) {
+            $markedForReview++;
+        }
+        
+        // ✅ Sum up time taken (accumulated from individual saves)
+        $totalTimeTaken += $answer->time_taken_seconds ?? 0;
+    }
+    
+    // Update student exam with all metrics
+    $studentExam->answered_questions = $answered;
+    $studentExam->marked_for_review_count = $markedForReview;
+    
+    // ✅ Update total time taken - use the accumulated total
+    // $studentExam->total_seconds_taken = $totalTimeTaken;
+    // $studentExam->total_seconds_taken = ($studentExam->exam->duration_minutes)*60 - $studentExam->remaining_seconds;
+    $studentExam->total_seconds_taken = max(0, ($studentExam->exam->duration_minutes * 60) - $studentExam->remaining_seconds);
+
+    
+    // Calculate not_visited_count
+    $totalQuestions = count($studentExam->question_order ?? []);
+    $visitedQuestions = $answers->where('is_visited', true)->count();
+    $studentExam->not_visited_count = $totalQuestions - $visitedQuestions;
+    
+    $studentExam->save();
+    
+    $studentExam->updateState();
+}
 
 
     /**
@@ -247,23 +537,63 @@ class ExamEngineService
     /**
      * Navigate to question
      */
-    public function navigateToQuestion(StudentExam $studentExam, $questionId)
-    {
-        $studentAnswer = $studentExam->answers()
+/**
+ * Navigate to a specific question
+ */
+public function navigateToQuestion($studentExam, $questionId)
+{
+    try {
+        // ✅ Save current question time before navigating
+        $currentAnswer = StudentAnswer::where('student_exam_id', $studentExam->id)
+            ->where('question_id', $studentExam->current_question_id)
+            ->first();
+        
+        if ($currentAnswer) {
+            // ✅ Calculate time spent on current question before leaving
+            $previousLastSaved = $currentAnswer->last_saved_at;
+            if ($previousLastSaved) {
+                $timeSinceLastSave = $previousLastSaved->diffInSeconds(now());
+                $currentAnswer->time_taken_seconds = ($currentAnswer->time_taken_seconds ?? 0) + $timeSinceLastSave;
+                $currentAnswer->last_saved_at = now();
+                $currentAnswer->save();
+            }
+        }
+        
+        // ✅ Update current question
+        $studentExam->update([
+            'current_question_id' => $questionId
+        ]);
+
+        // ✅ Mark new question as visited
+        $answer = StudentAnswer::where('student_exam_id', $studentExam->id)
             ->where('question_id', $questionId)
             ->first();
 
-        if ($studentAnswer && ! $studentAnswer->is_visited) {
-            $studentAnswer->update(['is_visited' => true]);
-            $studentExam->updateState();
-
-            $studentExam->log('question_navigation', 'Navigated to question', [
-                'question_id' => $questionId,
-            ]);
+        if ($answer) {
+            $answer->is_visited = true;
+            $answer->visit_count = ($answer->visit_count ?? 0) + 1;
+            
+            // ✅ Set last_saved_at for time tracking on the new question
+            if (!$answer->last_saved_at) {
+                $answer->last_saved_at = now();
+            }
+            $answer->save();
         }
 
-        return $studentExam->fresh();
+        // ✅ Update statistics
+        $this->updateExamStatistics($studentExam);
+
+        return true;
+        
+    } catch (\Exception $e) {
+        Log::error('Navigate to question error: ' . $e->getMessage(), [
+            'student_exam_id' => $studentExam->id,
+            'question_id' => $questionId,
+            'trace' => $e->getTraceAsString()
+        ]);
+        throw $e;
     }
+}
 
 
 /**
@@ -652,7 +982,8 @@ public function submitExam(StudentExam $studentExam)
         ]);
 
         // Calculate rank
-        $this->calculateRank($result);
+        // $this->calculateRank($result);
+        $this->recalculateRanks($result->exam_id);
 
         // Log exam submission
         \Log::info('Exam submitted successfully', [
@@ -760,14 +1091,20 @@ protected function calculateSpeedScore($questionTimeData)
     /**
      * Update remaining time
      */
+    // protected function updateRemainingTime(StudentExam $studentExam)
+    // {
+    //     $elapsedSeconds = now()->diffInSeconds($studentExam->started_at);
+    //     $remainingSeconds = max(0, ($studentExam->exam->duration_minutes * 60) - $elapsedSeconds);
+
+    //     $studentExam->update(['remaining_seconds' => $remainingSeconds]);
+
+    //     return $remainingSeconds;
+    // }
+    
     protected function updateRemainingTime(StudentExam $studentExam)
     {
-        $elapsedSeconds = now()->diffInSeconds($studentExam->started_at);
-        $remainingSeconds = max(0, ($studentExam->exam->duration_minutes * 60) - $elapsedSeconds);
-
-        $studentExam->update(['remaining_seconds' => $remainingSeconds]);
-
-        return $remainingSeconds;
+        // Timer is managed by client-side sync.
+        return $studentExam->remaining_seconds;
     }
 
     /**
@@ -786,6 +1123,42 @@ protected function calculateSpeedScore($questionTimeData)
 
         return $rank;
     }
+    
+
+
+protected function recalculateRanks($examId)
+{
+    $results = Result::where('exam_id', $examId)
+        ->orderByDesc('obtained_marks')
+        ->orderBy('time_taken_seconds', 'asc')
+        ->get();
+
+    $totalParticipants = $results->count();
+
+    $rank = 1;
+    $previousMarks = null;
+
+    foreach ($results as $index => $result) {
+
+        if ($previousMarks !== null &&
+            $result->obtained_marks < $previousMarks) {
+            $rank = $index + 1;
+        }
+
+        $percentile = round(
+            (($totalParticipants - $rank + 1) / $totalParticipants) * 100,
+            2
+        );
+
+        $result->update([
+            'rank' => $rank,
+            'percentile' => $percentile,
+            'total_participants' => $totalParticipants,
+        ]);
+
+        $previousMarks = $result->obtained_marks;
+    }
+}
 
     /**
      * Validate exam access

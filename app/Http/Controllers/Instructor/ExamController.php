@@ -64,8 +64,12 @@ class ExamController extends Controller
 
         // Calculate average score for each exam
         foreach ($exams as $exam) {
-            $exam->average_score = round(Result::where('exam_id', $exam->id)->avg('percentage') ?? 0, 1);
+            $exam->average_score = Result::where('exam_id', $exam->id)
+                ->selectRaw('ROUND(AVG(percentage), 1) as avg_score')
+                ->value('avg_score') ?? 0.0;
         }
+
+// dd($exams);
 
         return view('instructor.exams.index', compact('exams', 'batches'));
     }

@@ -57,6 +57,9 @@
                 <table class="table table-bordered table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th width="30">
+                                <input type="checkbox" id="select-all">
+                            </th>
                             <th>ID</th>
                             <th>Batch Name</th>
                             <th>Course</th>
@@ -71,21 +74,38 @@
                     <tbody>
                         @forelse($batches as $batch)
                         <tr>
+                            <td>
+                                <input type="checkbox" class="batch-checkbox" value="{{ $batch->id }}">
+                            </td>
                             <td>{{ $batch->id }}</td>
                             <td>
                                 <a href="{{ route('admin.batches.show', $batch) }}" class="text-decoration-none">
                                     {{ $batch->name }}
                                 </a>
                             </td>
-                            <td>{{ $batch->course->title }}</td>
-                            <td>{{ $batch->instructor->name }}</td>
                             <td>
-                                {{ $batch->start_date->format('d M Y') }} <br>
-                                <small class="text-muted">to {{ $batch->end_date->format('d M Y') }}</small>
+                                {{ $batch->course->title ?? 'N/A' }}
+                                @if(!$batch->course)
+                                    <span class="badge bg-warning text-dark ms-1" title="No course assigned">⚠️</span>
+                                @endif
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ $batch->students_count }}/{{ $batch->capacity }}</span>
-                                @if($batch->available_seats > 0)
+                                {{ $batch->instructor->name ?? 'N/A' }}
+                                @if(!$batch->instructor)
+                                    <span class="badge bg-warning text-dark ms-1" title="No instructor assigned">⚠️</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($batch->start_date && $batch->end_date)
+                                    {{ $batch->start_date->format('d M Y') }} <br>
+                                    <small class="text-muted">to {{ $batch->end_date->format('d M Y') }}</small>
+                                @else
+                                    <span class="text-muted">N/A</span>
+                                @endif
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ $batch->students_count ?? 0 }}/{{ $batch->capacity ?? 0 }}</span>
+                                @if(($batch->available_seats ?? 0) > 0)
                                     <br><small class="text-success">{{ $batch->available_seats }} seats left</small>
                                 @else
                                     <br><small class="text-danger">Full</small>
@@ -94,9 +114,9 @@
                             <td>
                                 <div class="progress" style="height: 10px;">
                                     <div class="progress-bar bg-success" role="progressbar"
-                                         style="width: {{ $batch->progress }}%"></div>
+                                         style="width: {{ $batch->progress ?? 0 }}%"></div>
                                 </div>
-                                <small class="text-muted">{{ round($batch->progress) }}%</small>
+                                <small class="text-muted">{{ round($batch->progress ?? 0) }}%</small>
                             </td>
                             <td>
                                 @php
@@ -105,9 +125,10 @@
                                         'ongoing' => 'success',
                                         'completed' => 'primary'
                                     ];
+                                    $status = $batch->status ?? 'upcoming';
                                 @endphp
-                                <span class="badge bg-{{ $statusColors[$batch->status] }}">
-                                    {{ ucfirst($batch->status) }}
+                                <span class="badge bg-{{ $statusColors[$status] ?? 'secondary' }}">
+                                    {{ ucfirst($status) }}
                                 </span>
                             </td>
                             <td>
@@ -139,7 +160,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4">
+                            <td colspan="10" class="text-center py-4">
                                 <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                                 No batches found.
                             </td>
@@ -149,19 +170,131 @@
                 </table>
             </div>
 
-            <div class="d-flex justify-content-center mt-4">
-                {{ $batches->withQueryString()->links() }}
+            <!-- Bulk Actions -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-danger" onclick="bulkDelete()">
+                            <i class="bi bi-trash"></i> Delete Selected
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="d-flex justify-content-center">
+                        {{ $batches->withQueryString()->links('pagination::bootstrap-5') }}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
 
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@endpush
+
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Select2
+        $('.select2').select2({ 
+            placeholder: 'Select Course', 
+            allowClear: true 
+        });
+    
+        // Select all checkbox
+        $('#select-all').on('change', function() {
+            $('.batch-checkbox').prop('checked', $(this).prop('checked'));
+        });
+    });
 
     function exportBatch(batchId) {
         window.location.href = `/admin/batches/${batchId}/export-students`;
+    }
+    
+    function getSelectedIds() {
+        const ids = [];
+        $('.batch-checkbox:checked').each(function() {
+            ids.push($(this).val());
+        });
+        return ids;
+    }
+
+    function bulkStatus(status) {
+        const selectedIds = getSelectedIds();
+        if (selectedIds.length === 0) {
+            toastr.warning('Please select at least one batch');
+            return;
+        }
+
+        // Convert status for batches (active/inactive vs ongoing/completed)
+        let batchStatus = status;
+        if (status === 'active') {
+            batchStatus = 'ongoing';
+        } else if (status === 'inactive') {
+            batchStatus = 'completed';
+        }
+
+        if (confirm(`Are you sure you want to mark selected batches as ${batchStatus}?`)) {
+            $.ajax({
+                url: '{{ route("admin.batches.bulk-status") }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    batch_ids: selectedIds,
+                    status: batchStatus
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        toastr.success(response.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(response.message || 'Error updating status');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Error updating status';
+                    toastr.error(errorMsg);
+                }
+            });
+        }
+    }
+
+    function bulkDelete() {
+        const selectedIds = getSelectedIds();
+        if (selectedIds.length === 0) {
+            toastr.warning('Please select at least one batch');
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete selected batches? This action cannot be undone.')) {
+            $.ajax({
+                url: '{{ route("admin.batches.bulk-delete") }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    batch_ids: selectedIds
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        toastr.success(response.message);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        toastr.error(response.message || 'Error deleting batches');
+                    }
+                },
+                error: function(xhr) {
+                    const errorMsg = xhr.responseJSON?.message || 'Error deleting batches';
+                    toastr.error(errorMsg);
+                }
+            });
+        }
     }
 </script>
 @endpush

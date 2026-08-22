@@ -742,7 +742,7 @@
     {{-- Global Loader --}}
     @include('layouts.global-loader')
     <!-- Global Scripts -->
-    <script src="{{ asset('js/global-loaders.js') }}"></script>
+    <script src="{{ asset('js/loader.js') }}"></script>
     <script>
          // ===== SIDEBAR TOGGLE =====
         function toggleSidebar() {
@@ -932,7 +932,7 @@
         }
 
         // Load notifications every 30 seconds
-        setInterval(loadNotifications, 30000);
+        // setInterval(loadNotifications, 30000);
         loadNotifications();
 
         // ===== AUTO-HIDE ALERTS =====

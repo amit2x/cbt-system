@@ -309,7 +309,6 @@
 @endsection
 
 @push('styles')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
     .select2-container {
         width: 100% !important;
@@ -348,21 +347,13 @@
 @endpush
 
 @push('scripts')
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    (function($) {
-        'use strict';
-        
+document.addEventListener('DOMContentLoaded', function() {
+
         $(document).ready(function() {
             console.log('Exam edit form initialized');
             
-            // Initialize Select2 for all select elements
-            $('.select2').select2({
-                placeholder: 'Select an option',
-                allowClear: true,
-                width: '100%'
-            });
+            
 
             const $courseSelect = $('#course_id');
             const $moduleSelect = $('#module_id');
@@ -544,7 +535,7 @@
             };
         });
         
-    })(window.jQuery || window.$);
+    });
 
     function toggleSchedule() {
         const isChecked = document.getElementById('is_scheduled').checked;

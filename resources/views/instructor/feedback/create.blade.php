@@ -169,73 +169,88 @@
 </div>
 @endsection
 
-@push('styles')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-@endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     let questionCount = 1;
 
-    $(document).ready(function() {
-        $('.select2').select2({
-            placeholder: 'Select a batch',
-            allowClear: true
+    document.addEventListener('DOMContentLoaded', function () {
+        // 1. Initialize the Bootstrap 5 Modal instance natively
+        const deleteModalEl = document.getElementById('deleteModal');
+        let deleteModalInstance = null;
+        if (deleteModalEl) {
+            deleteModalInstance = new bootstrap.Modal(deleteModalEl);
+        }
+
+        // jQuery Initialization
+        $(document).ready(function() {
+            $('.select2').select2({
+                placeholder: 'Select a batch',
+                allowClear: true
+            });
+
+            // Toggle between quick and detailed feedback
+            $('input[name="type"]').on('change', function() {
+                if ($(this).val() === 'quick') {
+                    $('#quickOptions').show();
+                    $('#detailedOptions').hide();
+                } else {
+                    $('#quickOptions').hide();
+                    $('#detailedOptions').show();
+                }
+            });
         });
 
-        // Toggle between quick and detailed feedback
-        $('input[name="type"]').on('change', function() {
-            if ($(this).val() === 'quick') {
-                $('#quickOptions').show();
-                $('#detailedOptions').hide();
+        // 2. Attach functions to the window object so HTML onclick attributes can reach them
+        window.addQuestion = function() {
+            const html = `
+                <div class="question-item mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="questions[]" placeholder="Enter your question...">
+                        <button type="button" class="btn btn-danger" onclick="removeQuestion(this)">Remove</button>
+                    </div>
+                </div>
+            `;
+            $('#questionsContainer').append(html);
+            questionCount++;
+        };
+
+        window.removeQuestion = function(btn) {
+            $(btn).closest('.question-item').remove();
+            questionCount--;
+        };
+
+        window.addSampleQuestion = function(question) {
+            // Switch to detailed feedback
+            $('#detailedOptions').show();
+            $('#quickOptions').hide();
+            $('input[name="type"][value="detailed"]').prop('checked', true).trigger('change');
+
+            // Add the question
+            const html = `
+                <div class="question-item mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="questions[]" value="${question.replace(/'/g, "\\'")}">
+                        <button type="button" class="btn btn-danger" onclick="removeQuestion(this)">Remove</button>
+                    </div>
+                </div>
+            `;
+            $('#questionsContainer').append(html);
+            questionCount++;
+        };
+
+        window.deleteFeedback = function(id) {
+            // Safely update the form target action using jQuery
+            $('#deleteForm').attr('action', '/instructor/feedback/' + id);
+            
+            // Trigger the modal open via native Bootstrap 5 instance
+            if (deleteModalInstance) {
+                deleteModalInstance.show();
             } else {
-                $('#quickOptions').hide();
-                $('#detailedOptions').show();
+                console.error("Modal element #deleteModal not found in DOM.");
             }
-        });
-    });
-
-    function addQuestion() {
-        const html = `
-            <div class="question-item mb-3">
-                <div class="input-group">
-                    <input type="text" class="form-control" name="questions[]" placeholder="Enter your question...">
-                    <button type="button" class="btn btn-danger" onclick="removeQuestion(this)">Remove</button>
-                </div>
-            </div>
-        `;
-        $('#questionsContainer').append(html);
-        questionCount++;
-    }
-
-    function removeQuestion(btn) {
-        $(btn).closest('.question-item').remove();
-        questionCount--;
-    }
-
-    function addSampleQuestion(question) {
-        // Switch to detailed feedback
-        $('#detailedOptions').show();
-        $('#quickOptions').hide();
-        $('input[name="type"][value="detailed"]').prop('checked', true).trigger('change');
-
-        // Add the question
-        const html = `
-            <div class="question-item mb-3">
-                <div class="input-group">
-                    <input type="text" class="form-control" name="questions[]" value="${question.replace(/'/g, "\\'")}">
-                    <button type="button" class="btn btn-danger" onclick="removeQuestion(this)">Remove</button>
-                </div>
-            </div>
-        `;
-        $('#questionsContainer').append(html);
-        questionCount++;
-    }
-
-    function deleteFeedback(id) {
-        $('#deleteForm').attr('action', '/instructor/feedback/' + id);
-        $('#deleteModal').modal('show');
-    }
+        };
+    });    
 </script>
+
 @endpush

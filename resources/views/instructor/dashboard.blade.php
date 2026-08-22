@@ -3,7 +3,7 @@
 @section('title', 'Instructor Dashboard')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid p-1">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Instructor Dashboard</h1>
@@ -33,91 +33,91 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row">
-        <!-- Total Courses -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                My Courses</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalCourses ?? 0 }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-book fs-2 text-gray-300"></i>
-                        </div>
+<div class="row">
+    <!-- My Courses -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            My Courses</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalCourses ?? 0 }}</div>
                     </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('instructor.courses.index') }}" class="small text-primary">View all courses →</a>
+                    <div class="col-auto">
+                        <i class="bi bi-book fs-2 text-primary"></i>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Active Batches -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Active Batches</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $activeBatches ?? 0 }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-people fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <span class="small text-success">{{ $totalStudents ?? 0 }} total students</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Exams -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Exams Created</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalExams ?? 0 }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-pencil-square fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <a href="{{ route('instructor.exams.index') }}" class="small text-info">Manage exams →</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Average Performance -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Avg. Performance</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $averageScore ?? 0 }}%</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="bi bi-bar-chart fs-2 text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent border-0">
-                    <span class="small text-warning">Across all exams</span>
-                </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('instructor.courses.index') }}" class="small text-primary text-nowrap">View all courses →</a>
             </div>
         </div>
     </div>
+
+    <!-- Active Batches -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Active Batches</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $activeBatches ?? 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fs-2 text-success"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <span class="small text-success text-nowrap">{{ $totalStudents ?? 0 }} total students</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exams Created -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Exams Created</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalExams ?? 0 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-pencil-square fs-2 text-info"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <a href="{{ route('instructor.exams.index') }}" class="small text-info text-nowrap">Manage exams →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Avg. Performance -->
+    <div class="col-xl-3 col-md-6 col-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row g-0 align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Avg. Performance</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $averageScore ?? 0 }}%</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-bar-chart fs-2 text-warning"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 px-2 px-sm-3">
+                <span class="small text-warning text-nowrap">Across all exams</span>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Charts Row -->
     <div class="row">

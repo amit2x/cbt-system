@@ -504,11 +504,30 @@
         /* ===== RESPONSIVE TABLES ===== */
         .table-responsive {
             border-radius: 12px;
-            overflow: hidden;
+            overflow-x: auto;
         }
 
         .table {
             margin-bottom: 0;
+        }
+        
+        /* 1. Customize the overall scrollbar track */
+        .table-responsive::-webkit-scrollbar {
+          height: 10px;          /* Height of horizontal scrollbar */
+          background-color: #f1f1f1; /* Light background track */
+          border-radius: 12px;
+        }
+        
+        /* 2. Customize the draggable scrollbar thumb */
+        .table-responsive::-webkit-scrollbar-thumb {
+          background: linear-gradient(45deg, #ff007f, #7f00ff); /* Colorful gradient */
+          border-radius: 12px;   /* Matches container roundness */
+          border: 2px solid #f1f1f1; /* Creates padding around thumb */
+        }
+        
+        /* 3. Change color on hover */
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(45deg, #ff0055, #5500ff); /* Brighter gradient on hover */
         }
 
         /* ===== RESPONSIVE CARDS ===== */
@@ -689,6 +708,27 @@
                     <i class="bi bi-people-fill me-2"></i>
                     <span>User Management</span>
                 </a>
+                
+                <a href="{{ route('admin.airports.index') }}"
+                   class="list-group-item list-group-item-action {{ request()->routeIs('admin.airports.*') ? 'active' : '' }}">
+                    <i class="bi bi-people-fill me-2"></i>
+                    <span>Airport Management</span>
+                </a>
+                
+                <!-- Activity Logs Menu -->
+
+                <a class="list-group-item list-group-item-action" href="{{ route('admin.activity-logs.index') }}">
+                    <i class="bi bi-clock-history me-2"></i>
+                    <span>Activity Logs</span>
+                    @php
+                        $unreadCount = \Spatie\Activitylog\Models\Activity::whereDate('created_at', '>=', now()->subDay())->count();
+                    @endphp
+                    @if($unreadCount > 0)
+                        <span class="badge bg-danger ms-2">{{ $unreadCount }}</span>
+                    @endif
+                </a>
+
+                
             </div>
         </div>
 
@@ -894,7 +934,7 @@
 
     </div>
 
-    <script src="{{ asset('js/global-loaders.js') }}"></script>
+    <script src="{{ asset('js/loader.js') }}"></script>
 
     <script>
         // ===== SIDEBAR TOGGLE =====
@@ -984,7 +1024,7 @@
         }
 
         // Load notifications every 30 seconds
-        setInterval(loadNotifications, 30000);
+        // setInterval(loadNotifications, 30000);
         loadNotifications();
 
         // ===== AUTO-HIDE ALERTS =====

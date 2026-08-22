@@ -50,6 +50,9 @@ class StudentsImport implements SkipsOnError, ToModel, WithChunkReading, WithHea
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'required|regex:/^[0-9]{10,15}$/',
+            'organization_name' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:800',
+            
         ];
     }
 
@@ -100,8 +103,11 @@ class StudentsImport implements SkipsOnError, ToModel, WithChunkReading, WithHea
                 $student = User::create([
                     'name' => $row['name'],
                     'email' => $row['email'],
-                    'password' => Hash::make('password123'), // Default password
+                    'password' => Hash::make('12345678'), // Default password
                     'phone' => $row['phone'] ?? null,
+                    'organization_name' => $row['organization_name'] ?? null,
+                    'address' => $row['address'] ?? null,
+                    'roll_no' => $this->generateRollNo(),
                     'is_active' => true,
                 ]);
 
@@ -162,5 +168,29 @@ class StudentsImport implements SkipsOnError, ToModel, WithChunkReading, WithHea
     public function getStats()
     {
         return $this->stats;
+    }
+    
+    private function generateRollNo()
+    {
+        $prefix = sprintf(
+            'STU%d%d%d%d-',
+            $this->batch->airport_id,
+            $this->batch->course_id,
+            $this->batch->id,
+            $this->batch->instructor_id
+        );
+    
+        $lastStudent = User::where('roll_no', 'like', $prefix . '%')
+            ->orderByDesc('roll_no')
+            ->first();
+    
+        if ($lastStudent) {
+            $lastSequence = (int) substr($lastStudent->roll_no, strrpos($lastStudent->roll_no, '-') + 1);
+            $next = $lastSequence + 1;
+        } else {
+            $next = 1;
+        }
+    
+        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 }

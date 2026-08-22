@@ -21,7 +21,7 @@
             <h6 class="m-0 font-weight-bold text-primary">Question Details</h6>
         </div>
         <div class="card-body">
-            <form action="{{ route('admin.questions.update', $question) }}" method="POST" id="questionForm">
+            <form action="{{ route('admin.questions.update', $question) }}" method="POST" id="questionForm" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -29,10 +29,59 @@
                     <div class="col-md-8">
                         <!-- Question Text -->
                         <div class="mb-3">
-                            <label for="question_text" class="form-label">Question Text <span class="text-danger">*</span></label>
+                            <label for="question_text" class="form-label">Question Text</label>
                             <textarea class="form-control @error('question_text') is-invalid @enderror"
-                                      id="question_text" name="question_text" rows="4" required>{{ old('question_text', $question->question_text) }}</textarea>
+                                      id="question_text" name="question_text" rows="4">{{ old('question_text', $question->question_text) }}</textarea>
                             @error('question_text')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">Either text or image is required</small>
+                        </div>
+
+                        <!-- Question Image -->
+                        <div class="mb-3">
+                            <label for="question_image" class="form-label">Question Image</label>
+                            @if($question->question_image)
+                                <div class="mb-2">
+                                    <img src="{{ asset('storage/' . $question->question_image) }}" 
+                                         alt="{{ $question->question_image_alt ?? 'Question image' }}" 
+                                         class="img-fluid" 
+                                         style="max-height: 150px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                                    <div class="mt-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="remove_question_image" id="remove_question_image" value="1">
+                                            <label class="form-check-label text-danger" for="remove_question_image">
+                                                Remove current image
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                            <input type="file" class="form-control @error('question_image') is-invalid @enderror"
+                                   id="question_image" name="question_image" accept="image/*"
+                                   onchange="previewQuestionImage(this)">
+                            @error('question_image')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">Supported formats: JPG, PNG, GIF, SVG (Max: 2MB)</small>
+                            <div id="questionImagePreview" class="mt-2" style="display: none;">
+                                <img id="questionImagePreviewImg" src="#" alt="Question Image Preview" 
+                                     class="img-fluid" style="max-height: 200px; border: 1px solid #ddd; padding: 5px; border-radius: 5px;">
+                                <button type="button" class="btn btn-sm btn-danger mt-1" onclick="removeQuestionImagePreview()">
+                                    <i class="bi bi-x"></i> Remove Preview
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Question Image Alt Text -->
+                        <div class="mb-3">
+                            <label for="question_image_alt" class="form-label">Image Alt Text</label>
+                            <input type="text" class="form-control @error('question_image_alt') is-invalid @enderror"
+                                   id="question_image_alt" name="question_image_alt" 
+                                   value="{{ old('question_image_alt', $question->question_image_alt) }}"
+                                   placeholder="Descriptive text for accessibility">
+                            @error('question_image_alt')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -57,21 +106,57 @@
                                     @foreach($question->options as $index => $option)
                                         <div class="option-row" id="option-{{ $index }}">
                                             <div class="row">
-                                                <div class="col-md-8">
+                                                <div class="col-md-6">
                                                     <input type="text" class="form-control"
                                                            name="options[{{ $index }}][option_text]"
-                                                           placeholder="Option {{ chr(65 + $index) }}"
-                                                           value="{{ $option->option_text }}" required>
+                                                           placeholder="Option {{ chr(65 + $index) }} text"
+                                                           value="{{ $option->option_text }}">
                                                 </div>
-                                                <div class="col-md-3">
+                                                <div class="col-md-4">
+                                                    <div class="mb-1">
+                                                        <input type="file" class="form-control form-control-sm"
+                                                               name="options[{{ $index }}][option_image]"
+                                                               accept="image/*"
+                                                               onchange="previewOptionImage({{ $index }}, this)"
+                                                               id="option_image_{{ $index }}">
+                                                    </div>
+                                                    @if($option->option_image)
+                                                        <div id="option_image_preview_{{ $index }}" class="mt-1">
+                                                            <img src="{{ asset('storage/' . $option->option_image) }}" 
+                                                                 alt="{{ $option->option_image_alt ?? 'Option image' }}" 
+                                                                 class="option-image-preview">
+                                                            <div class="form-check mt-1">
+                                                                <input class="form-check-input" type="checkbox" 
+                                                                       name="options[{{ $index }}][remove_image]" 
+                                                                       id="remove_option_image_{{ $index }}" value="1">
+                                                                <label class="form-check-label text-danger" for="remove_option_image_{{ $index }}">
+                                                                    Remove image
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    @else
+                                                        <div id="option_image_preview_{{ $index }}" style="display: none;">
+                                                            <img src="#" alt="Option Image" class="option-image-preview">
+                                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                                    onclick="removeOptionImagePreview({{ $index }})">
+                                                                <i class="bi bi-x"></i>
+                                                            </button>
+                                                        </div>
+                                                    @endif
+                                                    <input type="text" class="form-control form-control-sm mt-1"
+                                                           name="options[{{ $index }}][option_image_alt]"
+                                                           placeholder="Image alt text"
+                                                           value="{{ $option->option_image_alt }}">
+                                                </div>
+                                                <div class="col-md-1">
                                                     <div class="form-check mt-2">
                                                         <input class="form-check-input" type="{{ $question->type === 'multiple_choice' ? 'checkbox' : 'radio' }}"
-                                                               name="options[{{ $index }}][is_correct]"
-                                                               value="1"
+                                                               name="{{ $question->type === 'multiple_choice' ? 'options[' . $index . '][is_correct]' : 'correct_option' }}"
+                                                               value="{{ $index }}"
                                                                {{ $option->is_correct ? 'checked' : '' }}
-                                                               {{ $question->type === 'single_choice' ? 'name="correct_option"' : '' }}>
-                                                        <label class="form-check-label">
-                                                            Correct Answer
+                                                               id="correct_option_{{ $index }}">
+                                                        <label class="form-check-label" for="correct_option_{{ $index }}">
+                                                            Correct
                                                         </label>
                                                     </div>
                                                 </div>
@@ -82,6 +167,7 @@
                                                 </div>
                                             </div>
                                             <input type="hidden" name="options[{{ $index }}][order]" value="{{ $index }}">
+                                            <input type="hidden" name="options[{{ $index }}][id]" value="{{ $option->id }}">
                                         </div>
                                     @endforeach
                                 @endif
@@ -273,11 +359,23 @@
         padding: 10px;
         margin-bottom: 10px;
         border-radius: 5px;
+        border: 1px solid #e9ecef;
+    }
+    .option-image-preview {
+        max-height: 80px;
+        border: 1px solid #ddd;
+        padding: 5px;
+        border-radius: 5px;
+        margin-top: 5px;
+    }
+    .option-row .form-check {
+        padding-top: 8px;
     }
 </style>
 @endpush
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     let optionCount = {{ $question->options->count() }};
@@ -287,6 +385,9 @@
             placeholder: 'Select options',
             allowClear: true
         });
+
+        // Initialize option type based on current type
+        handleTypeChange();
     });
 
     function handleTypeChange() {
@@ -308,11 +409,15 @@
 
     function updateOptionTypes(type) {
         const isMultiple = type === 'multiple_choice';
-        $('.option-row').each(function() {
-            const checkbox = $(this).find('input[type="checkbox"], input[type="radio"]');
-            checkbox.attr('type', isMultiple ? 'checkbox' : 'radio');
+        $('.option-row').each(function(index) {
+            const input = $(this).find('input[type="checkbox"], input[type="radio"]');
+            input.attr('type', isMultiple ? 'checkbox' : 'radio');
             if (!isMultiple) {
-                checkbox.attr('name', 'correct_option');
+                input.attr('name', 'correct_option');
+                input.attr('value', index);
+            } else {
+                input.attr('name', 'options[' + index + '][is_correct]');
+                input.attr('value', '1');
             }
         });
     }
@@ -320,22 +425,43 @@
     function addOption() {
         const type = $('#type').val();
         const isMultiple = type === 'multiple_choice';
+        const letter = String.fromCharCode(65 + optionCount);
+        
         const optionHtml = `
             <div class="option-row" id="option-${optionCount}">
                 <div class="row">
-                    <div class="col-md-8">
+                    <div class="col-md-6">
                         <input type="text" class="form-control"
                                name="options[${optionCount}][option_text]"
-                               placeholder="Option ${String.fromCharCode(65 + optionCount)}" required>
+                               placeholder="Option ${letter} text">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
+                        <div class="mb-1">
+                            <input type="file" class="form-control form-control-sm"
+                                   name="options[${optionCount}][option_image]"
+                                   accept="image/*"
+                                   onchange="previewOptionImage(${optionCount}, this)"
+                                   id="option_image_${optionCount}">
+                        </div>
+                        <div id="option_image_preview_${optionCount}" style="display: none;">
+                            <img src="#" alt="Option Image" class="option-image-preview">
+                            <button type="button" class="btn btn-sm btn-danger" 
+                                    onclick="removeOptionImagePreview(${optionCount})">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <input type="text" class="form-control form-control-sm mt-1"
+                               name="options[${optionCount}][option_image_alt]"
+                               placeholder="Image alt text">
+                    </div>
+                    <div class="col-md-1">
                         <div class="form-check mt-2">
                             <input class="form-check-input" type="${isMultiple ? 'checkbox' : 'radio'}"
-                                   name="options[${optionCount}][is_correct]"
-                                   value="1"
-                                   ${isMultiple ? '' : 'name="correct_option"'}>
-                            <label class="form-check-label">
-                                Correct Answer
+                                   name="${isMultiple ? 'options[' + optionCount + '][is_correct]' : 'correct_option'}"
+                                   value="${isMultiple ? '1' : optionCount}"
+                                   id="correct_option_${optionCount}">
+                            <label class="form-check-label" for="correct_option_${optionCount}">
+                                Correct
                             </label>
                         </div>
                     </div>
@@ -361,11 +487,47 @@
         }
     }
 
+    function previewQuestionImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#questionImagePreviewImg').attr('src', e.target.result);
+                $('#questionImagePreview').show();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function removeQuestionImagePreview() {
+        $('#question_image').val('');
+        $('#questionImagePreview').hide();
+        $('#questionImagePreviewImg').attr('src', '#');
+    }
+
+    function previewOptionImage(optionId, input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewDiv = $(`#option_image_preview_${optionId}`);
+                previewDiv.find('img').attr('src', e.target.result);
+                previewDiv.show();
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function removeOptionImagePreview(optionId) {
+        $(`#option_image_${optionId}`).val('');
+        $(`#option_image_preview_${optionId}`).hide();
+        $(`#option_image_preview_${optionId} img`).attr('src', '#');
+    }
+
     function previewQuestion() {
         const questionText = $('#question_text').val();
         const type = $('#type option:selected').text();
         const difficulty = $('#difficulty option:selected').text();
         const marks = $('#marks').val();
+        const questionImagePreview = $('#questionImagePreviewImg').attr('src');
 
         let preview = `
             <div class="card">
@@ -377,7 +539,8 @@
                         <span class="badge bg-primary">${marks} Mark(s)</span>
                     </div>
                     <div class="question-text mb-4">
-                        ${questionText}
+                        ${questionText || ''}
+                        ${questionImagePreview && questionImagePreview !== '#' ? `<br><img src="${questionImagePreview}" alt="Question image" class="img-fluid mt-2" style="max-height: 200px;">` : ''}
                     </div>
         `;
 
@@ -385,10 +548,12 @@
             preview += '<h6>Options:</h6><div class="options-preview">';
             $('.option-row').each(function() {
                 const optionText = $(this).find('input[name*="[option_text]"]').val();
-                const isCorrect = $(this).find('input[name*="[is_correct]"]').is(':checked');
+                const optionImage = $(this).find('img').attr('src');
+                const isCorrect = $(this).find('input[type="checkbox"]:checked, input[type="radio"]:checked').length > 0;
                 preview += `
-                    <div class="option-item mb-2 p-2 ${isCorrect ? 'bg-success text-white' : 'bg-light'}">
-                        ${optionText}
+                    <div class="option-item mb-2 p-2 ${isCorrect ? 'bg-success text-white' : 'bg-light'}" style="border-radius: 5px;">
+                        ${optionText || ''}
+                        ${optionImage && optionImage !== '#' ? `<br><img src="${optionImage}" alt="Option image" class="img-fluid mt-1" style="max-height: 80px;">` : ''}
                         ${isCorrect ? '<span class="badge bg-light text-success ms-2">✓ Correct</span>' : ''}
                     </div>
                 `;
@@ -421,5 +586,64 @@
         $('#previewContent').html(preview);
         $('#previewModal').modal('show');
     }
+
+    // Form validation before submit
+    $('#questionForm').on('submit', function(e) {
+        const questionText = $('#question_text').val();
+        const questionImage = $('#question_image').val();
+        const type = $('#type').val();
+        
+        // Check if question has text or image
+        if (!questionText && !questionImage && !$('#questionImagePreview').is(':visible') && !$('#remove_question_image').is(':checked')) {
+            toastr.error('Please provide either question text or an image');
+            e.preventDefault();
+            return false;
+        }
+        
+        if (type === 'single_choice' || type === 'multiple_choice') {
+            // Check if at least one option has text or image
+            let hasOption = false;
+            $('.option-row').each(function() {
+                const text = $(this).find('input[name*="[option_text]"]').val();
+                const image = $(this).find('input[name*="[option_image]"]').val();
+                const existingImage = $(this).find('img').attr('src') && $(this).find('img').attr('src') !== '#';
+                if (text || image || existingImage) {
+                    hasOption = true;
+                }
+            });
+            
+            if (!hasOption) {
+                toastr.error('Please add at least one option with text or image');
+                e.preventDefault();
+                return false;
+            }
+            
+            // Check correct answer selection
+            if (type === 'single_choice') {
+                if ($('input[name="correct_option"]:checked').length === 0) {
+                    toastr.error('Please select the correct answer');
+                    e.preventDefault();
+                    return false;
+                }
+            } else {
+                if ($('input[name*="[is_correct]"]:checked').length === 0) {
+                    toastr.error('Please select at least one correct answer');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        }
+        
+        if (type === 'numerical') {
+            const numericalAnswer = $('#correct_numerical').val();
+            if (!numericalAnswer && numericalAnswer !== '0') {
+                toastr.error('Please enter the correct numerical answer');
+                e.preventDefault();
+                return false;
+            }
+        }
+        
+        return true;
+    });
 </script>
 @endpush

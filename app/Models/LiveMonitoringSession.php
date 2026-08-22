@@ -2,80 +2,122 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BaseModel;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasAirport;
 
-class LiveMonitoringSession extends Model
+class LiveMonitoringSession extends BaseModel
 {
+    use HasAirport;
     protected $fillable = [
-        'exam_id', 'instructor_id', 'batch_id', 'session_name',
-        'started_at', 'ended_at', 'status',
-        'track_tab_switches', 'track_mouse_events', 'enable_proctoring',
-        'screenshot_interval', 'alert_settings',
-        'total_students', 'active_students', 'warning_count', 'terminated_count'
+        'airport_id',
+        'exam_id',
+        'instructor_id',
+        'batch_id',
+        'session_name',
+        'started_at',
+        'ended_at',
+        'status',
+        'track_tab_switches',
+        'track_mouse_events',
+        'enable_proctoring',
+        'screenshot_interval',
+        'alert_settings',
+        'total_students',
+        'active_students',
+        'warning_count',
+        'terminated_count'
     ];
 
     protected $casts = [
-        'alert_settings' => 'array',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'track_tab_switches' => 'boolean',
         'track_mouse_events' => 'boolean',
         'enable_proctoring' => 'boolean',
-        'screenshot_interval' => 'integer'
+        'alert_settings' => 'array',
     ];
 
-    public function exam()
+    // ==================== RELATIONSHIPS ====================
+
+    public function exam(): BelongsTo
     {
         return $this->belongsTo(Exam::class);
     }
 
-    public function instructor()
+    public function instructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'instructor_id');
     }
 
-    public function batch()
+    public function batch(): BelongsTo
     {
         return $this->belongsTo(Batch::class);
     }
 
-    public function activityLogs()
+    public function proctoringImages(): HasMany
     {
-        return $this->hasMany(StudentActivityLog::class, 'monitoring_session_id');
+        return $this->hasMany(ProctoringImage::class);
     }
 
-    public function proctoringImages()
+    public function studentActivities(): HasMany
     {
-        return $this->hasMany(ProctoringImage::class, 'monitoring_session_id');
+        return $this->hasMany(StudentActivityLog::class);
     }
 
-    // Scopes
+    // ==================== SCOPES ====================
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
     }
 
-    public function scopeForInstructor($query, $instructorId)
+    public function scopeEnded($query)
     {
-        return $query->where('instructor_id', $instructorId);
+        return $query->where('status', 'ended');
     }
 
-    public function scopeForExam($query, $examId)
+    public function scopePaused($query)
     {
-        return $query->where('exam_id', $examId);
+        return $query->where('status', 'paused');
     }
 
-    // Helper methods
-    public function isActive()
+    // ==================== ACCESSORS ====================
+
+    public function getDurationAttribute()
     {
-        return $this->status === 'active';
+        if (!$this->started_at) {
+            return 0;
+        }
+        $end = $this->ended_at ?? now();
+        return $this->started_at->diffInSeconds($end);
     }
 
-    public function end()
+    public function getFormattedDurationAttribute()
+    {
+        $seconds = $this->duration;
+        $hours = floor($seconds / 3600);
+        $minutes = floor(($seconds % 3600) / 60);
+        $secs = $seconds % 60;
+        return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
+    }
+
+    public function getParticipationRateAttribute()
+    {
+        if ($this->total_students == 0) {
+            return 0;
+        }
+        return round(($this->active_students / $this->total_students) * 100, 2);
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    public function start()
     {
         $this->update([
-            'status' => 'ended',
-            'ended_at' => now()
+            'status' => 'active',
+            'started_at' => now()
         ]);
     }
 
@@ -89,36 +131,35 @@ class LiveMonitoringSession extends Model
         $this->update(['status' => 'active']);
     }
 
-    public function getDurationAttribute()
+    public function end()
     {
-        $end = $this->ended_at ?? now();
-        return $end->diffInMinutes($this->started_at);
+        $this->update([
+            'status' => 'ended',
+            'ended_at' => now()
+        ]);
     }
 
-    public function getActiveStudentsList()
-    {
-        return StudentExam::where('exam_id', $this->exam_id)
-            ->where('batch_id', $this->batch_id)
-            ->whereIn('status', ['started', 'in_progress'])
-            ->with('student')
-            ->get();
-    }
-
-    public function getWarningStats()
+    public function getStudentStats()
     {
         return [
-            'tab_switches' => $this->activityLogs()
-                ->where('activity_type', 'tab_switch')
-                ->count(),
-            'copy_attempts' => $this->activityLogs()
-                ->where('activity_type', 'copy_attempt')
-                ->count(),
-            'window_blurs' => $this->activityLogs()
-                ->where('activity_type', 'window_blur')
-                ->count(),
-            'critical_alerts' => $this->activityLogs()
-                ->where('severity', 'critical')
-                ->count()
+            'total' => $this->total_students,
+            'active' => $this->active_students,
+            'warning_count' => $this->warning_count,
+            'terminated_count' => $this->terminated_count,
+            'participation_rate' => $this->participation_rate
         ];
+    }
+
+    public function isActive()
+    {
+        return $this->status === 'active';
+    }
+
+    public function shouldCaptureScreenshot()
+    {
+        if (!$this->enable_proctoring || !$this->isActive()) {
+            return false;
+        }
+        return true;
     }
 }

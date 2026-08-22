@@ -68,7 +68,7 @@
                             <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
                             <input type="date" class="form-control @error('start_date') is-invalid @enderror"
                                    id="start_date" name="start_date" value="{{ old('start_date') }}"
-                                   min="{{ date('Y-m-d', strtotime('+1 day')) }}" required>
+                                   min="{{ date('Y-m-d', strtotime('+0 day')) }}" required>
                             @error('start_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

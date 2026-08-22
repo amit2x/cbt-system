@@ -100,30 +100,30 @@
         </button>
 
         <!-- Links -->
-        <div class="auth-links">
-            @if (Route::has('password.request'))
-                <p class="mb-2">
-                    <a href="{{ route('password.request') }}">
-                        Forgot your password?
-                    </a>
-                </p>
-            @endif
+        <!--<div class="auth-links">-->
+        <!--    @if (Route::has('password.request'))-->
+        <!--        <p class="mb-2">-->
+        <!--            <a href="{{ route('password.request') }}">-->
+        <!--                Forgot your password?-->
+        <!--            </a>-->
+        <!--        </p>-->
+        <!--    @endif-->
 
-            @if (Route::has('register'))
-                <p class="mb-0">
-                    Don't have an account?
-                    <a href="{{ route('register') }}" class="fw-bold">
-                        Create Account
-                    </a>
-                </p>
-            @endif
-        </div>
+        <!--    @if (Route::has('register'))-->
+        <!--        <p class="mb-0">-->
+        <!--            Don't have an account?-->
+        <!--            <a href="{{ route('register') }}" class="fw-bold">-->
+        <!--                Create Account-->
+        <!--            </a>-->
+        <!--        </p>-->
+        <!--    @endif-->
+        <!--</div>-->
 
         <!-- Footer -->
-        <div class="footer-note">
-            <p class="copyright">© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-            <p class="version">Version 1.0 • 256-bit SSL Encrypted</p>
-        </div>
+        <!--<div class="footer-note">-->
+        <!--    <p class="copyright">© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>-->
+        <!--    <p class="version">Version 1.0 • 256-bit SSL Encrypted</p>-->
+        <!--</div>-->
     </form>
 </div>
 

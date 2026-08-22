@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->appendToGroup('web', [
             \App\Http\Middleware\EnsureUserIsActive::class,
+            \App\Http\Middleware\LogActivityMiddleware::class,
+            \App\Http\Middleware\SetLocale::class,
         ]);
     })
 

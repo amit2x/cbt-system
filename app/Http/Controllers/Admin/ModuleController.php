@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\Exam;
+use App\Models\ExamQuestion;
 use Illuminate\Http\Request;
 use App\Traits\ApiResponse;
 
@@ -72,7 +74,15 @@ class ModuleController extends Controller
     public function show(Course $course, Module $module)
     {
         $module->load(['course']);
-        return view('admin.modules.show', compact('course', 'module'));
+        $exams = Exam::whereIn('id', function ($query) use ($module) {
+        $query->select('exam_questions.exam_id')
+                ->from('exam_questions')
+                ->join('questions', 'exam_questions.question_id', '=', 'questions.id')
+                ->where('questions.subject_id', $module->id);
+        })
+        ->withCount('examQuestions')
+        ->get();
+        return view('admin.modules.show', compact('course', 'module', 'exams'));
     }
 
     /**

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAirport;
 
-class StudentPerformanceTracking extends Model
+class StudentPerformanceTracking extends BaseModel
 {
+    use HasAirport;
     protected $table = 'student_performance_tracking';
 
     protected $fillable = [

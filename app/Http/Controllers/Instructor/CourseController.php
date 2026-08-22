@@ -63,9 +63,9 @@ class CourseController extends Controller
      */
     public function getModules(Course $course)
     {
-        if (!$course->instructors()->where('user_id', auth()->id())->exists()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
+        // if (!$course->instructors()->where('user_id', auth()->id())->exists()) {
+        //     return response()->json(['error' => 'Unauthorized'], 403);
+        // }
 
         $modules = $course->modules()->where('status', 'active')->get();
 
