@@ -11,11 +11,12 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 // use App\Traits\HasAirport; //Dont add in this model cause recurssion
 use Illuminate\Support\Facades\Auth;
+use Rappasoft\LaravelAuthenticationLog\Traits\AuthenticationLoggable;
 
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasRoles, Notifiable, AirportAware, LogsActivity;
+    use HasApiTokens, HasRoles, Notifiable, AirportAware, LogsActivity ,AuthenticationLoggable;
 
     protected $fillable = [
         'name', 'email', 'password', 'phone', 
