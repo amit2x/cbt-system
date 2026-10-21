@@ -10,6 +10,7 @@ use App\Services\Exam\ResultAnalysisService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ResultController extends Controller
 {
@@ -63,14 +64,38 @@ class ResultController extends Controller
         $trends = $this->resultAnalysis->getStudentTrends($studentId);
 
         // Get statistics
+        // $stats = [
+        //     'total_exams' => Result::where('student_id', $studentId)->count(),
+        //     'passed' => Result::where('student_id', $studentId)->where('status', 'passed')->count(),
+        //     'failed' => Result::where('student_id', $studentId)->where('status', 'failed')->count(),
+        //     'average_score' => round(Result::where('student_id', $studentId)->avg('percentage'), 2),
+        //     'best_score' => Result::where('student_id', $studentId)->max('percentage'),
+        //     'total_correct' => Result::where('student_id', $studentId)->sum('correct_answers'),
+        //     'total_incorrect' => Result::where('student_id', $studentId)->sum('incorrect_answers'),
+        // ];
+
+        // Fetch all statistics in a single database query
+        $statsData = Result::where('student_id', $studentId)
+            ->select([
+                DB::raw('COUNT(*) as total_exams'),
+                DB::raw("COUNT(CASE WHEN status = 'passed' THEN 1 END) as passed"),
+                DB::raw("COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed"),
+                DB::raw('ROUND(AVG(percentage), 2) as average_score'),
+                DB::raw('MAX(percentage) as best_score'),
+                DB::raw('SUM(correct_answers) as total_correct'),
+                DB::raw('SUM(incorrect_answers) as total_incorrect'),
+            ])
+            ->first();
+
+        // Format the output as an array (casting nulls to 0 where appropriate)
         $stats = [
-            'total_exams' => Result::where('student_id', $studentId)->count(),
-            'passed' => Result::where('student_id', $studentId)->where('status', 'passed')->count(),
-            'failed' => Result::where('student_id', $studentId)->where('status', 'failed')->count(),
-            'average_score' => round(Result::where('student_id', $studentId)->avg('percentage'), 2),
-            'best_score' => Result::where('student_id', $studentId)->max('percentage'),
-            'total_correct' => Result::where('student_id', $studentId)->sum('correct_answers'),
-            'total_incorrect' => Result::where('student_id', $studentId)->sum('incorrect_answers'),
+            'total_exams' => (int) ($statsData->total_exams ?? 0),
+            'passed' => (int) ($statsData->passed ?? 0),
+            'failed' => (int) ($statsData->failed ?? 0),
+            'average_score' => (float) ($statsData->average_score ?? 0.0),
+            'best_score' => (float) ($statsData->best_score ?? 0.0),
+            'total_correct' => (int) ($statsData->total_correct ?? 0),
+            'total_incorrect' => (int) ($statsData->total_incorrect ?? 0),
         ];
 
         $examTypes = [

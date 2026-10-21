@@ -5,23 +5,22 @@ namespace App\Models;
 use App\Traits\AirportAware;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
-// use App\Traits\HasAirport; //Dont add in this model cause recurssion
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\HasApiTokens;
 use Rappasoft\LaravelAuthenticationLog\Traits\AuthenticationLoggable;
-
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+// use App\Traits\HasAirport; //Dont add in this model cause recurssion
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasRoles, Notifiable, AirportAware, LogsActivity ,AuthenticationLoggable;
+    use AirportAware, AuthenticationLoggable, HasApiTokens, HasRoles, LogsActivity ,Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 
-    'organization_name','address', 'preferred_locale','roll_no',
-    'avatar', 'is_active', 'airport_id',
+        'name', 'email', 'password', 'phone',
+        'organization_name', 'address', 'preferred_locale', 'roll_no',
+        'avatar', 'is_active', 'airport_id',
     ];
 
     protected $hidden = [
@@ -33,8 +32,7 @@ class User extends Authenticatable
         'is_active' => 'boolean',
     ];
 
-
-// ==================== LANGUAGE HELPERS ====================
+    // ==================== LANGUAGE HELPERS ====================
 
     /**
      * Get user's preferred locale
@@ -60,7 +58,7 @@ class User extends Authenticatable
         return $this->preferred_locale === 'hi';
     }
 
-/**
+    /**
      * Get the activity log options.
      * ✅ For v5.0.0, this method is required
      */
@@ -70,9 +68,10 @@ class User extends Authenticatable
             ->logAll()
             ->logOnlyDirty()
             // ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(function(string $eventName) {
+            ->setDescriptionForEvent(function (string $eventName) {
                 $userName = Auth::user()?->name ?? 'System';
-                return match($eventName) {
+
+                return match ($eventName) {
                     'created' => "{$userName} created user: {$this->name} ({$this->email})",
                     'updated' => "{$userName} updated user: {$this->name} ({$this->email})",
                     'deleted' => "{$userName} deleted user: {$this->name} ({$this->email})",
@@ -84,34 +83,34 @@ class User extends Authenticatable
             ->logOnly(['name', 'email', 'phone', 'is_active', 'airport_id', 'preferred_locale'])
             ->logExcept(['updated_at', 'created_at', 'deleted_at', 'password', 'remember_token']);
     }
-protected static function booted()
-{
-    static::creating(function ($user) {
 
-        if (
-            auth()->check() &&
-            empty($user->airport_id)
-        ) {
-            $user->airport_id = auth()->user()->airport_id;
-        }
+    protected static function booted()
+    {
+        static::creating(function ($user) {
 
-    });
-}
-    
+            if (
+                auth()->check() &&
+                empty($user->airport_id)
+            ) {
+                $user->airport_id = auth()->user()->airport_id;
+            }
+
+        });
+    }
+
     public function scopeCurrentAirport($query)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return $query;
         }
-    
+
         if (auth()->user()->hasRole('Super Admin')) {
             return $query;
         }
-    
+
         return $query->where('airport_id', auth()->user()->airport_id);
     }
 
-    
     // Relationships
     public function courses()
     {
@@ -135,10 +134,20 @@ protected static function booted()
     }
 
     // Relationships for student
+    // public function batches()
+    // {
+    //     return $this->belongsToMany(Batch::class, 'batch_student', 'student_id', 'batch_id')
+    //         ->withPivot('status', 'enrolled_at')
+    //         ->withTimestamps();
+    // }
+
+    // app/Models/Batch.php
+
     public function batches()
     {
         return $this->belongsToMany(Batch::class, 'batch_student', 'student_id', 'batch_id')
-            ->withPivot('status', 'enrolled_at')
+            ->using(BatchStudent::class)   // ✅ Use custom pivot model
+            ->withPivot('airport_id', 'status', 'enrolled_at')
             ->withTimestamps();
     }
 
@@ -177,14 +186,14 @@ protected static function booted()
     {
         return $this->avatar ? asset('storage/'.$this->avatar) : 'https://ui-avatars.com/api/?name='.urlencode($this->name);
     }
-    
+
     /**
      * Get the user's notifications
      */
     public function notifications()
     {
-        return $this->morphMany(\App\Models\Notification::class, 'notifiable')
-                    ->orderBy('created_at', 'desc');
+        return $this->morphMany(Notification::class, 'notifiable')
+            ->orderBy('created_at', 'desc');
     }
 
     /**
@@ -192,9 +201,9 @@ protected static function booted()
      */
     public function unreadNotifications()
     {
-        return $this->morphMany(\App\Models\Notification::class, 'notifiable')
-                    ->whereNull('read_at')
-                    ->orderBy('created_at', 'desc');
+        return $this->morphMany(Notification::class, 'notifiable')
+            ->whereNull('read_at')
+            ->orderBy('created_at', 'desc');
     }
 
     /**
@@ -204,16 +213,15 @@ protected static function booted()
     {
         return $this->unreadNotifications()->count();
     }
-    
 
     public function getExamStatistics()
     {
         $results = $this->results;
-        
+
         return [
             'total_exams' => $results->count(),
             'average_score' => round($results->avg('percentage'), 2),
-            'pass_rate' => $results->count() > 0 
+            'pass_rate' => $results->count() > 0
                 ? round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2)
                 : 0,
             'accuracy' => round($results->avg('accuracy_percentage'), 2),
@@ -221,5 +229,4 @@ protected static function booted()
             'total_failed' => $results->where('status', 'failed')->count(),
         ];
     }
-
 }

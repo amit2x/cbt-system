@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\Analytics\ResultAnalysisService;
 use App\Traits\HasAirport;
+use Illuminate\Database\Eloquent\Builder;
 
 class Result extends BaseModel
 {
@@ -48,6 +49,13 @@ class Result extends BaseModel
         'formatted_time',
         'performance_level',
     ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('published', function (Builder $builder) {
+            $builder->where('is_published', true);
+        });
+    }
 
     public function studentExam()
     {
