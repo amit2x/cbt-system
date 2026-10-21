@@ -9,10 +9,12 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController;
 use App\Http\Controllers\Admin\ExamSectionController;
 use App\Http\Controllers\Admin\ModuleController;
+use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\QuestionCategoryController;
 use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ResultModerationController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\StudyMaterialController;
@@ -306,10 +308,10 @@ Route::middleware(['auth', 'role:admin|superadmin'])->prefix('admin')->name('adm
     });
 
     // ==================== User Management ====================
-    Route::resource('users', UserController::class)
-        ->middleware('permission:view users|create users|edit users|delete users');
+    Route::resource('users', UserController::class);
+    // ->middleware('permission:view users|create users|edit users|delete users');
     Route::post('users/{user}/roles', [UserController::class, 'assignRole'])
-        ->middleware('permission:assign roles')
+        // ->middleware('permission:assign roles')
         ->name('users.assign-role');
     Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])
         ->name('users.toggle-status');
@@ -375,6 +377,16 @@ Route::middleware(['auth', 'role:superadmin'])->prefix('admin')->name('admin.')-
     });
 
     Route::patch('/answers/{answer}', [ResultModerationController::class, 'updateAnswer'])->name('answers.update');
+});
+
+Route::middleware(['auth', 'role:superadmin'])->prefix('admin')->name('admin.')->group(function () {
+
+    // Roles Management
+    Route::resource('roles', RoleController::class);
+
+    // Permissions Management
+    Route::resource('permissions', PermissionController::class)->except(['show']);
+
 });
 
 /*

@@ -13,9 +13,9 @@
 
     <!-- Favicon -->
     @if (setting('app_favicon'))
-    <link rel="icon" href="{{ setting('app_favicon') }}" type="image/x-icon">
+        <link rel="icon" href="{{ setting('app_favicon') }}" type="image/x-icon">
     @else
-    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+        <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     @endif
 
     <!-- Fonts -->
@@ -29,20 +29,20 @@
     @stack('styles')
 
     @if (setting('google_analytics_id'))
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id={{ setting('google_analytics_id') }}"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
+        <!-- Google Analytics -->
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ setting('google_analytics_id') }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
 
             function gtag() {
                 dataLayer.push(arguments);
             }
             gtag('js', new Date());
             gtag('config', '{{ setting('google_analytics_id') }}');
-    </script>
+        </script>
     @endif
-    
-     <style>
+
+    <style>
         :root {
             --primary-color: {{ theme_color('primary_color', '#4e73df') }};
             --secondary-color: {{ theme_color('secondary_color', '#858796') }};
@@ -135,7 +135,8 @@
         }
 
         /* ===== LAYOUT ===== */
-        html, body {
+        html,
+        body {
             height: 100%;
             margin: 0;
             padding: 0;
@@ -365,9 +366,17 @@
         }
 
         /* ===== UTILITY CLASSES ===== */
-        .text-primary { color: var(--primary-color) !important; }
-        .bg-primary { background-color: var(--primary-color) !important; }
-        .border-primary { border-color: var(--primary-color) !important; }
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+
+        .bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+
+        .border-primary {
+            border-color: var(--primary-color) !important;
+        }
 
         .btn-primary {
             background-color: var(--primary-color);
@@ -397,8 +406,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* ===== STATS CARDS ===== */
@@ -412,11 +428,25 @@
             box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
         }
 
-        .stats-card.border-left-primary { border-left-color: var(--primary-color); }
-        .stats-card.border-left-success { border-left-color: var(--success-color); }
-        .stats-card.border-left-info { border-left-color: var(--info-color); }
-        .stats-card.border-left-warning { border-left-color: var(--warning-color); }
-        .stats-card.border-left-danger { border-left-color: var(--danger-color); }
+        .stats-card.border-left-primary {
+            border-left-color: var(--primary-color);
+        }
+
+        .stats-card.border-left-success {
+            border-left-color: var(--success-color);
+        }
+
+        .stats-card.border-left-info {
+            border-left-color: var(--info-color);
+        }
+
+        .stats-card.border-left-warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .stats-card.border-left-danger {
+            border-left-color: var(--danger-color);
+        }
 
         /* ===== ALERTS ===== */
         .alert {
@@ -513,24 +543,30 @@
         .table {
             margin-bottom: 0;
         }
-        
+
         /* 1. Customize the overall scrollbar track */
         .table-responsive::-webkit-scrollbar {
-          height: 10px;          /* Height of horizontal scrollbar */
-          background-color: #f1f1f1; /* Light background track */
-          border-radius: 12px;
+            height: 10px;
+            /* Height of horizontal scrollbar */
+            background-color: #f1f1f1;
+            /* Light background track */
+            border-radius: 12px;
         }
-        
+
         /* 2. Customize the draggable scrollbar thumb */
         .table-responsive::-webkit-scrollbar-thumb {
-          background: linear-gradient(45deg, #ff007f, #7f00ff); /* Colorful gradient */
-          border-radius: 12px;   /* Matches container roundness */
-          border: 2px solid #f1f1f1; /* Creates padding around thumb */
+            background: linear-gradient(45deg, #ff007f, #7f00ff);
+            /* Colorful gradient */
+            border-radius: 12px;
+            /* Matches container roundness */
+            border: 2px solid #f1f1f1;
+            /* Creates padding around thumb */
         }
-        
+
         /* 3. Change color on hover */
         .table-responsive::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(45deg, #ff0055, #5500ff); /* Brighter gradient on hover */
+            background: linear-gradient(45deg, #ff0055, #5500ff);
+            /* Brighter gradient on hover */
         }
 
         /* ===== RESPONSIVE CARDS ===== */
@@ -589,6 +625,7 @@
 
         /* ===== PRINT STYLES ===== */
         @media print {
+
             #sidebar-wrapper,
             .navbar,
             .footer,
@@ -605,13 +642,14 @@
                 padding: 0 !important;
             }
         }
-        
+
         /* Dark Mode Styles (Activates when .dark class is added upstream) */
         body.dark table {
-            background-color: #1a1d20 !important; /* Forces overwrite if framework styles interfere */
+            background-color: #1a1d20 !important;
+            /* Forces overwrite if framework styles interfere */
             color: #f8f9fa;
         }
-        
+
         body.dark input {
             background-color: #2b3035 !important;
             color: #f8f9fa;
@@ -632,7 +670,8 @@
             <div class="sidebar-heading d-flex align-items-center justify-content-between py-3 px-4">
                 <div class="d-flex align-items-center">
                     @if (setting('app_logo'))
-                    <img src="{{ setting('app_logo') }}" alt="{{ setting('app_name') }}" height="35" class="me-2">
+                        <img src="{{ setting('app_logo') }}" alt="{{ setting('app_name') }}" height="35"
+                            class="me-2">
                     @endif
                     <span class="fw-bold">{{ setting('app_name', 'CBT System') }}</span>
                 </div>
@@ -713,11 +752,17 @@
                 </a>
 
                 @hasrole('superadmin')
-                <a href="{{ route('admin.airports.index') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('admin.airports.*') ? 'active' : '' }}">
-                    <i class="bi bi-people-fill me-2"></i>
-                    <span>Airport Management</span>
-                </a>
+                    <a href="{{ route('admin.airports.index') }}"
+                        class="list-group-item list-group-item-action {{ request()->routeIs('admin.airports.*') ? 'active' : '' }}">
+                        <i class="bi bi-airplane-fill me-2"></i>
+                        <span>Airport Management</span>
+                    </a>
+
+                    <a href="{{ route('admin.roles.index') }}"
+                        class="list-group-item list-group-item-action {{ request()->routeIs('admin.roles.*' || 'admin.permissions.*') ? 'active' : '' }}">
+                        <i class="bi bi-person-lock me-2"></i>
+                        <span>Roles & Permissions</span>
+                    </a>
                 @endhasrole
 
                 <!-- Activity Logs Menu -->
@@ -726,14 +771,14 @@
                     <i class="bi bi-clock-history me-2"></i>
                     <span>Activity Logs</span>
                     @php
-                    $unreadCount = \Spatie\Activitylog\Models\Activity::whereDate(
-                    'created_at',
-                    '>=',
-                    now()->subDay(),
-                    )->count();
+                        $unreadCount = \Spatie\Activitylog\Models\Activity::whereDate(
+                            'created_at',
+                            '>=',
+                            now()->subDay(),
+                        )->count();
                     @endphp
                     @if ($unreadCount > 0)
-                    <span class="badge bg-danger ms-2">{{ $unreadCount }}</span>
+                        <span class="badge bg-danger ms-2">{{ $unreadCount }}</span>
                     @endif
                 </a>
 
@@ -806,7 +851,8 @@
                         </div>
 
                         <!-- Theme Toggle -->
-                        <button class="btn btn-link p-0 me-2 me-md-3" onclick="toggleDarkMode()" title="Toggle Theme">
+                        <button class="btn btn-link p-0 me-2 me-md-3" onclick="toggleDarkMode()"
+                            title="Toggle Theme">
                             <i class="bi {{ is_dark_mode() ? 'bi-sun' : 'bi-moon' }} fs-5"></i>
                         </button>
 
@@ -842,7 +888,8 @@
                                         onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                         <i class="bi bi-box-arrow-right me-2"></i>Logout
                                     </a>
-                                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                                    <form id="logout-form" action="{{ route('logout') }}" method="POST"
+                                        class="d-none">
                                         @csrf
                                     </form>
                                 </li>
@@ -856,66 +903,66 @@
             <div class="main-content-area" id="mainContent">
                 <!-- Breadcrumbs -->
                 @if (isset($breadcrumbs) || View::hasSection('breadcrumbs'))
-                <nav aria-label="breadcrumb" class="mb-4">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
-                        @yield('breadcrumbs')
-                    </ol>
-                </nav>
+                    <nav aria-label="breadcrumb" class="mb-4">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
+                            @yield('breadcrumbs')
+                        </ol>
+                    </nav>
                 @endif
 
                 <!-- Page Title -->
                 @hasSection('page-title')
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-                    <h1 class="h3 mb-0">@yield('page-title')</h1>
-                    @yield('page-actions')
-                </div>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                        <h1 class="h3 mb-0">@yield('page-title')</h1>
+                        @yield('page-actions')
+                    </div>
                 @endif
 
                 <!-- Alerts -->
                 @if (session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="bi bi-check-circle-fill me-2"></i>
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 @if (session('error'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 @if (session('warning'))
-                <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-circle-fill me-2"></i>
-                    {{ session('warning') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-circle-fill me-2"></i>
+                        {{ session('warning') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 @if (session('info'))
-                <div class="alert alert-info alert-dismissible fade show" role="alert">
-                    <i class="bi bi-info-circle-fill me-2"></i>
-                    {{ session('info') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        {{ session('info') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 @if ($errors->any())
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <strong>Please fix the following errors:</strong>
-                    <ul class="mb-0 mt-2">
-                        @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Please fix the following errors:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 <!-- Main Content -->
