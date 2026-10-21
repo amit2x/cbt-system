@@ -75,7 +75,7 @@ class ResultController extends Controller
         // ];
 
         // Fetch all statistics in a single database query
-        $statsData = Result::where('student_id', $studentId)
+        $statsData = Result::where('student_id', $studentId)->where('is_published', true)
             ->select([
                 DB::raw('COUNT(*) as total_exams'),
                 DB::raw("COUNT(CASE WHEN status = 'passed' THEN 1 END) as passed"),
@@ -141,6 +141,13 @@ class ResultController extends Controller
             abort(403, 'Unauthorized access');
         }
 
+        // ✅ Guard: don't show unpublished results
+        if (! $result->is_published) {
+            return redirect()
+                ->route('student.exam.submitted', $result->student_exam_id)
+                ->with('warning', 'Your result has not been published yet.');
+        }
+
         $result->load(['exam', 'batch', 'sections', 'studentExam.answers.question']);
 
         $analysis = [
@@ -200,6 +207,7 @@ class ResultController extends Controller
         // 2. Fetch or cache the total participants and scores below this student
         $comparisonData = Cache::remember("exam_stats_{$result->exam_id}", 300, function () use ($result) {
             $stats = Result::where('exam_id', $result->exam_id)
+                ->where('is_published', true)
                 ->selectRaw('AVG(percentage) as avg_score, MAX(percentage) as max_score, COUNT(id) as total_users')
                 ->first();
 
@@ -215,6 +223,7 @@ class ResultController extends Controller
         if (is_null($percentile) && $comparisonData['total_participants'] > 1) {
             // Count how many students scored LESS than or EQUAL to this student
             $studentsScoredLessOrEqual = Result::where('exam_id', $result->exam_id)
+                ->where('is_published', true)
                 ->where('obtained_marks', '<=', $result->obtained_marks)
                 ->count();
 

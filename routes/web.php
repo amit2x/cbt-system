@@ -557,8 +557,8 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
         Route::post('/{studentExam}/activity', [App\Http\Controllers\Student\ExamController::class, 'logActivity'])->name('activity');
         Route::get('/{studentExam}/result', [App\Http\Controllers\Student\ExamController::class, 'result'])->name('result');
 
-        Route::get('/{studentExam}/submitted', [App\Http\Controllers\Student\ExamController::class, 'submitted'])->name('exam.submitted');
-        Route::get('/result/{studentExam}', [App\Http\Controllers\Student\ExamController::class, 'result'])->name('exam.result');
+        Route::get('/{studentExam}/submitted', [App\Http\Controllers\Student\ExamController::class, 'submitted'])->name('submitted');
+        Route::get('/result/{studentExam}', [App\Http\Controllers\Student\ExamController::class, 'result'])->name('exam.result'); // need to recheck this route, it might be redundant with the previous one
 
         Route::post('/{studentExam}/save-current-question', [App\Http\Controllers\Student\ExamController::class, 'saveCurrentQuestion'])->name('save-current-question');
         Route::post('/{studentExam}/save-exit', [App\Http\Controllers\Student\ExamController::class, 'saveExit'])->name('save-exit');

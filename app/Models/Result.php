@@ -50,12 +50,12 @@ class Result extends BaseModel
         'performance_level',
     ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('published', function (Builder $builder) {
-            $builder->where('is_published', true);
-        });
-    }
+    // protected static function booted(): void
+    // {
+    //     static::addGlobalScope('published', function (Builder $builder) {
+    //         $builder->where('is_published', true);
+    //     });
+    // }
 
     public function studentExam()
     {

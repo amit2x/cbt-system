@@ -1568,6 +1568,7 @@ class ExamController extends Controller
      */
     public function submitted($studentExamId)
     {
+
         $studentExam = StudentExam::with(['exam', 'result'])
             ->where('student_id', auth()->id())
             ->findOrFail($studentExamId);
