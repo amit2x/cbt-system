@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Course\StoreCourseRequest;
+use App\Http\Requests\Course\UpdateCourseRequest;
 use App\Models\Course;
 use App\Models\Module;
 use App\Models\User;
-use App\Http\Requests\Course\StoreCourseRequest;
-use App\Http\Requests\Course\UpdateCourseRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,11 +16,9 @@ class CourseController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
-    
-    
     /**
      * Display a listing of courses.
      */
@@ -28,22 +26,22 @@ class CourseController extends Controller
     {
         $query = Course::with(['creator', 'instructors'])
             ->withCount(['modules', 'batches']);
-    
+
         // Apply search filter
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('title', 'LIKE', "%{$request->search}%")
-                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+                    ->orWhere('description', 'LIKE', "%{$request->search}%");
             });
         }
-    
+
         // Apply status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-    
+
         $courses = $query->latest()->paginate(15);
-    
+
         return view('admin.courses.index', compact('courses'));
     }
 
@@ -53,6 +51,7 @@ class CourseController extends Controller
     public function create()
     {
         $instructors = User::role('instructor')->where('is_active', true)->get();
+
         return view('admin.courses.create', compact('instructors'));
     }
 
@@ -79,7 +78,7 @@ class CourseController extends Controller
         }
 
         return redirect()->route('admin.courses.index')
-                        ->with('success', 'Course created successfully.');
+            ->with('success', 'Course created successfully.');
     }
 
     /**
@@ -87,7 +86,7 @@ class CourseController extends Controller
      */
     public function show(Course $course)
     {
-        $course->load(['modules', 'batches' => function($q) {
+        $course->load(['modules', 'batches' => function ($q) {
             $q->withCount('students');
         }, 'instructors']);
 
@@ -100,6 +99,7 @@ class CourseController extends Controller
     public function edit(Course $course)
     {
         $instructors = User::role('instructor')->where('is_active', true)->get();
+
         return view('admin.courses.edit', compact('course', 'instructors'));
     }
 
@@ -129,7 +129,7 @@ class CourseController extends Controller
         }
 
         return redirect()->route('admin.courses.index')
-                        ->with('success', 'Course updated successfully.');
+            ->with('success', 'Course updated successfully.');
     }
 
     /**
@@ -150,7 +150,7 @@ class CourseController extends Controller
         $course->delete();
 
         return redirect()->route('admin.courses.index')
-                        ->with('success', 'Course deleted successfully.');
+            ->with('success', 'Course deleted successfully.');
     }
 
     /**
@@ -160,20 +160,20 @@ class CourseController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
         ]);
 
         $module = $course->modules()->create([
             'title' => $request->title,
             'description' => $request->description,
-            'order' => $course->modules()->max('order') + 1
+            'order' => $course->modules()->max('order') + 1,
         ]);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Module added successfully',
-                'module' => $module
+                'module' => $module,
             ]);
         }
 
@@ -187,7 +187,7 @@ class CourseController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string'
+            'description' => 'nullable|string',
         ]);
 
         $module->update($request->only(['title', 'description']));
@@ -195,7 +195,7 @@ class CourseController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Module updated successfully'
+                'message' => 'Module updated successfully',
             ]);
         }
 
@@ -212,7 +212,7 @@ class CourseController extends Controller
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Module deleted successfully'
+                'message' => 'Module deleted successfully',
             ]);
         }
 
@@ -227,25 +227,25 @@ class CourseController extends Controller
         $request->validate([
             'modules' => 'required|array',
             'modules.*.id' => 'required|exists:modules,id',
-            'modules.*.order' => 'required|integer'
+            'modules.*.order' => 'required|integer',
         ]);
 
         foreach ($request->modules as $moduleData) {
             Module::where('id', $moduleData['id'])
-                  ->where('course_id', $course->id)
-                  ->update(['order' => $moduleData['order']]);
+                ->where('course_id', $course->id)
+                ->update(['order' => $moduleData['order']]);
         }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Module order updated'
+                'message' => 'Module order updated',
             ]);
         }
 
         return redirect()->back()->with('success', 'Module order updated.');
     }
-    
+
     /**
      * Get batches for a course (API endpoint).
      */
@@ -255,7 +255,7 @@ class CourseController extends Controller
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function($batch) {
+            ->map(function ($batch) {
                 return [
                     'id' => $batch->id,
                     'name' => $batch->name,
@@ -264,10 +264,10 @@ class CourseController extends Controller
                     'course_id' => $batch->course_id,
                 ];
             });
-    
+
         return response()->json([
             'status' => 'success',
-            'data' => $batches
+            'data' => $batches,
         ]);
     }
 }

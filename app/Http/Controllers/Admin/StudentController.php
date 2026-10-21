@@ -20,7 +20,7 @@ class StudentController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -363,34 +363,34 @@ class StudentController extends Controller
     //         return back()->with('error', 'Error importing students: '.$e->getMessage());
     //     }
     // }
-    
+
     public function importStudents(Request $request)
-{
-    $request->validate([
-        'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
-        'batch_id' => 'required|exists:batches,id',
-    ]);
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'batch_id' => 'required|exists:batches,id',
+        ]);
 
-    try {
+        try {
 
-        $batch = Batch::findOrFail($request->batch_id);
+            $batch = Batch::findOrFail($request->batch_id);
 
-        Excel::import(
-            new StudentsImport($batch),
-            $request->file('file')
-        );
+            Excel::import(
+                new StudentsImport($batch),
+                $request->file('file')
+            );
 
-        return redirect()->route('admin.students.index')
-            ->with('success', 'Students imported successfully.');
+            return redirect()->route('admin.students.index')
+                ->with('success', 'Students imported successfully.');
 
-    } catch (\Exception $e) {
+        } catch (\Exception $e) {
 
-        return back()->with(
-            'error',
-            'Error importing students: ' . $e->getMessage()
-        );
+            return back()->with(
+                'error',
+                'Error importing students: '.$e->getMessage()
+            );
+        }
     }
-}
 
     /**
      * Export students to Excel.

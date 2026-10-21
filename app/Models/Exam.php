@@ -2,28 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
-
 use App\Traits\HasAirport;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class Exam extends BaseModel
 {
-    use SoftDeletes, HasAirport;
+    use HasAirport, SoftDeletes;
 
     protected $fillable = [
         'title', 'slug', 'description', 'type', 'category',
-         'course_id', 'module_id', 'batch_id',
+        'course_id', 'module_id', 'batch_id',
         'duration_minutes', 'total_marks', 'passing_percentage',
         'negative_marking', 'randomize_questions', 'randomize_options',
         'show_result_immediately', 'allow_review', 'attempts_allowed',
         'start_time', 'end_time', 'is_scheduled',
         'status', 'instructions', 'created_by', 'updated_by',
     ];
-    
-   
 
     protected $casts = [
         'randomize_questions' => 'boolean',
@@ -67,36 +63,45 @@ class Exam extends BaseModel
         return $this->belongsTo(Batch::class);
     }
 
+    // public function batches()
+    // {
+    //     return $this->belongsToMany(Batch::class, 'exam_batches')
+    //         ->withPivot(['available_from', 'available_until'])
+    //         ->withTimestamps();
+    // }
+
     public function batches()
     {
-        return $this->belongsToMany(Batch::class, 'exam_batches')
-            ->withPivot(['available_from', 'available_until'])
+        return $this->belongsToMany(Batch::class, 'exam_batches', 'exam_id', 'batch_id')
+            ->using(ExamBatch::class)   // Use custom pivot model
+            ->withPivot('available_from', 'available_until')
             ->withTimestamps();
     }
-    
-/**
- * Get the module associated with this exam.
- */
-public function module()
-{
-    return $this->belongsTo(Module::class);
-}
-    
-public function modules()
-{
-    return $this->belongsToMany(Module::class, 'exam_modules');
-}
 
-/**
- * Get modules for this exam through the course
- */
-public function getModulesAttribute()
-{
-    if ($this->course_id) {
-        return Module::where('course_id', $this->course_id)->get();
+    /**
+     * Get the module associated with this exam.
+     */
+    public function module()
+    {
+        return $this->belongsTo(Module::class);
     }
-    return collect([]);
-}
+
+    public function modules()
+    {
+        return $this->belongsToMany(Module::class, 'exam_modules');
+    }
+
+    /**
+     * Get modules for this exam through the course
+     */
+    public function getModulesAttribute()
+    {
+        if ($this->course_id) {
+            return Module::where('course_id', $this->course_id)->get();
+        }
+
+        return collect([]);
+    }
 
     /**
      * Get the sections for this exam
@@ -110,9 +115,18 @@ public function getModulesAttribute()
      * Get the questions for this exam through the pivot table
      * Removed pivot_order reference - use 'order' instead
      */
+    // public function questions()
+    // {
+    //     return $this->belongsToMany(Question::class, 'exam_questions')
+    //         ->withPivot(['id', 'section_id', 'order', 'marks', 'negative_marks', 'time_limit_seconds'])
+    //         ->withTimestamps()
+    //         ->orderBy('order'); // Changed from 'pivot_order' to 'order'
+    // }
+
     public function questions()
     {
         return $this->belongsToMany(Question::class, 'exam_questions')
+            ->using(ExamQuestion::class)   // Use custom pivot model
             ->withPivot(['id', 'section_id', 'order', 'marks', 'negative_marks', 'time_limit_seconds'])
             ->withTimestamps()
             ->orderBy('order'); // Changed from 'pivot_order' to 'order'
@@ -285,25 +299,26 @@ public function getModulesAttribute()
         $total = DB::table('exam_questions')
             ->where('exam_id', $this->id)
             ->sum('marks');
-        
+
         if ($total > 0) {
             return $total;
         }
-        
+
         // Fallback: get from questions table
         $questionIds = DB::table('exam_questions')
             ->where('exam_id', $this->id)
             ->pluck('question_id');
-        
+
         if ($questionIds->isNotEmpty()) {
             return DB::table('questions')
                 ->whereIn('id', $questionIds)
                 ->whereNull('deleted_at')
                 ->sum('marks') ?? 0;
         }
-        
+
         return 0;
     }
+
     public function getAttemptedCountAttribute()
     {
         return $this->studentExams()->where('status', 'completed')->count();
@@ -360,8 +375,6 @@ public function getModulesAttribute()
         return now()->diff($this->end_time)->format('%H:%I:%S');
     }
 
-    
-    
     /**
      * Update total marks for the exam.
      */
@@ -370,12 +383,12 @@ public function getModulesAttribute()
         $total = $this->questions()
             ->withPivot('marks')
             ->get()
-            ->sum(function($question) {
+            ->sum(function ($question) {
                 return $question->pivot->marks ?? 0;
             });
-        
+
         $this->update(['total_marks' => $total ?? 0]);
-        
+
         return $total;
     }
 
@@ -412,21 +425,20 @@ public function getModulesAttribute()
         // Check availability
         return $this->is_available;
     }
-    
+
     public function examQuestions()
     {
         return $this->hasMany(ExamQuestion::class, 'exam_id');
     }
-    
 
     public function getStatistics()
     {
         $results = $this->results;
-        
+
         return [
             'participants' => $results->count(),
             'average_score' => round($results->avg('percentage'), 2),
-            'pass_rate' => $results->count() > 0 
+            'pass_rate' => $results->count() > 0
                 ? round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2)
                 : 0,
             'highest_score' => $results->max('percentage') ?? 0,

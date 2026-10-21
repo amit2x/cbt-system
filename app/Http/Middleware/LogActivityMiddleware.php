@@ -1,10 +1,11 @@
 <?php
+
 // app/Http/Middleware/LogActivityMiddleware.php
 
 namespace App\Http\Middleware;
 
-use Closure;
 use App\Services\ActivityLogger;
+use Closure;
 use Illuminate\Support\Facades\Auth;
 
 class LogActivityMiddleware
@@ -37,6 +38,9 @@ class LogActivityMiddleware
                 'admin/logout',
                 'api/*',
                 '_debugbar/*',
+                'admin/moderation/*',
+                'admin/exam-moderation/*',
+                'admin/results-moderation/*',
             ];
 
             foreach ($skipRoutes as $route) {

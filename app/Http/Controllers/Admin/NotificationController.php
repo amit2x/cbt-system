@@ -9,16 +9,22 @@ use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:admin|superadmin');
+    }
+
     /**
      * Get notifications with unread count
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-        
+
         // Get unread count
         $unreadCount = $user->unreadNotificationCount();
-        
+
         // Get latest 15 notifications
         $notifications = $user->notifications()
             ->limit(15)
@@ -32,13 +38,13 @@ class NotificationController extends Controller
                     'icon' => $notification->data['icon'] ?? 'bi-bell',
                     'type' => $notification->data['type'] ?? 'info',
                     'time' => $notification->created_at->diffForHumans(),
-                    'is_read' => !is_null($notification->read_at)
+                    'is_read' => ! is_null($notification->read_at),
                 ];
             });
 
         return response()->json([
             'unread_count' => $unreadCount,
-            'notifications' => $notifications
+            'notifications' => $notifications,
         ]);
     }
 
@@ -48,12 +54,13 @@ class NotificationController extends Controller
     public function markAsRead($id)
     {
         $notification = Auth::user()->notifications()->find($id);
-        
+
         if ($notification) {
             $notification->markAsRead();
+
             return response()->json(['success' => true]);
         }
-        
+
         return response()->json(['success' => false], 404);
     }
 
@@ -63,6 +70,7 @@ class NotificationController extends Controller
     public function markAllAsRead()
     {
         Auth::user()->unreadNotifications()->update(['read_at' => now()]);
+
         return response()->json(['success' => true]);
     }
 
@@ -72,7 +80,7 @@ class NotificationController extends Controller
     public function unreadCount()
     {
         return response()->json([
-            'unread_count' => Auth::user()->unreadNotificationCount()
+            'unread_count' => Auth::user()->unreadNotificationCount(),
         ]);
     }
 }

@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Batch;
+use App\Models\User;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use App\Traits\ApiResponse;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -19,7 +18,7 @@ class UserController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -31,10 +30,10 @@ class UserController extends Controller
 
         // Search filter
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('email', 'like', "%{$request->search}%")
-                  ->orWhere('phone', 'like', "%{$request->search}%");
+                    ->orWhere('email', 'like', "%{$request->search}%")
+                    ->orWhere('phone', 'like', "%{$request->search}%");
             });
         }
 
@@ -48,6 +47,7 @@ class UserController extends Controller
             $query->where('is_active', $request->status === 'active');
         }
 
+        $query->withoutRole('superadmin');
         $users = $query->latest()->paginate(15);
 
         $roles = Role::all();
@@ -60,7 +60,7 @@ class UserController extends Controller
      */
     public function create()
     {
-        $roles = Role::all();
+        $roles = Role::where('name', '!=', 'superadmin')->get();
         $batches = Batch::where('status', 'ongoing')->get();
 
         return view('admin.users.create', compact('roles', 'batches'));
@@ -80,7 +80,7 @@ class UserController extends Controller
             'is_active' => 'boolean',
             'batch_ids' => 'nullable|array',
             'batch_ids.*' => 'exists:batches,id',
-            'avatar' => 'nullable|image|max:2048'
+            'avatar' => 'nullable|image|max:2048',
         ]);
 
         $data = [
@@ -126,7 +126,7 @@ class UserController extends Controller
             'total_exams' => $user->exams()->count(),
             'completed_exams' => $user->exams()->where('status', 'completed')->count(),
             'average_score' => round($user->results()->avg('percentage') ?? 0, 2),
-            'batches_count' => $user->batches()->count()
+            'batches_count' => $user->batches()->count(),
         ];
 
         // Get recent activity
@@ -158,28 +158,28 @@ class UserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
             'phone' => 'nullable|string|max:20',
             'role' => 'required|exists:roles,name',
             'password' => 'nullable|string|min:8|confirmed',
             'is_active' => 'boolean',
             'batch_ids' => 'nullable|array',
             'batch_ids.*' => 'exists:batches,id',
-            'avatar' => 'nullable|image|max:2048'
+            'avatar' => 'nullable|image|max:2048',
         ]);
-    
+
         $data = [
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
             'is_active' => $request->boolean('is_active', true),
         ];
-    
+
         // Handle password update if provided
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
         }
-    
+
         // Handle avatar upload
         if ($request->hasFile('avatar')) {
             // Delete old avatar
@@ -189,12 +189,12 @@ class UserController extends Controller
             $path = $request->file('avatar')->store('avatars', 'public');
             $data['avatar'] = $path;
         }
-    
+
         $user->update($data);
-    
+
         // Sync role
         $user->syncRoles([$request->role]);
-    
+
         // Sync batches for students
         if ($request->role === 'student') {
             $batchData = [];
@@ -207,7 +207,7 @@ class UserController extends Controller
         } else {
             $user->batches()->detach();
         }
-    
+
         return redirect()->route('admin.users.index')
             ->with('success', 'User updated successfully.');
     }
@@ -244,7 +244,7 @@ class UserController extends Controller
     public function assignRole(Request $request, User $user)
     {
         $request->validate([
-            'role' => 'required|exists:roles,name'
+            'role' => 'required|exists:roles,name',
         ]);
 
         $user->syncRoles([$request->role]);
@@ -266,13 +266,13 @@ class UserController extends Controller
             return $this->errorResponse('You cannot deactivate your own account.', 403);
         }
 
-        $user->update(['is_active' => !$user->is_active]);
+        $user->update(['is_active' => ! $user->is_active]);
 
         $status = $user->is_active ? 'activated' : 'deactivated';
 
         if ($request->ajax()) {
             return $this->successResponse([
-                'is_active' => $user->is_active
+                'is_active' => $user->is_active,
             ], "User {$status} successfully");
         }
 
@@ -287,11 +287,11 @@ class UserController extends Controller
     {
         $request->validate([
             'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,id'
+            'user_ids.*' => 'exists:users,id',
         ]);
 
         // Remove current user from array
-        $userIds = array_filter($request->user_ids, function($id) {
+        $userIds = array_filter($request->user_ids, function ($id) {
             return $id != auth()->id();
         });
 
@@ -335,11 +335,11 @@ class UserController extends Controller
         $users = $query->get();
 
         // Generate CSV
-        $filename = 'users-' . now()->format('Y-m-d') . '.csv';
+        $filename = 'users-'.now()->format('Y-m-d').'.csv';
         $handle = fopen('php://output', 'w');
 
         header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Disposition: attachment; filename="'.$filename.'"');
 
         // Add headers
         fputcsv($handle, ['ID', 'Name', 'Email', 'Phone', 'Role', 'Status', 'Created At']);
@@ -353,7 +353,7 @@ class UserController extends Controller
                 $user->phone,
                 $user->roles->pluck('name')->implode(', '),
                 $user->is_active ? 'Active' : 'Inactive',
-                $user->created_at->format('Y-m-d H:i:s')
+                $user->created_at->format('Y-m-d H:i:s'),
             ]);
         }
 
@@ -391,7 +391,7 @@ class UserController extends Controller
      */
     public function leaveImpersonate()
     {
-        if (!session()->has('impersonate')) {
+        if (! session()->has('impersonate')) {
             return redirect()->route('admin.users.index');
         }
 
@@ -401,9 +401,7 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')
             ->with('success', 'Returned to your account.');
     }
-    
-    
-    
+
     /**
      * Reset user password
      */
@@ -412,19 +410,19 @@ class UserController extends Controller
         $request->validate([
             'password' => 'required|string|min:8|confirmed',
         ]);
-    
+
         $user->update([
-            'password' => Hash::make($request->password)
+            'password' => Hash::make($request->password),
         ]);
-    
+
         if ($request->ajax()) {
             return $this->successResponse(null, 'Password reset successfully.');
         }
-    
+
         return redirect()->route('admin.users.show', $user)
             ->with('success', 'Password reset successfully.');
     }
-    
+
     /**
      * Show password reset form
      */

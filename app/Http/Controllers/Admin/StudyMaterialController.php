@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\StudyMaterial;
-use App\Models\StudyMaterialCategory;
 use App\Models\Course;
 use App\Models\Module;
+use App\Models\StudyMaterial;
+use App\Models\StudyMaterialCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -16,7 +16,7 @@ class StudyMaterialController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -26,16 +26,16 @@ class StudyMaterialController extends Controller
     {
         // $query = StudyMaterial::with(['course', 'module', 'category', 'creator'])
         //     ->withCount('views');
-        
-    //     $query = StudyMaterial::with(['course', 'module', 'category', 'creator'])
-    // ->withCount('viewLogs');
-    $query = StudyMaterial::with(['course', 'module', 'category', 'creator'])
-    ->select('*', 'views as views_count');
+
+        //     $query = StudyMaterial::with(['course', 'module', 'category', 'creator'])
+        // ->withCount('viewLogs');
+        $query = StudyMaterial::with(['course', 'module', 'category', 'creator'])
+            ->select('*', 'views as views_count');
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('title', 'LIKE', "%{$request->search}%")
-                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+                    ->orWhere('description', 'LIKE', "%{$request->search}%");
             });
         }
 
@@ -86,7 +86,7 @@ class StudyMaterialController extends Controller
             'material_type' => 'required|in:pdf,document,video,link,content',
             'external_url' => 'required_if:material_type,link|nullable|url',
             'file' => 'required_if:material_type,pdf,document,video|nullable|file|max:20480',
-            'status' => 'required|in:draft,published,archived'
+            'status' => 'required|in:draft,published,archived',
         ]);
 
         $data = $request->except(['file', 'metadata']);
@@ -96,7 +96,7 @@ class StudyMaterialController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $path = $file->store('study-materials', 'public');
-            
+
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_type'] = $file->getMimeType();
@@ -118,6 +118,7 @@ class StudyMaterialController extends Controller
     public function show(StudyMaterial $studyMaterial)
     {
         $studyMaterial->load(['course', 'module', 'category', 'creator']);
+
         return view('admin.study-materials.show', compact('studyMaterial'));
     }
 
@@ -149,7 +150,7 @@ class StudyMaterialController extends Controller
             'material_type' => 'required|in:pdf,document,video,link,content',
             'external_url' => 'required_if:material_type,link|nullable|url',
             'file' => 'nullable|file|max:20480',
-            'status' => 'required|in:draft,published,archived'
+            'status' => 'required|in:draft,published,archived',
         ]);
 
         $data = $request->except(['file', 'metadata']);
@@ -160,10 +161,10 @@ class StudyMaterialController extends Controller
             if ($studyMaterial->file_path) {
                 Storage::disk('public')->delete($studyMaterial->file_path);
             }
-            
+
             $file = $request->file('file');
             $path = $file->store('study-materials', 'public');
-            
+
             $data['file_path'] = $path;
             $data['file_name'] = $file->getClientOriginalName();
             $data['file_type'] = $file->getMimeType();
@@ -197,7 +198,7 @@ class StudyMaterialController extends Controller
      */
     public function download(StudyMaterial $studyMaterial)
     {
-        if (!$studyMaterial->file_path || !Storage::disk('public')->exists($studyMaterial->file_path)) {
+        if (! $studyMaterial->file_path || ! Storage::disk('public')->exists($studyMaterial->file_path)) {
             return back()->with('error', 'File not found.');
         }
 

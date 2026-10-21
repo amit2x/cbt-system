@@ -2,15 +2,386 @@
 
 namespace App\Services\Analytics;
 
-use App\Models\Result;
-use App\Models\Exam;
-use App\Models\User;
 use App\Models\Batch;
+use App\Models\Exam;
+use App\Models\Result;
 use App\Models\StudentExam;
-use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class ResultAnalysisService
 {
+    /**
+     * Calculate and store result.
+     */
+    public function calculateResult(StudentExam $studentExam): Result
+    {
+        $exam = $studentExam->exam;
+        $answers = $studentExam->answers()->with('question')->get();
+
+        // ==================== BASIC COUNTS ====================
+        $totalMarks = 0;
+        $correctCount = 0;
+        $incorrectCount = 0;
+        $unansweredCount = 0;
+
+        // ==================== ANALYTICS BUCKETS ====================
+        $sectionalData = [];
+        $topicData = [];
+        $difficultyData = [
+            'easy' => ['total' => 0, 'correct' => 0, 'incorrect' => 0, 'unanswered' => 0],
+            'medium' => ['total' => 0, 'correct' => 0, 'incorrect' => 0, 'unanswered' => 0],
+            'hard' => ['total' => 0, 'correct' => 0, 'incorrect' => 0, 'unanswered' => 0],
+        ];
+        $typeData = [
+            'single_choice' => ['total' => 0, 'correct' => 0, 'incorrect' => 0],
+            'multiple_choice' => ['total' => 0, 'correct' => 0, 'incorrect' => 0],
+            'numerical' => ['total' => 0, 'correct' => 0, 'incorrect' => 0],
+        ];
+        $questionTimeData = [];
+
+        // ==================== LOOP ANSWERS ====================
+        foreach ($answers as $answer) {
+            $marks = $answer->calculateMarks();
+            $totalMarks += $marks;
+
+            $question = $answer->question;
+            if (! $question) {
+                continue;
+            }
+
+            // Track time per question
+            $questionTimeData[] = [
+                'question_id' => $question->id,
+                'time_taken' => $answer->time_taken_seconds ?? 0,
+                'is_correct' => $answer->is_correct,
+            ];
+
+            // Count correct/incorrect
+            if ($answer->is_correct === true) {
+                $correctCount++;
+            } elseif ($answer->is_correct === false) {
+                $incorrectCount++;
+            }
+
+            // Sectional analysis
+            if ($question->subject_id) {
+                $subjectName = $question->subject->title ?? 'Unknown';
+                if (! isset($sectionalData[$subjectName])) {
+                    $sectionalData[$subjectName] = [
+                        'total' => 0, 'correct' => 0, 'incorrect' => 0, 'unanswered' => 0,
+                    ];
+                }
+                $sectionalData[$subjectName]['total']++;
+                if ($answer->is_correct === true) {
+                    $sectionalData[$subjectName]['correct']++;
+                } elseif ($answer->is_correct === false) {
+                    $sectionalData[$subjectName]['incorrect']++;
+                } else {
+                    $sectionalData[$subjectName]['unanswered']++;
+                }
+            }
+
+            // Difficulty analysis
+            $difficulty = $question->difficulty ?? 'medium';
+            $difficultyData[$difficulty]['total']++;
+            if ($answer->is_correct === true) {
+                $difficultyData[$difficulty]['correct']++;
+            } elseif ($answer->is_correct === false) {
+                $difficultyData[$difficulty]['incorrect']++;
+            } else {
+                $difficultyData[$difficulty]['unanswered']++;
+            }
+
+            // Type analysis
+            $type = $question->type ?? 'single_choice';
+            if (! isset($typeData[$type])) {
+                $typeData[$type] = ['total' => 0, 'correct' => 0, 'incorrect' => 0];
+            }
+            $typeData[$type]['total']++;
+            if ($answer->is_correct === true) {
+                $typeData[$type]['correct']++;
+            } elseif ($answer->is_correct === false) {
+                $typeData[$type]['incorrect']++;
+            }
+
+            // Topic analysis (tags)
+            if (! empty($question->tags) && is_array($question->tags)) {
+                foreach ($question->tags as $tag) {
+                    if (! isset($topicData[$tag])) {
+                        $topicData[$tag] = ['total' => 0, 'correct' => 0, 'incorrect' => 0];
+                    }
+                    $topicData[$tag]['total']++;
+                    if ($answer->is_correct === true) {
+                        $topicData[$tag]['correct']++;
+                    } elseif ($answer->is_correct === false) {
+                        $topicData[$tag]['incorrect']++;
+                    }
+                }
+            }
+        }
+
+        // ==================== DERIVED METRICS ====================
+        $answeredCount = $correctCount + $incorrectCount;
+        $unansweredCount = $studentExam->total_questions - $answeredCount;
+        if ($unansweredCount < 0) {
+            $unansweredCount = 0;
+        }
+
+        $examTotalMarks = $exam->total_marks ?? 0;
+
+        $percentage = $examTotalMarks > 0
+            ? round(($totalMarks / $examTotalMarks) * 100, 2)
+            : 0;
+
+        $passingPercentage = $exam->passing_percentage ?? 40;
+        $status = $percentage >= $passingPercentage ? 'passed' : 'failed';
+
+        // ==================== TIME ====================
+        $startedAt = $studentExam->started_at;
+        if (is_string($startedAt)) {
+            $startedAt = Carbon::parse($startedAt);
+        }
+
+        $submittedAt = $studentExam->submitted_at;
+        if (is_string($submittedAt)) {
+            $submittedAt = Carbon::parse($submittedAt);
+        } elseif (! $submittedAt) {
+            $submittedAt = now();
+        }
+
+        $timeTakenSeconds = $startedAt ? $startedAt->diffInSeconds($submittedAt, true) : 0;
+
+        if ($timeTakenSeconds == 0 && ($studentExam->remaining_seconds ?? 0) > 0) {
+            $examDuration = ($exam->duration_minutes ?? 0) * 60;
+            $timeTakenSeconds = max(0, $examDuration - $studentExam->remaining_seconds);
+        }
+        $timeTakenSeconds = (int) max(0, $timeTakenSeconds);
+
+        // ==================== SPEED & ACCURACY ====================
+        $totalAttempted = $correctCount + $incorrectCount;
+        $timeTakenMinutes = $timeTakenSeconds > 0 ? $timeTakenSeconds / 60 : 1;
+        $speedPerMinute = round($totalAttempted / $timeTakenMinutes, 2);
+
+        $accuracyPercentage = $answeredCount > 0
+            ? round(($correctCount / $answeredCount) * 100, 2)
+            : 0;
+
+        $consistencyScore = $this->calculateConsistencyScore($sectionalData);
+        $speedScore = $this->calculateSpeedScore($questionTimeData);
+
+        Log::info('calculateResult computed', [
+            'student_exam_id' => $studentExam->id,
+            'examTotalMarks' => $examTotalMarks,
+            'totalMarks' => $totalMarks,
+            'percentage' => $percentage,
+            'timeTakenSeconds' => $timeTakenSeconds,
+            'speedPerMinute' => $speedPerMinute,
+            'accuracy' => $accuracyPercentage,
+            'correct' => $correctCount,
+            'incorrect' => $incorrectCount,
+            'unanswered' => $unansweredCount,
+        ]);
+
+        // ==================== UPDATE STUDENT EXAM ====================
+        $studentExam->update([
+            'submitted_at' => $submittedAt,
+            'status' => 'completed',
+            'remaining_seconds' => 0,
+            'total_seconds_taken' => $timeTakenSeconds,
+            'obtained_marks' => $totalMarks,
+            'percentage' => $percentage,
+            'correct_answers' => $correctCount,
+            'incorrect_answers' => $incorrectCount,
+            'unanswered' => $unansweredCount,
+        ]);
+
+        // ==================== UPSERT RESULT ====================
+        $result = Result::updateOrCreate(
+            ['student_exam_id' => $studentExam->id],
+            [
+                'student_id' => $studentExam->student_id,
+                'exam_id' => $exam->id,
+                'batch_id' => $studentExam->batch_id,
+                'total_questions' => $studentExam->total_questions,
+                'total_marks' => $examTotalMarks,
+                'obtained_marks' => $totalMarks,
+                'percentage' => $percentage,
+                'status' => $status,
+                'correct_answers' => $correctCount,
+                'incorrect_answers' => $incorrectCount,
+                'unanswered' => $unansweredCount,
+                'marked_for_review' => $answers->where('is_marked_for_review', true)->count(),
+                'time_taken_seconds' => $timeTakenSeconds,
+                'speed_per_minute' => $speedPerMinute,
+                'accuracy_percentage' => $accuracyPercentage,
+                'consistency_score' => $consistencyScore,
+                'speed_score' => $speedScore,
+                'sectional_analysis' => $sectionalData,
+                'topic_analysis' => $topicData,
+                'difficulty_analysis' => $difficultyData,
+                'accuracy_by_type' => $typeData,
+
+                // ✅ Publishing defaults — always start as draft
+                'is_published' => false,
+                'is_draft' => true,
+            ]
+        );
+
+        // ==================== RANK ====================
+        if (method_exists($this, 'recalculateRanks')) {
+            $this->recalculateRanks($result->exam_id);
+        } elseif (method_exists($result, 'generateRank')) {
+            $result->generateRank();
+        }
+        // ✅ NEW: refresh rank + percentile + participants for THIS result
+        $this->refreshRankAndPercentile($result);
+
+        // ==================== SECTION RESULTS ====================
+        if (method_exists($this, 'storeSectionResults')) {
+            $this->storeSectionResults($result, $answers, $exam);
+        }
+
+        return $result->fresh();
+    }
+
+    /**
+     * Consistency score based on sectional performance.
+     */
+    protected function calculateConsistencyScore(array $sectionalData): float
+    {
+        if (empty($sectionalData)) {
+            return 0;
+        }
+
+        $accuracies = [];
+        foreach ($sectionalData as $section) {
+            $total = $section['total'] ?? 0;
+            $correct = $section['correct'] ?? 0;
+            if ($total > 0) {
+                $accuracies[] = ($correct / $total) * 100;
+            }
+        }
+
+        if (count($accuracies) < 2) {
+            return 100;
+        }
+
+        $mean = array_sum($accuracies) / count($accuracies);
+        $variance = 0;
+        foreach ($accuracies as $a) {
+            $variance += pow($a - $mean, 2);
+        }
+        $stdDev = sqrt($variance / count($accuracies));
+
+        $consistency = 100 - min(100, ($stdDev / 50) * 100);
+
+        return round($consistency, 2);
+    }
+
+    /**
+     * Speed score based on average time per question.
+     */
+    protected function calculateSpeedScore(array $questionTimeData): float
+    {
+        if (empty($questionTimeData)) {
+            return 0;
+        }
+
+        $times = array_filter(array_column($questionTimeData, 'time_taken'), fn ($t) => $t > 0);
+        if (empty($times)) {
+            return 0;
+        }
+
+        $avgTime = array_sum($times) / count($times);
+
+        // Ideal: ~60 sec/question; score higher for closer to ideal
+        if ($avgTime <= 60) {
+            return round(min(100, (60 / max($avgTime, 1)) * 100), 2);
+        }
+
+        return round(max(0, 100 - (($avgTime - 60) / 60) * 25), 2);
+    }
+
+    /**
+     * Refresh rank, percentile, and total participants for a single result.
+     */
+    protected function refreshRankAndPercentile(Result $result): void
+    {
+        $scope = Result::where('exam_id', $result->exam_id);
+
+        $total = (clone $scope)->count();
+
+        if ($total === 0) {
+            return;
+        }
+
+        // Higher percentage = better rank
+        $higherCount = (clone $scope)
+            ->where('percentage', '>', $result->percentage)
+            ->count();
+
+        $rank = $higherCount + 1;
+
+        // Percentile formula: (better than N below you) / total * 100
+        $percentile = round((($total - $rank) / $total) * 100, 2);
+
+        $result->update([
+            'rank' => $rank,
+            'percentile' => (int) $percentile,
+            'total_participants' => $total,
+        ]);
+    }
+
+    /**
+     * Recalculate rank + percentile for ALL results in an exam.
+     * Call this after any mark change (moderation) or before publishing.
+     */
+    public function recalculateRanks(int $examId): void
+    {
+        // Get all results for the exam, sorted highest score first
+        $results = Result::where('exam_id', $examId)
+            ->orderBy('percentage', 'desc')
+            ->orderBy('obtained_marks', 'desc')
+            ->orderBy('time_taken_seconds', 'asc') // tie-breaker: faster = better
+            ->get();
+
+        $total = $results->count();
+        if ($total === 0) {
+            return;
+        }
+
+        $rank = 0;
+        $prevPercentage = null;
+        $position = 0;
+
+        foreach ($results as $result) {
+            $position++;
+
+            // Standard competition ranking (ties share rank, gaps follow)
+            if ($prevPercentage === null || $result->percentage != $prevPercentage) {
+                $rank = $position;
+                $prevPercentage = $result->percentage;
+            }
+
+            // Percentile = (total - rank) / total * 100
+            $percentile = $total > 0
+                ? round((($total - $rank) / $total) * 100, 2)
+                : 0;
+
+            $result->updateQuietly([
+                'rank' => $rank,
+                'percentile' => (int) $percentile,
+                'total_participants' => $total,
+            ]);
+        }
+
+        \Log::info('Ranks recalculated', [
+            'exam_id' => $examId,
+            'total_participants' => $total,
+        ]);
+    }
+
     /**
      * Get exam analytics
      */
@@ -34,22 +405,22 @@ class ResultAnalysisService
                 'median_score' => $this->calculateMedian($scores),
                 'pass_rate' => $results->count() > 0
                     ? round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2)
-                    : 0
+                    : 0,
             ],
             'distribution' => [
                 '90_100' => $results->where('percentage', '>=', 90)->count(),
                 '75_89' => $results->where('percentage', '>=', 75)->where('percentage', '<', 90)->count(),
                 '60_74' => $results->where('percentage', '>=', 60)->where('percentage', '<', 75)->count(),
                 '40_59' => $results->where('percentage', '>=', 40)->where('percentage', '<', 60)->count(),
-                'below_40' => $results->where('percentage', '<', 40)->count()
+                'below_40' => $results->where('percentage', '<', 40)->count(),
             ],
-            'top_performers' => $results->sortByDesc('percentage')->take(10)->map(function($r) {
+            'top_performers' => $results->sortByDesc('percentage')->take(10)->map(function ($r) {
                 return [
                     'student_name' => $r->student->name ?? 'Unknown',
                     'percentage' => $r->percentage,
-                    'rank' => $r->rank
+                    'rank' => $r->rank,
                 ];
-            })->values()->toArray()
+            })->values()->toArray(),
         ];
     }
 
@@ -76,7 +447,7 @@ class ResultAnalysisService
                 'lowest_score' => 0,
                 'average_accuracy' => 0,
                 'average_speed' => 0,
-                'pass_percentage' => 0
+                'pass_percentage' => 0,
             ];
         }
 
@@ -91,7 +462,7 @@ class ResultAnalysisService
             'average_speed' => round($results->avg('speed_per_minute'), 2),
             'pass_percentage' => $results->count() > 0
                 ? round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2)
-                : 0
+                : 0,
         ];
     }
 
@@ -105,7 +476,7 @@ class ResultAnalysisService
             ->orderBy('created_at', 'desc');
 
         if ($examType) {
-            $query->whereHas('exam', function($q) use ($examType) {
+            $query->whereHas('exam', function ($q) use ($examType) {
                 $q->where('type', $examType);
             });
         }
@@ -119,7 +490,7 @@ class ResultAnalysisService
             'speed' => $results->pluck('speed_per_minute')->toArray(),
             'average' => $results->avg('percentage'),
             'best' => $results->max('percentage'),
-            'improvement' => $this->calculateImprovement($results)
+            'improvement' => $this->calculateImprovement($results),
         ];
 
         return $trends;
@@ -141,14 +512,14 @@ class ResultAnalysisService
             foreach ($studentExam->answers as $answer) {
                 $qid = $answer->question_id;
 
-                if (!isset($questions[$qid])) {
+                if (! isset($questions[$qid])) {
                     $questions[$qid] = [
                         'question_id' => $qid,
                         'total_attempts' => 0,
                         'correct' => 0,
                         'incorrect' => 0,
                         'unanswered' => 0,
-                        'avg_time' => 0
+                        'avg_time' => 0,
                     ];
                 }
 
@@ -183,12 +554,15 @@ class ResultAnalysisService
     protected function calculateMedian($array)
     {
         $count = count($array);
-        if ($count == 0) return 0;
+        if ($count == 0) {
+            return 0;
+        }
 
         $middle = floor($count / 2);
         if ($count % 2 == 0) {
             return ($array[$middle - 1] + $array[$middle]) / 2;
         }
+
         return $array[$middle];
     }
 
@@ -229,7 +603,7 @@ class ResultAnalysisService
                 'average_score' => round($batchResults->avg('percentage'), 2),
                 'pass_rate' => $batchResults->count() > 0
                     ? round(($batchResults->where('status', 'passed')->count() / $batchResults->count()) * 100, 2)
-                    : 0
+                    : 0,
             ];
         }
 
@@ -246,7 +620,7 @@ class ResultAnalysisService
             ->with(['exam', 'sections'])
             ->first();
 
-        if (!$result) {
+        if (! $result) {
             return null;
         }
 
@@ -257,14 +631,14 @@ class ResultAnalysisService
                 'total_marks' => $result->total_marks,
                 'obtained_marks' => $result->obtained_marks,
                 'percentage' => $result->percentage,
-                'status' => $result->status
+                'status' => $result->status,
             ],
             'answer_stats' => [
                 'correct' => $result->correct_answers,
                 'incorrect' => $result->incorrect_answers,
                 'unanswered' => $result->unanswered,
-                'marked_for_review' => $result->marked_for_review
-            ]
+                'marked_for_review' => $result->marked_for_review,
+            ],
         ];
     }
 
@@ -277,7 +651,9 @@ class ResultAnalysisService
 
         foreach ($batchIds as $batchId) {
             $batch = Batch::find($batchId);
-            if (!$batch) continue;
+            if (! $batch) {
+                continue;
+            }
 
             $performance = $this->getBatchPerformance($batchId);
 
@@ -287,7 +663,7 @@ class ResultAnalysisService
                 'total_students' => $performance['total_students'],
                 'average_score' => $performance['average_score'],
                 'pass_rate' => $performance['pass_percentage'],
-                'highest_score' => $performance['highest_score']
+                'highest_score' => $performance['highest_score'],
             ];
         }
 
@@ -315,7 +691,7 @@ class ResultAnalysisService
             'excellent' => $results->where('percentage', '>=', 80)->count(),
             'good' => $results->where('percentage', '>=', 60)->where('percentage', '<', 80)->count(),
             'average' => $results->where('percentage', '>=', 40)->where('percentage', '<', 60)->count(),
-            'poor' => $results->where('percentage', '<', 40)->count()
+            'poor' => $results->where('percentage', '<', 40)->count(),
         ];
     }
 
@@ -333,8 +709,8 @@ class ResultAnalysisService
             'time_distribution' => [
                 'under_30_min' => $results->where('time_taken_seconds', '<', 1800)->count(),
                 '30_60_min' => $results->where('time_taken_seconds', '>=', 1800)->where('time_taken_seconds', '<', 3600)->count(),
-                'over_60_min' => $results->where('time_taken_seconds', '>=', 3600)->count()
-            ]
+                'over_60_min' => $results->where('time_taken_seconds', '>=', 3600)->count(),
+            ],
         ];
     }
 
@@ -351,7 +727,7 @@ class ResultAnalysisService
         $distribution = [
             'easy' => ['total' => 0, 'correct' => 0],
             'medium' => ['total' => 0, 'correct' => 0],
-            'hard' => ['total' => 0, 'correct' => 0]
+            'hard' => ['total' => 0, 'correct' => 0],
         ];
 
         foreach ($studentExams as $studentExam) {
@@ -366,7 +742,7 @@ class ResultAnalysisService
 
         // Calculate accuracy for each difficulty
         foreach ($distribution as $key => &$data) {
-            $data['accuracy'] = $data['total'] > 0 
+            $data['accuracy'] = $data['total'] > 0
                 ? round(($data['correct'] / $data['total']) * 100, 2)
                 : 0;
         }
@@ -393,7 +769,7 @@ class ResultAnalysisService
                 'score' => $result->percentage,
                 'accuracy' => $result->accuracy_percentage,
                 'speed' => $result->speed_per_minute,
-                'date' => $result->created_at->format('d M Y')
+                'date' => $result->created_at->format('d M Y'),
             ];
         }
 
@@ -415,7 +791,7 @@ class ResultAnalysisService
             $sectionalAnalysis = $result->sectional_analysis ?? [];
             foreach ($sectionalAnalysis as $section) {
                 $topic = $section['section_name'] ?? 'Unknown';
-                if (!isset($topicPerformance[$topic])) {
+                if (! isset($topicPerformance[$topic])) {
                     $topicPerformance[$topic] = ['total' => 0, 'correct' => 0];
                 }
                 $topicPerformance[$topic]['total'] += $section['total_questions'] ?? 0;
@@ -425,7 +801,7 @@ class ResultAnalysisService
 
         $weakTopics = [];
         foreach ($topicPerformance as $topic => $data) {
-            $accuracy = $data['total'] > 0 
+            $accuracy = $data['total'] > 0
                 ? round(($data['correct'] / $data['total']) * 100, 2)
                 : 0;
             if ($accuracy < 50) {
@@ -433,12 +809,12 @@ class ResultAnalysisService
                     'topic' => $topic,
                     'accuracy' => $accuracy,
                     'total_questions' => $data['total'],
-                    'correct_answers' => $data['correct']
+                    'correct_answers' => $data['correct'],
                 ];
             }
         }
 
-        usort($weakTopics, function($a, $b) {
+        usort($weakTopics, function ($a, $b) {
             return $a['accuracy'] <=> $b['accuracy'];
         });
 
@@ -451,7 +827,7 @@ class ResultAnalysisService
     public function getExamPerformanceSummary($examId)
     {
         $exam = Exam::find($examId);
-        if (!$exam) {
+        if (! $exam) {
             return null;
         }
 
@@ -464,7 +840,7 @@ class ResultAnalysisService
                 'type' => $exam->type,
                 'total_questions' => $exam->questions()->count(),
                 'total_marks' => $exam->total_marks,
-                'passing_percentage' => $exam->passing_percentage
+                'passing_percentage' => $exam->passing_percentage,
             ],
             'participants' => [
                 'total' => $results->count(),
@@ -472,19 +848,19 @@ class ResultAnalysisService
                 'failed' => $results->where('status', 'failed')->count(),
                 'pass_rate' => $results->count() > 0
                     ? round(($results->where('status', 'passed')->count() / $results->count()) * 100, 2)
-                    : 0
+                    : 0,
             ],
             'scores' => [
                 'average' => round($results->avg('percentage'), 2),
                 'highest' => $results->max('percentage'),
                 'lowest' => $results->min('percentage'),
-                'median' => $this->calculateMedian($results->pluck('percentage')->toArray())
+                'median' => $this->calculateMedian($results->pluck('percentage')->toArray()),
             ],
             'accuracy' => [
                 'average' => round($results->avg('accuracy_percentage'), 2),
                 'highest' => $results->max('accuracy_percentage'),
-                'lowest' => $results->min('accuracy_percentage')
-            ]
+                'lowest' => $results->min('accuracy_percentage'),
+            ],
         ];
     }
 }

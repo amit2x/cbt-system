@@ -13,7 +13,7 @@ class ExamSectionController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -25,7 +25,7 @@ class ExamSectionController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'duration_minutes' => 'nullable|integer|min:1',
-            'randomize_questions' => 'boolean'
+            'randomize_questions' => 'boolean',
         ]);
 
         $section = $exam->sections()->create([
@@ -33,19 +33,19 @@ class ExamSectionController extends Controller
             'description' => $request->description,
             'duration_minutes' => $request->duration_minutes,
             'randomize_questions' => $request->boolean('randomize_questions'),
-            'order' => $exam->sections()->max('order') + 1
+            'order' => $exam->sections()->max('order') + 1,
         ]);
 
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Section added successfully',
-                'section' => $section->load('questions')
+                'section' => $section->load('questions'),
             ]);
         }
 
         return redirect()->route('admin.exams.show', $exam)
-                        ->with('success', 'Section added successfully.');
+            ->with('success', 'Section added successfully.');
     }
 
     /**
@@ -57,7 +57,7 @@ class ExamSectionController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'duration_minutes' => 'nullable|integer|min:1',
-            'randomize_questions' => 'boolean'
+            'randomize_questions' => 'boolean',
         ]);
 
         $section->update($request->all());
@@ -65,12 +65,12 @@ class ExamSectionController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Section updated successfully'
+                'message' => 'Section updated successfully',
             ]);
         }
 
         return redirect()->route('admin.exams.show', $exam)
-                        ->with('success', 'Section updated successfully.');
+            ->with('success', 'Section updated successfully.');
     }
 
     /**
@@ -83,9 +83,10 @@ class ExamSectionController extends Controller
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Cannot delete section with questions. Move or remove questions first.'
+                    'message' => 'Cannot delete section with questions. Move or remove questions first.',
                 ], 422);
             }
+
             return back()->with('error', 'Cannot delete section with questions. Move or remove questions first.');
         }
 
@@ -94,12 +95,12 @@ class ExamSectionController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Section deleted successfully'
+                'message' => 'Section deleted successfully',
             ]);
         }
 
         return redirect()->route('admin.exams.show', $exam)
-                        ->with('success', 'Section deleted successfully.');
+            ->with('success', 'Section deleted successfully.');
     }
 
     /**
@@ -110,18 +111,18 @@ class ExamSectionController extends Controller
         $request->validate([
             'sections' => 'required|array',
             'sections.*.id' => 'required|exists:exam_sections,id',
-            'sections.*.order' => 'required|integer'
+            'sections.*.order' => 'required|integer',
         ]);
 
         foreach ($request->sections as $sectionData) {
             ExamSection::where('id', $sectionData['id'])
-                       ->where('exam_id', $exam->id)
-                       ->update(['order' => $sectionData['order']]);
+                ->where('exam_id', $exam->id)
+                ->update(['order' => $sectionData['order']]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Section order updated'
+            'message' => 'Section order updated',
         ]);
     }
 
@@ -133,18 +134,18 @@ class ExamSectionController extends Controller
         $request->validate([
             'question_ids' => 'required|array',
             'question_ids.*' => 'exists:exam_questions,id',
-            'target_section_id' => 'nullable|exists:exam_sections,id'
+            'target_section_id' => 'nullable|exists:exam_sections,id',
         ]);
 
         foreach ($request->question_ids as $questionId) {
             DB::table('exam_questions')
-              ->where('id', $questionId)
-              ->update(['section_id' => $request->target_section_id]);
+                ->where('id', $questionId)
+                ->update(['section_id' => $request->target_section_id]);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Questions moved successfully'
+            'message' => 'Questions moved successfully',
         ]);
     }
 }

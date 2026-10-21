@@ -1,4 +1,5 @@
 <?php
+
 // app/Http/Controllers/Admin/AirportController.php
 
 namespace App\Http\Controllers\Admin;
@@ -7,13 +8,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Airport;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class AirportController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:superadmin');
+    }
+
     /**
      * Display a listing of airports.
      */
@@ -24,11 +31,11 @@ class AirportController extends Controller
         // Search filter
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('code', 'LIKE', "%{$search}%")
-                  ->orWhere('city', 'LIKE', "%{$search}%")
-                  ->orWhere('country', 'LIKE', "%{$search}%");
+                    ->orWhere('code', 'LIKE', "%{$search}%")
+                    ->orWhere('city', 'LIKE', "%{$search}%")
+                    ->orWhere('country', 'LIKE', "%{$search}%");
             });
         }
 
@@ -50,10 +57,10 @@ class AirportController extends Controller
             'active' => Airport::where('status', 'active')->count(),
             'inactive' => Airport::where('status', 'inactive')->count(),
             'suspended' => Airport::where('status', 'suspended')->count(),
-            'total_students' => User::whereHas('roles', function($q) {
+            'total_students' => User::whereHas('roles', function ($q) {
                 $q->where('name', 'student');
             })->count(),
-            'total_instructors' => User::whereHas('roles', function($q) {
+            'total_instructors' => User::whereHas('roles', function ($q) {
                 $q->where('name', 'instructor');
             })->count(),
         ];
@@ -69,7 +76,7 @@ class AirportController extends Controller
         $timezones = $this->getTimezones();
         $countries = $this->getCountries();
         $subscriptionPlans = ['basic', 'standard', 'premium', 'enterprise'];
-        
+
         return view('admin.airports.create', compact('timezones', 'countries', 'subscriptionPlans'));
     }
 
@@ -128,7 +135,7 @@ class AirportController extends Controller
                 'storage_limit_gb' => $request->storage_limit_gb,
                 'settings' => $request->settings ?? [],
                 'features' => $request->features ?? [],
-                'created_by' => auth()->id()
+                'created_by' => auth()->id(),
             ]);
 
             // Handle logo upload
@@ -150,7 +157,7 @@ class AirportController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Failed to create airport: ' . $e->getMessage())
+                ->with('error', 'Failed to create airport: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -163,10 +170,10 @@ class AirportController extends Controller
         // Get statistics for this airport
         $stats = [
             'total_users' => $airport->users()->count(),
-            'students' => $airport->users()->whereHas('roles', function($q) {
+            'students' => $airport->users()->whereHas('roles', function ($q) {
                 $q->where('name', 'student');
             })->count(),
-            'instructors' => $airport->users()->whereHas('roles', function($q) {
+            'instructors' => $airport->users()->whereHas('roles', function ($q) {
                 $q->where('name', 'instructor');
             })->count(),
             'courses' => $airport->courses()->count(),
@@ -206,9 +213,9 @@ class AirportController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:10|unique:airports,code,' . $airport->id,
+            'code' => 'required|string|max:10|unique:airports,code,'.$airport->id,
             'icao_code' => 'nullable|string|max:4',
-            'slug' => 'required|string|max:255|unique:airports,slug,' . $airport->id,
+            'slug' => 'required|string|max:255|unique:airports,slug,'.$airport->id,
             'city' => 'nullable|string|max:100',
             'country' => 'nullable|string|max:100',
             'timezone' => 'required|string|max:100',
@@ -270,14 +277,14 @@ class AirportController extends Controller
 
             // Clear cache
             Cache::forget('active_airports');
-            Cache::forget('airport_' . $airport->id);
+            Cache::forget('airport_'.$airport->id);
 
             return redirect()->route('admin.airports.index')
                 ->with('success', 'Airport updated successfully!');
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Failed to update airport: ' . $e->getMessage())
+                ->with('error', 'Failed to update airport: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -310,14 +317,14 @@ class AirportController extends Controller
             // Clear cache
             Cache::forget('active_airports');
             Cache::forget('default_airport_id');
-            Cache::forget('airport_' . $airport->id);
+            Cache::forget('airport_'.$airport->id);
 
             return redirect()->route('admin.airports.index')
                 ->with('success', 'Airport deleted successfully!');
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Failed to delete airport: ' . $e->getMessage());
+                ->with('error', 'Failed to delete airport: '.$e->getMessage());
         }
     }
 
@@ -331,14 +338,14 @@ class AirportController extends Controller
             $airport->restore();
 
             Cache::forget('active_airports');
-            Cache::forget('airport_' . $airport->id);
+            Cache::forget('airport_'.$airport->id);
 
             return redirect()->route('admin.airports.index')
                 ->with('success', 'Airport restored successfully!');
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Failed to restore airport: ' . $e->getMessage());
+                ->with('error', 'Failed to restore airport: '.$e->getMessage());
         }
     }
 
@@ -352,14 +359,14 @@ class AirportController extends Controller
             $airport->update(['status' => $newStatus]);
 
             Cache::forget('active_airports');
-            Cache::forget('airport_' . $airport->id);
+            Cache::forget('airport_'.$airport->id);
 
             return redirect()->back()
                 ->with('success', 'Airport status updated successfully!');
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Failed to update airport status: ' . $e->getMessage());
+                ->with('error', 'Failed to update airport status: '.$e->getMessage());
         }
     }
 
@@ -368,7 +375,7 @@ class AirportController extends Controller
      */
     protected function uploadLogo(Airport $airport, $file)
     {
-        $path = $file->store('airports/' . $airport->id . '/logo', 'public');
+        $path = $file->store('airports/'.$airport->id.'/logo', 'public');
         $airport->update(['logo' => $path]);
     }
 
@@ -395,7 +402,7 @@ class AirportController extends Controller
      */
     protected function uploadFavicon(Airport $airport, $file)
     {
-        $path = $file->store('airports/' . $airport->id . '/favicon', 'public');
+        $path = $file->store('airports/'.$airport->id.'/favicon', 'public');
         $airport->update(['favicon' => $path]);
     }
 

@@ -13,13 +13,14 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Validators\ValidationException;
 
 class BatchController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -27,36 +28,34 @@ class BatchController extends Controller
      */
     public function index(Request $request)
     {
-        
+
         $query = Batch::with(['course', 'instructor'])
             ->withCount('students');
-    
+
         // Apply search filter
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('name', 'LIKE', "%{$request->search}%")
-                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+                    ->orWhere('description', 'LIKE', "%{$request->search}%");
             });
         }
-    
+
         // Apply status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        
+
         // Apply course filter
         if ($request->filled('course_id')) {
             $query->where('course_id', $request->course_id);
         }
-        
+
         // $batches = Batch::with(['course', 'instructor'])
         //                 ->withCount('students')
         //                 ->latest()
         //                 ->paginate(10);
-        
+
         $batches = $query->latest()->paginate(10);
-                        
-        
 
         return view('admin.batches.index', compact('batches'));
     }
@@ -80,7 +79,7 @@ class BatchController extends Controller
         $batch = Batch::create($request->validated());
 
         return redirect()->route('admin.batches.index')
-                        ->with('success', 'Batch created successfully.');
+            ->with('success', 'Batch created successfully.');
     }
 
     /**
@@ -88,7 +87,7 @@ class BatchController extends Controller
      */
     public function show(Batch $batch)
     {
-        $batch->load(['course', 'instructor', 'students' => function($q) {
+        $batch->load(['course', 'instructor', 'students' => function ($q) {
             $q->withPivot('status', 'enrolled_at');
         }]);
 
@@ -114,7 +113,7 @@ class BatchController extends Controller
         $batch->update($request->validated());
 
         return redirect()->route('admin.batches.index')
-                        ->with('success', 'Batch updated successfully.');
+            ->with('success', 'Batch updated successfully.');
     }
 
     /**
@@ -130,10 +129,9 @@ class BatchController extends Controller
         $batch->delete();
 
         return redirect()->route('admin.batches.index')
-                        ->with('success', 'Batch deleted successfully.');
+            ->with('success', 'Batch deleted successfully.');
     }
-    
-    
+
     /**
      * Bulk delete students.
      */
@@ -152,7 +150,7 @@ class BatchController extends Controller
         }
 
         return redirect()->route('admin.batches.index')
-                        ->with('success', 'Batch deleted successfully.');
+            ->with('success', 'Batch deleted successfully.');
     }
 
     /**
@@ -179,11 +177,11 @@ class BatchController extends Controller
     public function addStudents(Batch $batch)
     {
         $students = User::role('student')
-                        ->where('is_active', true)
-                        ->whereDoesntHave('batches', function($q) use ($batch) {
-                            $q->where('batch_id', $batch->id);
-                        })
-                        ->get();
+            ->where('is_active', true)
+            ->whereDoesntHave('batches', function ($q) use ($batch) {
+                $q->where('batch_id', $batch->id);
+            })
+            ->get();
 
         return view('admin.batches.add-students', compact('batch', 'students'));
     }
@@ -195,18 +193,18 @@ class BatchController extends Controller
     {
         $request->validate([
             'student_ids' => 'required|array',
-            'student_ids.*' => 'exists:users,id'
+            'student_ids.*' => 'exists:users,id',
         ]);
 
         foreach ($request->student_ids as $studentId) {
             $batch->students()->attach($studentId, [
                 'enrolled_at' => now(),
-                'status' => 'active'
+                'status' => 'active',
             ]);
         }
 
         return redirect()->route('admin.batches.show', $batch)
-                        ->with('success', 'Students added successfully.');
+            ->with('success', 'Students added successfully.');
     }
 
     /**
@@ -225,77 +223,77 @@ class BatchController extends Controller
     public function updateStudentStatus(Request $request, Batch $batch, User $student)
     {
         $request->validate([
-            'status' => 'required|in:active,completed,dropped'
+            'status' => 'required|in:active,completed,dropped',
         ]);
 
         $batch->students()->updateExistingPivot($student->id, [
-            'status' => $request->status
+            'status' => $request->status,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Student status updated'
+            'message' => 'Student status updated',
         ]);
     }
 
     /**
      * Import students via Excel.
      */
-     /**
+    /**
      * Import students via Excel.
      */
     public function importStudents(Request $request, Batch $batch)
     {
         $validator = validator($request->all(), [
-        'file' => [
-            'required',
-            'file',
-            function ($attribute, $value, $fail) {
-                $extension = $value->getClientOriginalExtension();
-                $mime = $value->getMimeType();
+            'file' => [
+                'required',
+                'file',
+                function ($attribute, $value, $fail) {
+                    $extension = $value->getClientOriginalExtension();
+                    $mime = $value->getMimeType();
 
-                // Allowed extensions
-                $allowedExtensions = ['xlsx', 'xls', 'csv'];
+                    // Allowed extensions
+                    $allowedExtensions = ['xlsx', 'xls', 'csv'];
 
-                // Allowed MIME types (including common variations)
-                $allowedMimes = [
-                    'application/vnd.ms-excel',
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'text/csv',
-                    'text/plain',
-                    'text/x-csv',
-                    'application/csv',
-                    'application/x-csv'
-                ];
+                    // Allowed MIME types (including common variations)
+                    $allowedMimes = [
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'text/csv',
+                        'text/plain',
+                        'text/x-csv',
+                        'application/csv',
+                        'application/x-csv',
+                    ];
 
-                if (!in_array(strtolower($extension), $allowedExtensions)) {
-                    $fail('The file must be of type: xlsx, xls, or csv.');
-                }
+                    if (! in_array(strtolower($extension), $allowedExtensions)) {
+                        $fail('The file must be of type: xlsx, xls, or csv.');
+                    }
 
-                if ($extension === 'csv' && !in_array($mime, $allowedMimes)) {
-                    // For CSV files, be more permissive
-                    return true;
-                } elseif (!in_array($mime, $allowedMimes)) {
-                    $fail('Invalid file format. Please upload a valid Excel or CSV file.');
-                }
-            },
-        ],
-        'file' => 'max:10240' // 10MB max
-    ], [
-        'file.required' => 'Please select a file to upload.',
-        'file.max' => 'The file size must not exceed 10MB.'
-    ]);
+                    if ($extension === 'csv' && ! in_array($mime, $allowedMimes)) {
+                        // For CSV files, be more permissive
+                        return true;
+                    } elseif (! in_array($mime, $allowedMimes)) {
+                        $fail('Invalid file format. Please upload a valid Excel or CSV file.');
+                    }
+                },
+            ],
+            'file' => 'max:10240', // 10MB max
+        ], [
+            'file.required' => 'Please select a file to upload.',
+            'file.max' => 'The file size must not exceed 10MB.',
+        ]);
 
-    if ($validator->fails()) {
-        return redirect()->back()
-            ->withErrors($validator)
-            ->withInput();
-    }
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
 
         try {
             Log::info('Starting student import', [
                 'batch_id' => $batch->id,
-                'file' => $request->file('file')->getClientOriginalName()
+                'file' => $request->file('file')->getClientOriginalName(),
             ]);
 
             // Create import instance
@@ -308,7 +306,7 @@ class BatchController extends Controller
             $stats = $import->getStats();
 
             // Prepare success message with details
-            $message = "Import completed: ";
+            $message = 'Import completed: ';
             $message .= "{$stats['created']} new students created, ";
             $message .= "{$stats['enrolled']} enrolled in batch";
 
@@ -318,7 +316,7 @@ class BatchController extends Controller
             if ($stats['skipped'] > 0) {
                 $message .= ", {$stats['skipped']} already enrolled in this batch";
             }
-            if (!empty($stats['errors'])) {
+            if (! empty($stats['errors'])) {
                 $message .= ", but encountered {$stats['errors']} errors";
                 Log::warning('Import had errors', ['errors' => $stats['errors']]);
             }
@@ -326,37 +324,36 @@ class BatchController extends Controller
             Log::info('Import completed', $stats);
 
             return redirect()->route('admin.batches.show', $batch)
-                            ->with('success', $message);
+                ->with('success', $message);
 
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+        } catch (ValidationException $e) {
             $failures = $e->failures();
 
             $errorMessages = [];
             foreach ($failures as $failure) {
-                $errorMessages[] = "Row {$failure->row()}: " . implode(', ', $failure->errors());
+                $errorMessages[] = "Row {$failure->row()}: ".implode(', ', $failure->errors());
             }
 
             Log::error('Import validation failed', ['errors' => $errorMessages]);
 
-            return back()->with('error', 'Validation failed: ' . implode('; ', $errorMessages));
+            return back()->with('error', 'Validation failed: '.implode('; ', $errorMessages));
 
         } catch (\Exception $e) {
             Log::error('Import error', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return back()->with('error', 'Error importing students: ' . $e->getMessage());
+            return back()->with('error', 'Error importing students: '.$e->getMessage());
         }
     }
-
 
     /**
      * Export batch students to Excel.
      */
     public function exportStudents(Batch $batch)
     {
-        return Excel::download(new BatchStudentsExport($batch), 'batch-' . $batch->id . '-students.xlsx');
+        return Excel::download(new BatchStudentsExport($batch), 'batch-'.$batch->id.'-students.xlsx');
     }
 
     /**
@@ -373,30 +370,30 @@ class BatchController extends Controller
             'progress' => $batch->progress,
             'exams_conducted' => $batch->exams()->count(),
             'avg_score' => $batch->exams()
-                                ->join('results', 'exams.id', '=', 'results.exam_id')
-                                ->avg('results.percentage') ?? 0
+                ->join('results', 'exams.id', '=', 'results.exam_id')
+                ->avg('results.percentage') ?? 0,
         ];
 
         return response()->json($stats);
     }
 
     public function downloadImportTemplate()
-{
-    $headers = [
-        'Content-Type' => 'text/csv',
-        'Content-Disposition' => 'attachment; filename="student_import_template.csv"',
-    ];
+    {
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="student_import_template.csv"',
+        ];
 
-    // $columns = ['name', 'email', 'phone'];
-    $columns = ['name', 'email', 'phone', 'organization_name', 'address'];
+        // $columns = ['name', 'email', 'phone'];
+        $columns = ['name', 'email', 'phone', 'organization_name', 'address'];
 
-    $callback = function() use ($columns) {
-        $file = fopen('php://output', 'w');
-        fputcsv($file, $columns);
-        fputcsv($file, ['Amit Kumar Singh', 'amitk2@cbt.com', '1234567890', 'AAI', 'NSCBIA Kolkata']);
-        fclose($file);
-    };
+        $callback = function () use ($columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+            fputcsv($file, ['Amit Kumar Singh', 'amitk2@cbt.com', '1234567890', 'AAI', 'NSCBIA Kolkata']);
+            fclose($file);
+        };
 
-    return response()->stream($callback, 200, $headers);
-}
+        return response()->stream($callback, 200, $headers);
+    }
 }

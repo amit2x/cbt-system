@@ -20,7 +20,7 @@ class DashboardController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     public function index()
@@ -72,7 +72,7 @@ class DashboardController extends Controller
         // ==================== PERFORMANCE METRICS ====================
         // Average score across all exams
         $averageScore = Result::avg('percentage') ?? 0;
-        
+
         // Pass rate
         $totalResults = Result::count();
         $passedResults = Result::where('status', 'passed')->count();
@@ -90,10 +90,10 @@ class DashboardController extends Controller
         // ==================== CHART DATA ====================
         // Daily activity for last 30 days
         $dailyActivity = $this->getDailyActivity();
-        
+
         // Monthly trend for last 6 months
         $monthlyTrend = $this->getMonthlyTrend();
-        
+
         // Course-wise exam performance
         $coursePerformance = $this->getCoursePerformance();
 
@@ -112,8 +112,8 @@ class DashboardController extends Controller
                 $batch->average_score = Result::where('batch_id', $batch->id)->avg('percentage') ?? 0;
                 $batch->pass_rate = Result::where('batch_id', $batch->id)
                     ->where('status', 'passed')
-                    ->count() > 0 
-                    ? round((Result::where('batch_id', $batch->id)->where('status', 'passed')->count() / 
+                    ->count() > 0
+                    ? round((Result::where('batch_id', $batch->id)->where('status', 'passed')->count() /
                             max(Result::where('batch_id', $batch->id)->count(), 1)) * 100, 2)
                     : 0;
                 return $batch;
@@ -215,13 +215,13 @@ class DashboardController extends Controller
                 $allResults = $course->exams->flatMap(function($exam) {
                     return $exam->results;
                 });
-                
+
                 return [
                     'name' => $course->title,
                     'exams' => $course->exams_count,
                     'batches' => $course->batches_count,
                     'avg_score' => $allResults->avg('percentage') ?? 0,
-                    'pass_rate' => $allResults->count() > 0 
+                    'pass_rate' => $allResults->count() > 0
                         ? round(($allResults->where('status', 'passed')->count() / $allResults->count()) * 100, 2)
                         : 0
                 ];

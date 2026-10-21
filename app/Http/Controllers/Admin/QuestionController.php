@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\QuestionsExport;
 use App\Http\Controllers\Controller;
-use App\Models\Question;
-use App\Models\Module;
-use App\Models\QuestionCategory;
-use App\Models\QuestionOption;
+use App\Http\Requests\Question\ImportQuestionsRequest;
 use App\Http\Requests\Question\StoreQuestionRequest;
 use App\Http\Requests\Question\UpdateQuestionRequest;
-use App\Http\Requests\Question\ImportQuestionsRequest;
+use App\Imports\QuestionsImport;
+use App\Models\Module;
+use App\Models\Question;
+use App\Models\QuestionCategory;
+use App\Models\QuestionOption;
 use App\Repositories\Contracts\QuestionRepositoryInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
-use App\Imports\QuestionsImport;
-use App\Exports\QuestionsExport;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionController extends Controller
@@ -26,7 +29,7 @@ class QuestionController extends Controller
     {
         $this->questionRepository = $questionRepository;
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -53,7 +56,7 @@ class QuestionController extends Controller
         }
 
         if ($request->filled('category_id')) {
-            $query->whereHas('categories', function($q) use ($request) {
+            $query->whereHas('categories', function ($q) use ($request) {
                 $q->where('question_categories.id', $request->category_id);
             });
         }
@@ -82,12 +85,12 @@ class QuestionController extends Controller
         $types = [
             'single_choice' => 'Single Choice',
             'multiple_choice' => 'Multiple Choice',
-            'numerical' => 'Numerical'
+            'numerical' => 'Numerical',
         ];
         $difficulties = [
             'easy' => 'Easy',
             'medium' => 'Medium',
-            'hard' => 'Hard'
+            'hard' => 'Hard',
         ];
 
         return view('admin.questions.create', compact('subjects', 'categories', 'types', 'difficulties'));
@@ -101,7 +104,7 @@ class QuestionController extends Controller
         try {
             $questionData = $request->except(['options', 'correct_numerical', 'tolerance', 'question_image']);
             $options = $request->input('options', []);
-            
+
             // Handle question image upload
             if ($request->hasFile('question_image')) {
                 $imagePath = $request->file('question_image')->store('questions/images', 'public');
@@ -110,14 +113,14 @@ class QuestionController extends Controller
             }
 
             // Process options - FIX: Properly handle uploaded files
-            if (!empty($options)) {
+            if (! empty($options)) {
                 foreach ($options as $index => &$option) {
                     // Handle option image upload - FIX: Check if option_image is an UploadedFile
                     if (isset($option['option_image'])) {
                         // Check if it's an UploadedFile object or an array containing it
                         $imageFile = null;
-                        
-                        if ($option['option_image'] instanceof \Illuminate\Http\UploadedFile) {
+
+                        if ($option['option_image'] instanceof UploadedFile) {
                             $imageFile = $option['option_image'];
                         } elseif (is_array($option['option_image']) && isset($option['option_image']['UploadedFile'])) {
                             // Handle nested UploadedFile from JSON request
@@ -126,9 +129,9 @@ class QuestionController extends Controller
                             // Handle array representation of file
                             $imageFile = $option['option_image'];
                         }
-                        
+
                         // If we have a valid file, store it
-                        if ($imageFile instanceof \Illuminate\Http\UploadedFile) {
+                        if ($imageFile instanceof UploadedFile) {
                             $optionImagePath = $imageFile->store('questions/options', 'public');
                             $option['option_image'] = $optionImagePath;
                         } else {
@@ -136,41 +139,41 @@ class QuestionController extends Controller
                             unset($option['option_image']);
                         }
                     }
-                    
+
                     // Set default values
                     $option['order'] = $option['order'] ?? $index;
-                    $option['is_correct'] = isset($option['is_correct']) ? (int)$option['is_correct'] : 0;
-                    
+                    $option['is_correct'] = isset($option['is_correct']) ? (int) $option['is_correct'] : 0;
+
                     // Ensure option_text is not null
                     $option['option_text'] = $option['option_text'] ?? null;
                 }
             }
-            
+
             // Handle numerical question
             if ($request->type === 'numerical') {
                 $options = [
                     [
                         'option_text' => $request->correct_numerical,
                         'is_correct' => true,
-                        'order' => 0
-                    ]
+                        'order' => 0,
+                    ],
                 ];
             }
-            
+
             // Create question using repository
             $question = $this->questionRepository->createWithOptions($questionData, $options);
-            
+
             return redirect()->route('admin.questions.index')
-                            ->with('success', 'Question created successfully.');
-                            
+                ->with('success', 'Question created successfully.');
+
         } catch (\Exception $e) {
-            Log::error('Question creation error: ' . $e->getMessage(), [
+            Log::error('Question creation error: '.$e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
+                'request_data' => $request->all(),
             ]);
-            
-            return back()->with('error', 'Error creating question: ' . $e->getMessage())
-                         ->withInput();
+
+            return back()->with('error', 'Error creating question: '.$e->getMessage())
+                ->withInput();
         }
     }
 
@@ -194,12 +197,12 @@ class QuestionController extends Controller
         $types = [
             'single_choice' => 'Single Choice',
             'multiple_choice' => 'Multiple Choice',
-            'numerical' => 'Numerical'
+            'numerical' => 'Numerical',
         ];
         $difficulties = [
             'easy' => 'Easy',
             'medium' => 'Medium',
-            'hard' => 'Hard'
+            'hard' => 'Hard',
         ];
 
         $question->load(['categories', 'options']);
@@ -211,134 +214,134 @@ class QuestionController extends Controller
      * Update the specified question with image support.
      */
     /**
- * Update the specified question with image support.
- */
-/**
- * Update the specified question with image support.
- */
-/**
- * Update the specified question with image support.
- */
-public function update(UpdateQuestionRequest $request, Question $question)
-{
-    try {
-        $questionData = $request->except(['options', 'correct_numerical', 'tolerance', 'question_image']);
-        $options = $request->input('options', []);
-        
-        // Handle question image upload
-        if ($request->hasFile('question_image')) {
-            if ($question->question_image) {
-                Storage::disk('public')->delete($question->question_image);
-            }
-            $imagePath = $request->file('question_image')->store('questions/images', 'public');
-            $questionData['question_image'] = $imagePath;
-            $questionData['question_image_alt'] = $request->question_image_alt;
-        }
-        
-        if ($request->has('remove_question_image') && $request->remove_question_image == '1') {
-            if ($question->question_image) {
-                Storage::disk('public')->delete($question->question_image);
-            }
-            $questionData['question_image'] = null;
-            $questionData['question_image_alt'] = null;
-        }
+     * Update the specified question with image support.
+     */
+    /**
+     * Update the specified question with image support.
+     */
+    /**
+     * Update the specified question with image support.
+     */
+    public function update(UpdateQuestionRequest $request, Question $question)
+    {
+        try {
+            $questionData = $request->except(['options', 'correct_numerical', 'tolerance', 'question_image']);
+            $options = $request->input('options', []);
 
-        // Process options - Store images and update option data
-        if (!empty($options)) {
-            foreach ($options as $index => &$option) {
-                // Handle option image upload
-                $hasNewImage = false;
-                $uploadedFile = null;
-                
-                // Check if option_image is an UploadedFile
-                if (isset($option['option_image'])) {
-                    if ($option['option_image'] instanceof \Illuminate\Http\UploadedFile) {
-                        $hasNewImage = true;
-                        $uploadedFile = $option['option_image'];
-                    }
-                    // Check if it's an array with UploadedFile
-                    elseif (is_array($option['option_image']) && isset($option['option_image']['UploadedFile'])) {
-                        $hasNewImage = true;
-                        $uploadedFile = $option['option_image']['UploadedFile'];
-                    }
+            // Handle question image upload
+            if ($request->hasFile('question_image')) {
+                if ($question->question_image) {
+                    Storage::disk('public')->delete($question->question_image);
                 }
-                
-                // Also check the request files
-                if (!$hasNewImage && $request->hasFile("options.{$index}.option_image")) {
-                    $uploadedFile = $request->file("options.{$index}.option_image");
-                    $hasNewImage = true;
-                }
-                
-                // If we have a file, store it
-                if ($hasNewImage && $uploadedFile instanceof \Illuminate\Http\UploadedFile) {
-                    // Delete old image if this is an existing option
-                    if (isset($option['id']) && $option['id']) {
-                        $oldOption = QuestionOption::find($option['id']);
-                        if ($oldOption && $oldOption->option_image) {
-                            Storage::disk('public')->delete($oldOption->option_image);
-                        }
-                    }
-                    
-                    // Store the new image
-                    $optionImagePath = $uploadedFile->store('questions/options', 'public');
-                    $option['option_image'] = $optionImagePath; // Pass the path to repository
-                } 
-                // If no file and we need to keep existing image
-                elseif (isset($option['id']) && $option['id']) {
-                    // Keep existing image (or remove if remove_image is checked)
-                    if (isset($option['remove_image']) && $option['remove_image'] == '1') {
-                        $oldOption = QuestionOption::find($option['id']);
-                        if ($oldOption && $oldOption->option_image) {
-                            Storage::disk('public')->delete($oldOption->option_image);
-                        }
-                        $option['option_image'] = null;
-                    } else {
-                        // Keep the existing image path
-                        $oldOption = QuestionOption::find($option['id']);
-                        if ($oldOption && $oldOption->option_image) {
-                            $option['option_image'] = $oldOption->option_image;
-                        }
-                    }
-                }
-                // New option without image
-                else {
-                    unset($option['option_image']);
-                }
-                
-                // Ensure is_correct is properly set
-                $option['is_correct'] = isset($option['is_correct']) ? (int)$option['is_correct'] : 0;
-                $option['order'] = $option['order'] ?? $index;
-                $option['option_text'] = $option['option_text'] ?? null;
+                $imagePath = $request->file('question_image')->store('questions/images', 'public');
+                $questionData['question_image'] = $imagePath;
+                $questionData['question_image_alt'] = $request->question_image_alt;
             }
-        }
-        
-        // Handle numerical question
-        if ($request->type === 'numerical') {
-            $options = [
-                [
-                    'option_text' => $request->correct_numerical,
-                    'is_correct' => true,
-                    'order' => 0
-                ]
-            ];
-        }
-        
-        // Update question using repository
-        $this->questionRepository->updateWithOptions($question->id, $questionData, $options);
 
-        return redirect()->route('admin.questions.index')
-                        ->with('success', 'Question updated successfully.');
-                        
-    } catch (\Exception $e) {
-        Log::error('Question update error: ' . $e->getMessage(), [
-            'trace' => $e->getTraceAsString(),
-            'question_id' => $question->id
-        ]);
-        
-        return back()->with('error', 'Error updating question: ' . $e->getMessage())
-                     ->withInput();
+            if ($request->has('remove_question_image') && $request->remove_question_image == '1') {
+                if ($question->question_image) {
+                    Storage::disk('public')->delete($question->question_image);
+                }
+                $questionData['question_image'] = null;
+                $questionData['question_image_alt'] = null;
+            }
+
+            // Process options - Store images and update option data
+            if (! empty($options)) {
+                foreach ($options as $index => &$option) {
+                    // Handle option image upload
+                    $hasNewImage = false;
+                    $uploadedFile = null;
+
+                    // Check if option_image is an UploadedFile
+                    if (isset($option['option_image'])) {
+                        if ($option['option_image'] instanceof UploadedFile) {
+                            $hasNewImage = true;
+                            $uploadedFile = $option['option_image'];
+                        }
+                        // Check if it's an array with UploadedFile
+                        elseif (is_array($option['option_image']) && isset($option['option_image']['UploadedFile'])) {
+                            $hasNewImage = true;
+                            $uploadedFile = $option['option_image']['UploadedFile'];
+                        }
+                    }
+
+                    // Also check the request files
+                    if (! $hasNewImage && $request->hasFile("options.{$index}.option_image")) {
+                        $uploadedFile = $request->file("options.{$index}.option_image");
+                        $hasNewImage = true;
+                    }
+
+                    // If we have a file, store it
+                    if ($hasNewImage && $uploadedFile instanceof UploadedFile) {
+                        // Delete old image if this is an existing option
+                        if (isset($option['id']) && $option['id']) {
+                            $oldOption = QuestionOption::find($option['id']);
+                            if ($oldOption && $oldOption->option_image) {
+                                Storage::disk('public')->delete($oldOption->option_image);
+                            }
+                        }
+
+                        // Store the new image
+                        $optionImagePath = $uploadedFile->store('questions/options', 'public');
+                        $option['option_image'] = $optionImagePath; // Pass the path to repository
+                    }
+                    // If no file and we need to keep existing image
+                    elseif (isset($option['id']) && $option['id']) {
+                        // Keep existing image (or remove if remove_image is checked)
+                        if (isset($option['remove_image']) && $option['remove_image'] == '1') {
+                            $oldOption = QuestionOption::find($option['id']);
+                            if ($oldOption && $oldOption->option_image) {
+                                Storage::disk('public')->delete($oldOption->option_image);
+                            }
+                            $option['option_image'] = null;
+                        } else {
+                            // Keep the existing image path
+                            $oldOption = QuestionOption::find($option['id']);
+                            if ($oldOption && $oldOption->option_image) {
+                                $option['option_image'] = $oldOption->option_image;
+                            }
+                        }
+                    }
+                    // New option without image
+                    else {
+                        unset($option['option_image']);
+                    }
+
+                    // Ensure is_correct is properly set
+                    $option['is_correct'] = isset($option['is_correct']) ? (int) $option['is_correct'] : 0;
+                    $option['order'] = $option['order'] ?? $index;
+                    $option['option_text'] = $option['option_text'] ?? null;
+                }
+            }
+
+            // Handle numerical question
+            if ($request->type === 'numerical') {
+                $options = [
+                    [
+                        'option_text' => $request->correct_numerical,
+                        'is_correct' => true,
+                        'order' => 0,
+                    ],
+                ];
+            }
+
+            // Update question using repository
+            $this->questionRepository->updateWithOptions($question->id, $questionData, $options);
+
+            return redirect()->route('admin.questions.index')
+                ->with('success', 'Question updated successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Question update error: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'question_id' => $question->id,
+            ]);
+
+            return back()->with('error', 'Error updating question: '.$e->getMessage())
+                ->withInput();
+        }
     }
-}
 
     /**
      * Remove the specified question.
@@ -353,7 +356,7 @@ public function update(UpdateQuestionRequest $request, Question $question)
             if ($question->question_image) {
                 Storage::disk('public')->delete($question->question_image);
             }
-            
+
             foreach ($question->options as $option) {
                 if ($option->option_image) {
                     Storage::disk('public')->delete($option->option_image);
@@ -363,9 +366,9 @@ public function update(UpdateQuestionRequest $request, Question $question)
             $question->delete();
 
             return redirect()->route('admin.questions.index')
-                            ->with('success', 'Question deleted successfully.');
+                ->with('success', 'Question deleted successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error deleting question: ' . $e->getMessage());
+            return back()->with('error', 'Error deleting question: '.$e->getMessage());
         }
     }
 
@@ -391,59 +394,59 @@ public function update(UpdateQuestionRequest $request, Question $question)
     //         return back()->with('error', 'Error importing questions: ' . $e->getMessage());
     //     }
     // }
-    
+
     /**
- * Import questions from file - Updated with bilingual support
- */
-/**
- * Import questions from file - With image upload support
- */
-public function import(ImportQuestionsRequest $request)
-{
-    // Log::info($request->all());
-    try {
-        // Get uploaded images
-        $uploadedFiles = $request->file('images') ?? [];
-        
-        // Log::info($uploadedFiles);
-        // Create import instance with uploaded files
-        $import = new QuestionsImport($request->type, $uploadedFiles);
-        
-        // Import the Excel file
-        $import->import($request->file('file'));
+     * Import questions from file - Updated with bilingual support
+     */
+    /**
+     * Import questions from file - With image upload support
+     */
+    public function import(ImportQuestionsRequest $request)
+    {
+        // Log::info($request->all());
+        try {
+            // Get uploaded images
+            $uploadedFiles = $request->file('images') ?? [];
 
-        $successCount = $import->getSuccessCount();
-        $errors = $import->getErrors();
-        $totalRows = $import->getRowCount();
+            // Log::info($uploadedFiles);
+            // Create import instance with uploaded files
+            $import = new QuestionsImport($request->type, $uploadedFiles);
 
-        $message = "Successfully imported {$successCount} questions.";
+            // Import the Excel file
+            $import->import($request->file('file'));
 
-        if (!empty($errors)) {
-            $message .= " There were " . count($errors) . " errors.";
-            Log::warning('Question import errors:', $errors);
-        }
+            $successCount = $import->getSuccessCount();
+            $errors = $import->getErrors();
+            $totalRows = $import->getRowCount();
 
-        if ($totalRows > 0 && $successCount === 0) {
-            return back()->with('error', 'Failed to import any questions. Please check the file format.');
-        }
+            $message = "Successfully imported {$successCount} questions.";
 
-        if (!empty($errors)) {
+            if (! empty($errors)) {
+                $message .= ' There were '.count($errors).' errors.';
+                Log::warning('Question import errors:', $errors);
+            }
+
+            if ($totalRows > 0 && $successCount === 0) {
+                return back()->with('error', 'Failed to import any questions. Please check the file format.');
+            }
+
+            if (! empty($errors)) {
+                return redirect()->route('admin.questions.index')
+                    ->with('warning', $message)
+                    ->with('import_errors', $errors);
+            }
+
             return redirect()->route('admin.questions.index')
-                ->with('warning', $message)
-                ->with('import_errors', $errors);
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            Log::error('Question import error: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Error importing questions: '.$e->getMessage());
         }
-
-        return redirect()->route('admin.questions.index')
-            ->with('success', $message);
-
-    } catch (\Exception $e) {
-        Log::error('Question import error: ' . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        return back()->with('error', 'Error importing questions: ' . $e->getMessage());
     }
-}
 
     /**
      * Export questions to file.
@@ -453,9 +456,9 @@ public function import(ImportQuestionsRequest $request)
         try {
             $filters = $request->only(['type', 'difficulty', 'subject_id', 'category_id']);
 
-            return Excel::download(new QuestionsExport($filters), 'questions_' . date('Y-m-d') . '.xlsx');
+            return Excel::download(new QuestionsExport($filters), 'questions_'.date('Y-m-d').'.xlsx');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error exporting questions: ' . $e->getMessage());
+            return back()->with('error', 'Error exporting questions: '.$e->getMessage());
         }
     }
 
@@ -465,8 +468,8 @@ public function import(ImportQuestionsRequest $request)
     // public function downloadTemplate()
     // {
     //     $headers = [
-    //         'question_text', 'question_image', 'question_image_alt', 'type', 'difficulty', 
-    //         'marks', 'negative_marks', 'explanation', 'subject_id', 
+    //         'question_text', 'question_image', 'question_image_alt', 'type', 'difficulty',
+    //         'marks', 'negative_marks', 'explanation', 'subject_id',
     //         'option_1_text', 'option_1_image', 'option_1_image_alt', 'option_1_correct',
     //         'option_2_text', 'option_2_image', 'option_2_image_alt', 'option_2_correct',
     //         'option_3_text', 'option_3_image', 'option_3_image_alt', 'option_3_correct',
@@ -488,196 +491,197 @@ public function import(ImportQuestionsRequest $request)
     //             return [
     //                 $this->headers,
     //                 [
-    //                     'Sample question?', '', '', 'single_choice', 'medium', 
+    //                     'Sample question?', '', '', 'single_choice', 'medium',
     //                     '1', '0', 'This is a sample explanation', '1',
-    //                     'Option A', '', '', '1', 
-    //                     'Option B', '', '', '0', 
-    //                     'Option C', '', '', '0', 
+    //                     'Option A', '', '', '1',
+    //                     'Option B', '', '', '0',
+    //                     'Option C', '', '', '0',
     //                     'Option D', '', '', '0'
     //                 ]
     //             ];
     //         }
     //     }, $filename);
     // }
-    
+
     /**
- * Download import template - Updated with bilingual and image support
- */
-public function downloadTemplate()
-{
-    $headers = [
-        // Question fields
-        'question_text',
-        'question_text_hi',
-        'question_image',
-        'question_image_alt',
-        'question_image_alt_hi',
-        'explanation_image',
-        'explanation_image_alt',
-        'explanation_image_alt_hi',
-        'type',
-        'difficulty',
-        'marks',
-        'negative_marks',
-        'explanation',
-        'explanation_hi',
-        'subject_id',
-        
-        // Option 1
-        'option_1_text',
-        'option_1_text_hi',
-        'option_1_image',
-        'option_1_image_alt',
-        'option_1_image_alt_hi',
-        'option_1_correct',
-        
-        // Option 2
-        'option_2_text',
-        'option_2_text_hi',
-        'option_2_image',
-        'option_2_image_alt',
-        'option_2_image_alt_hi',
-        'option_2_correct',
-        
-        // Option 3
-        'option_3_text',
-        'option_3_text_hi',
-        'option_3_image',
-        'option_3_image_alt',
-        'option_3_image_alt_hi',
-        'option_3_correct',
-        
-        // Option 4
-        'option_4_text',
-        'option_4_text_hi',
-        'option_4_image',
-        'option_4_image_alt',
-        'option_4_image_alt_hi',
-        'option_4_correct',
-        
-        // Option 5
-        'option_5_text',
-        'option_5_text_hi',
-        'option_5_image',
-        'option_5_image_alt',
-        'option_5_image_alt_hi',
-        'option_5_correct',
-        
-        // Option 6
-        'option_6_text',
-        'option_6_text_hi',
-        'option_6_image',
-        'option_6_image_alt',
-        'option_6_image_alt_hi',
-        'option_6_correct',
-        
-        // Option 7
-        'option_7_text',
-        'option_7_text_hi',
-        'option_7_image',
-        'option_7_image_alt',
-        'option_7_image_alt_hi',
-        'option_7_correct',
-        
-        // Option 8
-        'option_8_text',
-        'option_8_text_hi',
-        'option_8_image',
-        'option_8_image_alt',
-        'option_8_image_alt_hi',
-        'option_8_correct',
-        
-        // Option 9
-        'option_9_text',
-        'option_9_text_hi',
-        'option_9_image',
-        'option_9_image_alt',
-        'option_9_image_alt_hi',
-        'option_9_correct',
-        
-        // Option 10
-        'option_10_text',
-        'option_10_text_hi',
-        'option_10_image',
-        'option_10_image_alt',
-        'option_10_image_alt_hi',
-        'option_10_correct',
-    ];
+     * Download import template - Updated with bilingual and image support
+     */
+    public function downloadTemplate()
+    {
+        $headers = [
+            // Question fields
+            'question_text',
+            'question_text_hi',
+            'question_image',
+            'question_image_alt',
+            'question_image_alt_hi',
+            'explanation_image',
+            'explanation_image_alt',
+            'explanation_image_alt_hi',
+            'type',
+            'difficulty',
+            'marks',
+            'negative_marks',
+            'explanation',
+            'explanation_hi',
+            'subject_id',
 
-    $filename = 'question_import_template.xlsx';
+            // Option 1
+            'option_1_text',
+            'option_1_text_hi',
+            'option_1_image',
+            'option_1_image_alt',
+            'option_1_image_alt_hi',
+            'option_1_correct',
 
-    return Excel::download(new class($headers) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithTitle {
-        private $headers;
+            // Option 2
+            'option_2_text',
+            'option_2_text_hi',
+            'option_2_image',
+            'option_2_image_alt',
+            'option_2_image_alt_hi',
+            'option_2_correct',
 
-        public function __construct($headers)
+            // Option 3
+            'option_3_text',
+            'option_3_text_hi',
+            'option_3_image',
+            'option_3_image_alt',
+            'option_3_image_alt_hi',
+            'option_3_correct',
+
+            // Option 4
+            'option_4_text',
+            'option_4_text_hi',
+            'option_4_image',
+            'option_4_image_alt',
+            'option_4_image_alt_hi',
+            'option_4_correct',
+
+            // Option 5
+            'option_5_text',
+            'option_5_text_hi',
+            'option_5_image',
+            'option_5_image_alt',
+            'option_5_image_alt_hi',
+            'option_5_correct',
+
+            // Option 6
+            'option_6_text',
+            'option_6_text_hi',
+            'option_6_image',
+            'option_6_image_alt',
+            'option_6_image_alt_hi',
+            'option_6_correct',
+
+            // Option 7
+            'option_7_text',
+            'option_7_text_hi',
+            'option_7_image',
+            'option_7_image_alt',
+            'option_7_image_alt_hi',
+            'option_7_correct',
+
+            // Option 8
+            'option_8_text',
+            'option_8_text_hi',
+            'option_8_image',
+            'option_8_image_alt',
+            'option_8_image_alt_hi',
+            'option_8_correct',
+
+            // Option 9
+            'option_9_text',
+            'option_9_text_hi',
+            'option_9_image',
+            'option_9_image_alt',
+            'option_9_image_alt_hi',
+            'option_9_correct',
+
+            // Option 10
+            'option_10_text',
+            'option_10_text_hi',
+            'option_10_image',
+            'option_10_image_alt',
+            'option_10_image_alt_hi',
+            'option_10_correct',
+        ];
+
+        $filename = 'question_import_template.xlsx';
+
+        return Excel::download(new class($headers) implements FromArray, WithTitle
         {
-            $this->headers = $headers;
-        }
+            private $headers;
 
-        public function array(): array
-        {
-            return [
-                $this->headers,
-                [
-                    // Question
-                    'Sample question?',
-                    'नमूना प्रश्न?',
-                    'https://example.com/question-image.jpg',
-                    'Question image alt text',
-                    'प्रश्न छवि वैकल्पिक पाठ',
-                    'https://example.com/explanation-image.jpg',
-                    'Explanation image alt text',
-                    'व्याख्या छवि वैकल्पिक पाठ',
-                    'single_choice',
-                    'medium',
-                    '1',
-                    '0',
-                    'This is a sample explanation. It explains the correct answer.',
-                    'यह एक नमूना व्याख्या है। यह सही उत्तर की व्याख्या करती है।',
-                    '1', // subject_id
-                    
-                    // Option 1
-                    'Option A',
-                    'विकल्प ए',
-                    'https://example.com/option-a.jpg',
-                    'Option A image alt',
-                    'विकल्प ए छवि वैकल्पिक पाठ',
-                    '1', // correct
-                    
-                    // Option 2
-                    'Option B',
-                    'विकल्प बी',
-                    '',
-                    '',
-                    '',
-                    '0', // Incorrect
-                    
-                    // Option 3
-                    'Option C',
-                    'विकल्प सी',
-                    '',
-                    '',
-                    '',
-                    '0', // Incorrect
-                    
-                    // Option 4
-                    'Option D',
-                    'विकल्प डी',
-                    '',
-                    '',
-                    '',
-                    '0', // Incorrect
-                    
-                ]
-            ];
-        }
+            public function __construct($headers)
+            {
+                $this->headers = $headers;
+            }
 
-        public function title(): string
-        {
-            return 'Questions Import Template';
-        }
-    }, $filename);
-}
+            public function array(): array
+            {
+                return [
+                    $this->headers,
+                    [
+                        // Question
+                        'Sample question?',
+                        'नमूना प्रश्न?',
+                        'https://example.com/question-image.jpg',
+                        'Question image alt text',
+                        'प्रश्न छवि वैकल्पिक पाठ',
+                        'https://example.com/explanation-image.jpg',
+                        'Explanation image alt text',
+                        'व्याख्या छवि वैकल्पिक पाठ',
+                        'single_choice',
+                        'medium',
+                        '1',
+                        '0',
+                        'This is a sample explanation. It explains the correct answer.',
+                        'यह एक नमूना व्याख्या है। यह सही उत्तर की व्याख्या करती है।',
+                        '1', // subject_id
+
+                        // Option 1
+                        'Option A',
+                        'विकल्प ए',
+                        'https://example.com/option-a.jpg',
+                        'Option A image alt',
+                        'विकल्प ए छवि वैकल्पिक पाठ',
+                        '1', // correct
+
+                        // Option 2
+                        'Option B',
+                        'विकल्प बी',
+                        '',
+                        '',
+                        '',
+                        '0', // Incorrect
+
+                        // Option 3
+                        'Option C',
+                        'विकल्प सी',
+                        '',
+                        '',
+                        '',
+                        '0', // Incorrect
+
+                        // Option 4
+                        'Option D',
+                        'विकल्प डी',
+                        '',
+                        '',
+                        '',
+                        '0', // Incorrect
+
+                    ],
+                ];
+            }
+
+            public function title(): string
+            {
+                return 'Questions Import Template';
+            }
+        }, $filename);
+    }
 
     /**
      * Bulk delete questions.
@@ -686,14 +690,14 @@ public function downloadTemplate()
     {
         $request->validate([
             'question_ids' => 'required|array',
-            'question_ids.*' => 'exists:questions,id'
+            'question_ids.*' => 'exists:questions,id',
         ]);
 
         try {
             $questions = Question::whereIn('id', $request->question_ids)
-                                 ->whereDoesntHave('exams')
-                                 ->get();
-            
+                ->whereDoesntHave('exams')
+                ->get();
+
             foreach ($questions as $question) {
                 if ($question->question_image) {
                     Storage::disk('public')->delete($question->question_image);
@@ -708,12 +712,12 @@ public function downloadTemplate()
 
             return response()->json([
                 'success' => true,
-                'message' => 'Selected questions deleted successfully.'
+                'message' => 'Selected questions deleted successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error deleting questions: ' . $e->getMessage()
+                'message' => 'Error deleting questions: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -726,21 +730,21 @@ public function downloadTemplate()
         $request->validate([
             'question_ids' => 'required|array',
             'question_ids.*' => 'exists:questions,id',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
 
         try {
             Question::whereIn('id', $request->question_ids)
-                    ->update(['status' => $request->status]);
+                ->update(['status' => $request->status]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Question status updated successfully.'
+                'message' => 'Question status updated successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error updating status: ' . $e->getMessage()
+                'message' => 'Error updating status: '.$e->getMessage(),
             ], 500);
         }
     }

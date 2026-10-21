@@ -9,9 +9,9 @@ use App\Models\StudentExam;
 use App\Services\Exam\ExamEngineService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use \Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Response; 
+use Illuminate\Support\Facades\Response;
 
 class ExamController extends Controller
 {
@@ -29,182 +29,187 @@ class ExamController extends Controller
     // /**
     //  * List available exams for student
     //  */
-    // public function index()
-    // {
-    //     $student = auth()->user();
 
-    //     // Get exams from student's batches
-    //     $batchIds = $student->batches()
-    //         ->wherePivot('status', 'active')
-    //         ->pluck('batches.id');
+    /*  public function index()
+     {
+         $student = auth()->user();
 
-    //     $exams = Exam::whereIn('batch_id', $batchIds)
-    //         ->orWhereHas('batches', function ($q) use ($batchIds) {
-    //             $q->whereIn('batches.id', $batchIds);
-    //         })
-    //         ->where('status', 'published')
-    //         ->with(['course', 'batch'])
-    //         ->get();
+         $batchIds = $student->batches()
+             ->wherePivot('status', 'active')
+             ->pluck('batches.id');
 
-    //     // Get student's exam attempts
-    //     $attemptedExams = StudentExam::where('student_id', $student->id)
-    //         ->whereIn('exam_id', $exams->pluck('id'))
-    //         ->get()
-    //         ->keyBy('exam_id');
+         // Regular Exams
+         $exams = Exam::where(function ($query) use ($batchIds) {
+             $query->whereIn('batch_id', $batchIds)
+                 ->orWhereHas('batches', function ($q) use ($batchIds) {
+                     $q->whereIn('batches.id', $batchIds);
+                 });
+         })
+             ->where('status', 'published')
+             ->where('type', '!=', 'quiz')  // ✅ Exclude quizzes from exams
+             ->whereHas('batch', function ($q) {
+                 $today = now()->toDateString();
 
-    //     return view('student.exams.index', compact('exams', 'attemptedExams'));
-    // }
-    
-    // public function index()
-    // {
-    //     $student = auth()->user();
-    
-    //     $batchIds = $student->batches()
-    //         ->wherePivot('status', 'active')
-    //         ->pluck('batches.id');
-    
-    //     $exams = Exam::where(function ($query) use ($batchIds) {
-    
-    //             $query->whereIn('batch_id', $batchIds)
-    //                 ->orWhereHas('batches', function ($q) use ($batchIds) {
-    //                     $q->whereIn('batches.id', $batchIds);
-    //                 });
-    
-    //         })
-    //         ->where('status', 'published')
-    //         ->with(['course', 'batch'])
-    //         ->get();
-    
-    //     $studentExams = StudentExam::where('student_id', $student->id)
-    //         ->with('exam')
-    //         ->latest()
-    //         ->get();
-    
-    //     $ongoingExams = $studentExams
-    //         ->whereIn('status', ['started', 'in_progress' , 'paused']);
-        
-    
-    //     $completedExams = $studentExams
-    //         ->where('status', 'completed');
-    
-    //     $attemptedExams = $studentExams
-    //         ->keyBy('exam_id');
-            
-            
-    //     // dd($attemptedExams);
-    
-    //     return view(
-    //         'student.exams.index',
-    //         compact(
-    //             'exams',
-    //             'ongoingExams',
-    //             'completedExams',
-    //             'attemptedExams'
-    //         )
-    //     );
-    // }
-    
+                 $q->whereDate('start_date', '<=', $today)
+                     ->whereDate('end_date', '>=', $today);
+             })
+             ->with(['course', 'batch'])
+             ->get();
+
+         // ✅ Quizzes - Separate query
+         $quizzes = Exam::where(function ($query) use ($batchIds) {
+             $query->whereIn('batch_id', $batchIds);
+         })
+             ->where('status', 'published')
+             ->where('type', 'quiz')  // ✅ Only quizzes
+             ->whereHas('batch', function ($q) {
+                 $today = now()->toDateString();
+
+                 $q->whereDate('start_date', '<=', $today)
+                     ->whereDate('end_date', '>=', $today);
+             })
+             ->with(['batch.course'])
+             ->withCount('questions')
+             ->get();
+
+         // $studentExams = StudentExam::where('student_id', $student->id)
+         //     ->with('exam')
+         //     ->latest()
+         //     ->get();
+
+         $studentExams = StudentExam::where('student_id', $student->id)
+             ->whereRelation('exam', 'status', 'published')
+             ->whereHas('batch', function ($q) {
+                 $today = now()->toDateString();
+
+                 $q->whereDate('start_date', '<=', $today)
+                     ->whereDate('end_date', '>=', $today);
+             })
+         // ->whereRelation('exam', 'type', '!=', 'quiz')
+             ->with('exam')
+             ->latest()
+             ->get();
+
+
+         //  For Knowledge
+
+
+         // Standard filter (Equals)
+         // Model::whereRelation('relationshipName', 'column', 'value');
+
+         // // Filter with a custom operator
+         // Model::whereRelation('relationshipName', 'column', 'operator', 'value');
+
+         $ongoingExams = $studentExams->whereIn('status', ['started', 'in_progress', 'paused']);
+
+         // dd($ongoingExams);
+
+         $completedExams = $studentExams->where('status', 'completed');
+
+         $attemptedExams = $studentExams->keyBy('exam_id');
+
+         // ✅ Quiz-specific data
+         $ongoingQuizzes = $ongoingExams->filter(function ($se) {
+             return $se->exam && $se->exam->type === 'quiz';
+         });
+
+         $completedQuizzes = $completedExams->filter(function ($se) {
+             return $se->exam && $se->exam->type === 'quiz';
+         });
+
+         $quizAttempts = $studentExams->filter(function ($se) {
+             return $se->exam && $se->exam->type === 'quiz';
+         })->keyBy('exam_id');
+
+         // ✅ Check if quizzes exist
+         $hasQuizzes = $quizzes->count() > 0 || $ongoingQuizzes->count() > 0 || $completedQuizzes->count() > 0;
+
+         return view(
+             'student.exams.index',
+             compact(
+                 'exams',
+                 'quizzes',
+                 'ongoingExams',
+                 'completedExams',
+                 'attemptedExams',
+                 'ongoingQuizzes',
+                 'completedQuizzes',
+                 'quizAttempts',
+                 'hasQuizzes'
+             )
+         );
+     } */
+
     public function index()
-{
-    $student = auth()->user();
-
-    $batchIds = $student->batches()
-        ->wherePivot('status', 'active')
-        ->pluck('batches.id');
-
-    // Regular Exams
-    $exams = Exam::where(function ($query) use ($batchIds) {
-            $query->whereIn('batch_id', $batchIds)
-                ->orWhereHas('batches', function ($q) use ($batchIds) {
-                    $q->whereIn('batches.id', $batchIds);
-                });
-        })
-        ->where('status', 'published')
-        ->where('type', '!=', 'quiz')  // ✅ Exclude quizzes from exams
-        ->whereHas('batch', function ($q) {
-            $today = now()->toDateString();
-        
-            $q->whereDate('start_date', '<=', $today)
-              ->whereDate('end_date', '>=', $today);
-        })
-        ->with(['course', 'batch'])
-        ->get();
-
-    // ✅ Quizzes - Separate query
-    $quizzes = Exam::where(function ($query) use ($batchIds) {
-            $query->whereIn('batch_id', $batchIds);
-        })
-        ->where('status', 'published')
-        ->where('type', 'quiz')  // ✅ Only quizzes
-        ->whereHas('batch', function ($q) {
-            $today = now()->toDateString();
-        
-            $q->whereDate('start_date', '<=', $today)
-              ->whereDate('end_date', '>=', $today);
-        })
-        ->with(['batch.course'])
-        ->withCount('questions')
-        ->get();
-
-    // $studentExams = StudentExam::where('student_id', $student->id)
-    //     ->with('exam')
-    //     ->latest()
-    //     ->get();
-        
-    
-    $studentExams = StudentExam::where('student_id', $student->id)
-    ->whereRelation('exam', 'status', 'published')
-    ->whereHas('batch', function ($q) {
+    {
+        $student = auth()->user();
         $today = now()->toDateString();
-    
-        $q->whereDate('start_date', '<=', $today)
-          ->whereDate('end_date', '>=', $today);
-    })
-    // ->whereRelation('exam', 'type', '!=', 'quiz')
-    ->with('exam')
-    ->latest()
-    ->get();
-    
-    
-    /***
-     * For Knowledge
-     */
-     
-     // Standard filter (Equals)
-    // Model::whereRelation('relationshipName', 'column', 'value');
-    
-    // // Filter with a custom operator
-    // Model::whereRelation('relationshipName', 'column', 'operator', 'value');
 
+        $batchIds = $student->batches()
+            ->wherePivot('status', 'active')
+            ->pluck('batches.id');
 
+        // Callback to ensure the exam's batch is currently active/valid by date
+        $dateFilter = function ($q) use ($today) {
+            $q->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today);
+        };
 
-    $ongoingExams = $studentExams->whereIn('status', ['started', 'in_progress', 'paused']);
-    
-    // dd($ongoingExams);
-    
-    $completedExams = $studentExams->where('status', 'completed');
+        // ✅ 1. Regular Exams (Fixed structural relations & date checks)
+        $exams = Exam::where('status', 'published')
+            ->where('type', '!=', 'quiz')
+            ->where(function ($query) use ($batchIds, $dateFilter) {
+                // Direct Batch Check
+                $query->whereIn('batch_id', $batchIds)
+                    ->whereHas('batch', $dateFilter)
+                    // OR Many-to-Many Batches Check
+                    ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
+                        $q->whereIn('batches.id', $batchIds)->where($dateFilter);
+                    });
+            })
+            ->with(['course', 'batch'])
+            ->get();
 
-    $attemptedExams = $studentExams->keyBy('exam_id');
-    
-    // ✅ Quiz-specific data
-    $ongoingQuizzes = $ongoingExams->filter(function($se) {
-        return $se->exam && $se->exam->type === 'quiz';
-    });
-    
-    $completedQuizzes = $completedExams->filter(function($se) {
-        return $se->exam && $se->exam->type === 'quiz';
-    });
-    
-    $quizAttempts = $studentExams->filter(function($se) {
-        return $se->exam && $se->exam->type === 'quiz';
-    })->keyBy('exam_id');
-    
-    // ✅ Check if quizzes exist
-    $hasQuizzes = $quizzes->count() > 0 || $ongoingQuizzes->count() > 0 || $completedQuizzes->count() > 0;
+        // ✅ 2. Quizzes (Fixed to include many-to-many if needed, plus unified date check)
+        $quizzes = Exam::where('status', 'published')
+            ->where('type', 'quiz')
+            ->where(function ($query) use ($batchIds, $dateFilter) {
+                $query->whereIn('batch_id', $batchIds)
+                    ->whereHas('batch', $dateFilter)
+                    ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
+                        $q->whereIn('batches.id', $batchIds)->where($dateFilter);
+                    });
+            })
+            ->with(['batch.course'])
+            ->withCount('questions')
+            ->get();
 
-    return view(
-        'student.exams.index',
-        compact(
+        // ✅ 3. All Student Attempts (Consolidated DB Hit)
+        $studentExams = StudentExam::where('student_id', $student->id)
+            ->whereRelation('exam', 'status', 'published')
+            ->whereHas('batch', $dateFilter)
+            ->with('exam')
+            ->latest()
+            ->get();
+
+        // ✅ 4. Split Exam vs Quiz attempts cleanly using PHP Collections
+        $examAttempts = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type !== 'quiz');
+        $quizAttemptsCollection = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type === 'quiz');
+
+        // Regular Exam Segregations
+        $ongoingExams = $examAttempts->whereIn('status', ['started', 'in_progress', 'paused']);
+        $completedExams = $examAttempts->where('status', 'completed');
+        $attemptedExams = $examAttempts->keyBy('exam_id');
+
+        // Quiz Segregations
+        $ongoingQuizzes = $quizAttemptsCollection->whereIn('status', ['started', 'in_progress', 'paused']);
+        $completedQuizzes = $quizAttemptsCollection->where('status', 'completed');
+        $quizAttempts = $quizAttemptsCollection->keyBy('exam_id');
+
+        // Check if quizzes exist
+        $hasQuizzes = $quizzes->count() > 0 || $quizAttemptsCollection->count() > 0;
+
+        return view('student.exams.index', compact(
             'exams',
             'quizzes',
             'ongoingExams',
@@ -214,9 +219,8 @@ class ExamController extends Controller
             'completedQuizzes',
             'quizAttempts',
             'hasQuizzes'
-        )
-    );
-}
+        ));
+    }
 
     /**
      * Show exam instructions
@@ -235,19 +239,19 @@ class ExamController extends Controller
         // $attempts = StudentExam::where('student_id', $student->id)
         //     ->where('exam_id', $exam->id)
         //     ->count();
-        
+
         // Base query for this student's attempts on this exam
         $attemptsQuery = StudentExam::where('student_id', $student->id)
             ->where('exam_id', $exam->id);
-    
+
         // Get total count
         $attempts = $attemptsQuery->count();
-            
-         $is_saved = $attemptsQuery->clone()
-                ->where('is_saved_exit', true)
-                ->whereNotNull('saved_at')
-                ->exists();
-                
+
+        $is_saved = $attemptsQuery->clone()
+            ->where('is_saved_exit', true)
+            ->whereNotNull('saved_at')
+            ->exists();
+
         return view('student.exams.instructions', compact('exam', 'attempts', 'is_saved'));
     }
 
@@ -258,7 +262,6 @@ class ExamController extends Controller
     {
         try {
             $student = auth()->user();
-            
 
             // Check if student can take exam
             if (! $exam->canBeTakenBy($student->id)) {
@@ -282,50 +285,48 @@ class ExamController extends Controller
                 $batchId = $exam->batch_id;
             }
 
-             // Check if already have an active exam session
-        
-                // ✅ Check for ANY existing exam (started, in_progress, paused)
+            // Check if already have an active exam session
+
+            // ✅ Check for ANY existing exam (started, in_progress, paused)
             $existingExam = StudentExam::where('student_id', $student->id)
                 ->where('exam_id', $exam->id)
                 ->whereIn('status', ['started', 'in_progress', 'paused'])
                 ->whereNull('submitted_at')
                 ->first();
-    
+
             if ($existingExam) {
                 // ✅ Set session marker for proper access
-                session(['exam_access_' . $existingExam->id => true]);
-                session(['exam_access_time_' . $existingExam->id => now()->timestamp]);
-                
+                session(['exam_access_'.$existingExam->id => true]);
+                session(['exam_access_time_'.$existingExam->id => now()->timestamp]);
+
                 // Update status to in_progress if paused or started
                 if ($existingExam->status !== 'in_progress') {
                     $existingExam->update([
                         'status' => 'in_progress',
                     ]);
                 }
-                
+
                 return redirect()->route('student.exam.take', $existingExam->id)
                     ->with('warning', 'You already have an ongoing exam session. Continuing from where you left off.');
             }
-            
 
             // Start new exam
             $studentExam = $this->examEngine->startExam($exam, $student->id, $batchId);
 
-
             if (! $studentExam) {
                 return redirect()->route('student.exams.index')
                     ->with('error', 'Failed to start exam. Please try again.');
-            }else{
-                    $studentExam->update([
-                        'status' => 'in_progress',
-                    ]);
-                
+            } else {
+                $studentExam->update([
+                    'status' => 'in_progress',
+                ]);
+
             }
 
             // ✅ Set session marker for proper access
-            session(['exam_access_' . $studentExam->id => true]);
-            session(['exam_access_time_' . $studentExam->id => now()->timestamp]);
-            
+            session(['exam_access_'.$studentExam->id => true]);
+            session(['exam_access_time_'.$studentExam->id => now()->timestamp]);
+
             return redirect()->route('student.exam.take', $studentExam->id)
                 ->with('success', 'Exam started successfully. Good luck!');
 
@@ -340,55 +341,53 @@ class ExamController extends Controller
                 ->with('error', 'Error starting exam: '.$e->getMessage());
         }
     }
-    
-    
 
     /**
      * Resume exam
      */
-     public function resume(StudentExam $studentExam)
-{
-    if ($studentExam->student_id !== auth()->id()) {
+    public function resume(StudentExam $studentExam)
+    {
+        if ($studentExam->student_id !== auth()->id()) {
 
-        Log::warning(
-            'Unauthorized Exam Access by '.auth()->id()
-        );
-
-        abort(403);
-    }
-
-    if (! in_array(
-        $studentExam->status,
-        ['started', 'in_progress' , 'paused']
-    )) {
-
-        return redirect()
-            ->route('student.exams.index')
-            ->with(
-                'error',
-                'This exam cannot be resumed.'
+            Log::warning(
+                'Unauthorized Exam Access by '.auth()->id()
             );
-    }
 
-    return redirect()->route(
-        'student.exams.instructions',
-        $studentExam->exam_id
-    );
-}
-     //direct acces to exams.
+            abort(403);
+        }
+
+        if (! in_array(
+            $studentExam->status,
+            ['started', 'in_progress', 'paused']
+        )) {
+
+            return redirect()
+                ->route('student.exams.index')
+                ->with(
+                    'error',
+                    'This exam cannot be resumed.'
+                );
+        }
+
+        return redirect()->route(
+            'student.exams.instructions',
+            $studentExam->exam_id
+        );
+    }
+    // direct acces to exams.
     //  public function resume(StudentExam $studentExam)
     // {
-        
+
     //     if ($studentExam->student_id !== auth()->id()) {
     //         Log::info(' Unauthorized Exam Access by '. auth()->id());
     //         abort(403);
     //     }
-    
+
     //     if (!in_array($studentExam->status, [
     //         'started',
     //         'in_progress'
     //     ])) {
-    
+
     //         return redirect()
     //             ->route('student.exams.index')
     //             ->with(
@@ -396,11 +395,11 @@ class ExamController extends Controller
     //                 'This exam cannot be resumed.'
     //             );
     //     }
-    
+
     //     $studentExam->update([
     //         'is_saved_exit' => false
     //     ]);
-    
+
     //     return redirect()->route(
     //         'student.exam.take',
     //         $studentExam->id
@@ -412,8 +411,7 @@ class ExamController extends Controller
     // public function take($studentExamId)
     // {
     //     try {
-            
-            
+
     //         $studentExam = StudentExam::where('student_id', auth()->id())
     //             ->with(['exam', 'exam.questions'])
     //             ->find($studentExamId);
@@ -422,7 +420,7 @@ class ExamController extends Controller
     //             return redirect()->route('student.exams.index')
     //                 ->with('error', 'Exam session not found.');
     //         }
-            
+
     //         if ($studentExam->submitted_at || in_array($studentExam->status,['submitted', 'completed'])) {
     //             return redirect()
     //                 ->route('student.exams.index')
@@ -452,14 +450,11 @@ class ExamController extends Controller
 
     //         // Get saved answers
     //         $answers = $studentExam->answers()->get()->keyBy('question_id');
-            
-            
+
     //         //Timer
     //         $remainingSeconds = $studentExam->remaining_seconds;
-            
-            
+
     //         $startQuestionId = $studentExam->current_question_id ?? $questionOrder[0];
-            
 
     //         return view('student.exams.take', compact('studentExam', 'questions', 'answers', 'questionOrder','startQuestionId','remainingSeconds'));
 
@@ -584,745 +579,739 @@ class ExamController extends Controller
     //     }
     // }
 
+    /**
+     * TAKE with cache
+     */
 
-/**
- * TAKE with cache
- */
- 
- /**
- * Take exam
- */
-// public function take($studentExamId)
-// {
-//     try {
-//         $studentExam = StudentExam::where('student_id', auth()->id())
-//             ->with(['exam', 'exam.questions'])
-//             ->find($studentExamId);
+    /**
+     * Take exam
+     */
+    // public function take($studentExamId)
+    // {
+    //     try {
+    //         $studentExam = StudentExam::where('student_id', auth()->id())
+    //             ->with(['exam', 'exam.questions'])
+    //             ->find($studentExamId);
 
-//         if (! $studentExam) {
-//             return redirect()->route('student.exams.index')
-//                 ->with('error', 'Exam session not found.');
-//         }
-        
-//         if ($studentExam->submitted_at || in_array($studentExam->status, ['submitted', 'completed'])) {
-//             return redirect()
-//                 ->route('student.exams.index')
-//                 ->with('error', 'Exam already submitted.');
-//         }
+    //         if (! $studentExam) {
+    //             return redirect()->route('student.exams.index')
+    //                 ->with('error', 'Exam session not found.');
+    //         }
 
-//         // Validate exam access
-//         $access = $this->examEngine->validateExamAccess($studentExam);
-//         if (! $access['allowed']) {
-//             return redirect()->route('student.exams.index')
-//                 ->with('error', $access['reason']);
-//         }
+    //         if ($studentExam->submitted_at || in_array($studentExam->status, ['submitted', 'completed'])) {
+    //             return redirect()
+    //                 ->route('student.exams.index')
+    //                 ->with('error', 'Exam already submitted.');
+    //         }
 
-//         // Get questions in order
-//         $questionOrder = $studentExam->question_order ??
-//                         $studentExam->exam->questions()->orderBy('order')->pluck('questions.id')->toArray();
+    //         // Validate exam access
+    //         $access = $this->examEngine->validateExamAccess($studentExam);
+    //         if (! $access['allowed']) {
+    //             return redirect()->route('student.exams.index')
+    //                 ->with('error', $access['reason']);
+    //         }
 
-//         if (empty($questionOrder)) {
-//             return redirect()->route('student.exams.index')
-//                 ->with('error', 'No questions found for this exam.');
-//         }
+    //         // Get questions in order
+    //         $questionOrder = $studentExam->question_order ??
+    //                         $studentExam->exam->questions()->orderBy('order')->pluck('questions.id')->toArray();
 
-//         // ==========================================
-//         // OPTIMIZED FOR DATABASE CACHE STORE
-//         // ==========================================
-//         $cacheKey = "student_exam_questions_{$studentExamId}";
-        
-//         // Store for 120 minutes
-//         $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 120 * 60, function () use ($questionOrder) {
-//             $rawQuestions = Question::whereIn('id', $questionOrder)
-//                 ->with('options')
-//                 ->get();
-        
-//             $optimizedArray = [];
-        
-//             foreach ($rawQuestions as $q) {
-//                 $optimizedArray[$q->id] = [
-//                     'id' => $q->id,
-//                     'question_text' => $q->question_text,
-//                     'type' => $q->type,
-//                     'explanation' => $q->explanation,
-//                     'marks' => $q->marks,
-//                     'negative_marks' => $q->negative_marks,
-//                     'options' => $q->options->map(function ($opt) {
-//                         return [
-//                             'id' => $opt->id,
-//                             'option_text' => $opt->option_text,
-//                             'order' => $opt->order,
-//                         ];
-//                     })->toArray()
-//                 ];
-//             }
-        
-//             return $optimizedArray;
-//         });
-        
-//         // Pass to view (Optional: keep using the cached data directly if your view supports arrays)
-//         $questions = $cachedData; 
+    //         if (empty($questionOrder)) {
+    //             return redirect()->route('student.exams.index')
+    //                 ->with('error', 'No questions found for this exam.');
+    //         }
 
+    //         // ==========================================
+    //         // OPTIMIZED FOR DATABASE CACHE STORE
+    //         // ==========================================
+    //         $cacheKey = "student_exam_questions_{$studentExamId}";
 
-//         // Get saved answers (keep database query clean, only fetch progress tracking)
-//         $answers = $studentExam->answers()->get()->keyBy('question_id');
-        
-//         // Timer
-//         $remainingSeconds = $studentExam->remaining_seconds;
-        
-//         $startQuestionId = $studentExam->current_question_id ?? $questionOrder[0];
+    //         // Store for 120 minutes
+    //         $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 120 * 60, function () use ($questionOrder) {
+    //             $rawQuestions = Question::whereIn('id', $questionOrder)
+    //                 ->with('options')
+    //                 ->get();
 
-//         return view('student.exams.take', compact('studentExam', 'questions', 'answers', 'questionOrder', 'startQuestionId', 'remainingSeconds'));
+    //             $optimizedArray = [];
 
-//     } catch (\Exception $e) {
-//         Log::error('Take exam error: '.$e->getMessage(), [
-//             'student_exam_id' => $studentExamId,
-//             'trace' => $e->getTraceAsString(),
-//         ]);
+    //             foreach ($rawQuestions as $q) {
+    //                 $optimizedArray[$q->id] = [
+    //                     'id' => $q->id,
+    //                     'question_text' => $q->question_text,
+    //                     'type' => $q->type,
+    //                     'explanation' => $q->explanation,
+    //                     'marks' => $q->marks,
+    //                     'negative_marks' => $q->negative_marks,
+    //                     'options' => $q->options->map(function ($opt) {
+    //                         return [
+    //                             'id' => $opt->id,
+    //                             'option_text' => $opt->option_text,
+    //                             'order' => $opt->order,
+    //                         ];
+    //                     })->toArray()
+    //                 ];
+    //             }
 
-//         return redirect()->route('student.exams.index')
-//             ->with('error', 'Error loading exam: '.$e->getMessage());
-//     }
-// }
+    //             return $optimizedArray;
+    //         });
 
+    //         // Pass to view (Optional: keep using the cached data directly if your view supports arrays)
+    //         $questions = $cachedData;
 
-//full load questions
-/**
- * Take exam - Optimized with all questions preloaded
- */
-/**
- * Take exam - Optimized with all questions preloaded--- working without image
- */
-// public function take(Request $request, $studentExamId)
-// {
-//     try {
-//         $studentExam = StudentExam::where('student_id', auth()->id())
-//             ->with(['exam', 'exam.questions'])
-//             ->find($studentExamId);
+    //         // Get saved answers (keep database query clean, only fetch progress tracking)
+    //         $answers = $studentExam->answers()->get()->keyBy('question_id');
 
-//         if (! $studentExam) {
-//             return redirect()->route('student.exams.index')
-//                 ->with('error', 'Exam session not found.');
-//         }
-        
-//         if ($studentExam->submitted_at || in_array($studentExam->status, ['submitted', 'completed'])) {
-//             return redirect()
-//                 ->route('student.exams.index')
-//                 ->with('error', 'Exam already submitted.');
-//         }
+    //         // Timer
+    //         $remainingSeconds = $studentExam->remaining_seconds;
 
-//         // if (in_array($studentExam->status, ['started', 'in_progress'])) {
-//         //     // If they try to access via back button, redirect them
-//         //     // They should resume from dashboard
-//         //     return redirect()
-//         //         ->route('student.exams.index')
-//         //         ->with('warning', 'Please resume your exam from the dashboard.');
-//         // }
-        
-//             // Check if saved & exited (status is 'paused')
-//         if ($studentExam->status === 'paused') {
-//             return redirect()
-//                 ->route('student.exams.index')
-//                 ->with('warning', 'Your exam has been saved. Please click "Resume" to continue.');
-//         }
-        
-//         // ✅ NEW: Check if exam is being accessed via back button or direct URL
-//         // This detects if user navigated away without saving
-//         $isBackNavigation = $this->isBackNavigation($request, $studentExam);
-        
-//         if ($isBackNavigation && $studentExam->status === 'in_progress') {
-//             // User left without saving - don't allow direct access
-//             // They must resume from dashboard
-//             return redirect()
-//                 ->route('student.exams.index')
-//                 ->with('warning', 'You have an ongoing exam. Please click "Resume" from the dashboard to continue.');
-//         }
-        
-//         // Validate exam access
-//         $access = $this->examEngine->validateExamAccess($studentExam);
-//         if (! $access['allowed']) {
-//             return redirect()->route('student.exams.index')
-//                 ->with('error', $access['reason']);
-//         }
+    //         $startQuestionId = $studentExam->current_question_id ?? $questionOrder[0];
 
-//         // Get questions in order
-//         $questionOrder = $studentExam->question_order ??
-//                         $studentExam->exam->questions()->orderBy('order')->pluck('questions.id')->toArray();
+    //         return view('student.exams.take', compact('studentExam', 'questions', 'answers', 'questionOrder', 'startQuestionId', 'remainingSeconds'));
 
-//         if (empty($questionOrder)) {
-//             return redirect()->route('student.exams.index')
-//                 ->with('error', 'No questions found for this exam.');
-//         }
+    //     } catch (\Exception $e) {
+    //         Log::error('Take exam error: '.$e->getMessage(), [
+    //             'student_exam_id' => $studentExamId,
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
 
-//         // ==========================================
-//         // CACHE QUESTIONS
-//         // ==========================================
-//         $cacheKey = "student_exam_questions_{$studentExamId}";
-        
-//         $cachedQuestions = Cache::remember($cacheKey, 120 * 60, function () use ($questionOrder) {
-//             $rawQuestions = Question::whereIn('id', $questionOrder)
-//                 ->with('options')
-//                 ->get();
-        
-//             $optimizedArray = [];
-        
-//             foreach ($rawQuestions as $q) {
-//                 $optimizedArray[$q->id] = [
-//                     'id' => $q->id,
-//                     'question_text' => $q->question_text,
-//                     'type' => $q->type,
-//                     'explanation' => $q->explanation,
-//                     'marks' => $q->marks,
-//                     'negative_marks' => $q->negative_marks,
-//                     'options' => $q->options->map(function ($opt) {
-//                         return [
-//                             'id' => $opt->id,
-//                             'option_text' => $opt->option_text,
-//                             'order' => $opt->order,
-//                         ];
-//                     })->toArray()
-//                 ];
-//             }
-        
-//             return $optimizedArray;
-//         });
+    //         return redirect()->route('student.exams.index')
+    //             ->with('error', 'Error loading exam: '.$e->getMessage());
+    //     }
+    // }
 
-//         // Get saved answers
-//         $answers = $studentExam->answers()->get()->keyBy('question_id');
-        
-//         // ==========================================
-//         // BUILD COMPLETE QUESTIONS DATA FOR JAVASCRIPT
-//         // ==========================================
-//         $questionsData = [];
-        
-//         foreach ($questionOrder as $questionId) {
-//             if (isset($cachedQuestions[$questionId])) {
-//                 $questionData = $cachedQuestions[$questionId];
-//                 $answer = $answers[$questionId] ?? null;
-                
-//                 // Apply option randomization if needed
-//                 $options = collect($questionData['options']);
-//                 if ($studentExam->exam->randomize_options) {
-//                     $options = $options->shuffle();
-//                 }
-                
-//                 // Build option data with selection state
-//                 $optionsData = $options->map(function ($opt) use ($answer) {
-//                     $isSelected = false;
-//                     if ($answer && $answer->selected_options) {
-//                         $isSelected = in_array($opt['id'], $answer->selected_options);
-//                     }
-                    
-//                     return [
-//                         'id' => $opt['id'],
-//                         'text' => $opt['option_text'],
-//                         'order' => $opt['order'],
-//                         'selected' => $isSelected,
-//                         'image' => null, // Add if you have option images
-//                     ];
-//                 })->toArray();
-                
-//                 // Build complete question data
-//                 $questionsData[$questionId] = [
-//                     'id' => $questionData['id'],
-//                     'text' => $questionData['question_text'],
-//                     'type' => $questionData['type'],
-//                     'marks' => $questionData['marks'],
-//                     'explanation' => $questionData['explanation'],
-//                     'negative_marks' => $questionData['negative_marks'],
-//                     'image' => null, // Add if you have question images
-//                     'options' => $optionsData,
-//                     'is_marked_for_review' => $answer ? $answer->is_marked_for_review : false,
-//                     'answer_text' => $answer ? $answer->answer_text : null,
-//                     'selected_options' => $answer ? $answer->selected_options : [],
-//                 ];
-//             }
-//         }
-        
-//         // ✅ Mark as accessed via dashboard (proper channel)
-//         session(['exam_access_' . $studentExamId => true]);
-//         session(['exam_access_time_' . $studentExamId => now()->timestamp]);
-        
-//         // Build answers data for JavaScript
-//         $answersData = [];
-//         foreach ($questionOrder as $questionId) {
-//             $answer = $answers[$questionId] ?? null;
-//             $answersData[$questionId] = [
-//                 'is_visited' => $answer ? $answer->is_visited : false,
-//                 'selected_options' => $answer ? $answer->selected_options : [],
-//                 'is_marked_for_review' => $answer ? $answer->is_marked_for_review : false,
-//                 'answer_text' => $answer ? $answer->answer_text : null,
-//             ];
-//         }
+    // full load questions
+    /**
+     * Take exam - Optimized with all questions preloaded
+     */
+    /**
+     * Take exam - Optimized with all questions preloaded--- working without image
+     */
+    // public function take(Request $request, $studentExamId)
+    // {
+    //     try {
+    //         $studentExam = StudentExam::where('student_id', auth()->id())
+    //             ->with(['exam', 'exam.questions'])
+    //             ->find($studentExamId);
 
-//         // Timer
-//         $remainingSeconds = $studentExam->remaining_seconds;
-//         $startQuestionId = $studentExam->current_question_id ?? $questionOrder[0];
+    //         if (! $studentExam) {
+    //             return redirect()->route('student.exams.index')
+    //                 ->with('error', 'Exam session not found.');
+    //         }
 
-//         // FIX: Use $cachedQuestions as $questions for backward compatibility
-//         $questions = $cachedQuestions;
+    //         if ($studentExam->submitted_at || in_array($studentExam->status, ['submitted', 'completed'])) {
+    //             return redirect()
+    //                 ->route('student.exams.index')
+    //                 ->with('error', 'Exam already submitted.');
+    //         }
 
-//         return response()
-//         ->view('student.exams.take', compact(
-//             'studentExam', 
-//             'questions',        // This is the $cachedQuestions data
-//             'answers', 
-//             'questionOrder', 
-//             'startQuestionId', 
-//             'remainingSeconds',
-//             'questionsData',    // Complete questions data for JavaScript
-//             'answersData'       // Answers data for JavaScript
-//         ))
-//         ->header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
-//         ->header('Pragma', 'no-cache')
-//         ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT')
-//         // ->header('Clear-Site-Data', '"cache"') 
-//         ->header('Vary', '*');
+    //         // if (in_array($studentExam->status, ['started', 'in_progress'])) {
+    //         //     // If they try to access via back button, redirect them
+    //         //     // They should resume from dashboard
+    //         //     return redirect()
+    //         //         ->route('student.exams.index')
+    //         //         ->with('warning', 'Please resume your exam from the dashboard.');
+    //         // }
 
-//     } catch (\Exception $e) {
-//         Log::error('Take exam error: '.$e->getMessage(), [
-//             'student_exam_id' => $studentExamId,
-//             'trace' => $e->getTraceAsString(),
-//         ]);
+    //             // Check if saved & exited (status is 'paused')
+    //         if ($studentExam->status === 'paused') {
+    //             return redirect()
+    //                 ->route('student.exams.index')
+    //                 ->with('warning', 'Your exam has been saved. Please click "Resume" to continue.');
+    //         }
 
-//         return redirect()->route('student.exams.index')
-//             ->with('error', 'Error loading exam: '.$e->getMessage());
-//     }
-// }
+    //         // ✅ NEW: Check if exam is being accessed via back button or direct URL
+    //         // This detects if user navigated away without saving
+    //         $isBackNavigation = $this->isBackNavigation($request, $studentExam);
 
+    //         if ($isBackNavigation && $studentExam->status === 'in_progress') {
+    //             // User left without saving - don't allow direct access
+    //             // They must resume from dashboard
+    //             return redirect()
+    //                 ->route('student.exams.index')
+    //                 ->with('warning', 'You have an ongoing exam. Please click "Resume" from the dashboard to continue.');
+    //         }
 
-/**
- * Take exam - Optimized with all questions preloaded
- */
-public function take(Request $request, $studentExamId)
-{
-    try {
-        $studentExam = StudentExam::where('student_id', auth()->id())
-            ->with(['exam', 'exam.questions'])
-            ->find($studentExamId);
+    //         // Validate exam access
+    //         $access = $this->examEngine->validateExamAccess($studentExam);
+    //         if (! $access['allowed']) {
+    //             return redirect()->route('student.exams.index')
+    //                 ->with('error', $access['reason']);
+    //         }
 
-        if (! $studentExam) {
-            return redirect()->route('student.exams.index')
-                ->with('error', 'Exam session not found.');
-        }
-        
-        if ($studentExam->submitted_at || in_array($studentExam->status, ['submitted', 'completed'])) {
-            return redirect()
-                ->route('student.exams.index')
-                ->with('error', 'Exam already submitted.');
-        }
+    //         // Get questions in order
+    //         $questionOrder = $studentExam->question_order ??
+    //                         $studentExam->exam->questions()->orderBy('order')->pluck('questions.id')->toArray();
 
-        if ($studentExam->status === 'paused') {
-            return redirect()
-                ->route('student.exams.index')
-                ->with('warning', 'Your exam has been saved. Please click "Resume" to continue.');
-        }
-        
-        $isBackNavigation = $this->isBackNavigation($request, $studentExam);
-        
-        if ($isBackNavigation && $studentExam->status === 'in_progress') {
-            return redirect()
-                ->route('student.exams.index')
-                ->with('warning', 'You have an ongoing exam. Please click "Resume" from the dashboard to continue.');
-        }
-        
-        $access = $this->examEngine->validateExamAccess($studentExam);
-        if (! $access['allowed']) {
-            return redirect()->route('student.exams.index')
-                ->with('error', $access['reason']);
-        }
+    //         if (empty($questionOrder)) {
+    //             return redirect()->route('student.exams.index')
+    //                 ->with('error', 'No questions found for this exam.');
+    //         }
 
-        $questionOrder = $studentExam->question_order ??
-                        $studentExam->exam->questions()->orderBy('order')->pluck('questions.id')->toArray();
+    //         // ==========================================
+    //         // CACHE QUESTIONS
+    //         // ==========================================
+    //         $cacheKey = "student_exam_questions_{$studentExamId}";
 
-        if (empty($questionOrder)) {
-            return redirect()->route('student.exams.index')
-                ->with('error', 'No questions found for this exam.');
-        }
+    //         $cachedQuestions = Cache::remember($cacheKey, 120 * 60, function () use ($questionOrder) {
+    //             $rawQuestions = Question::whereIn('id', $questionOrder)
+    //                 ->with('options')
+    //                 ->get();
 
-        // ==========================================
-        // CACHE QUESTIONS WITH IMAGES - WITH NULL CHECKS
-        // ==========================================
-        $cacheKey = "student_exam_questions_{$studentExamId}";
-        
-        $cachedQuestions = Cache::remember($cacheKey, 120 * 60, function () use ($questionOrder) {
-            $rawQuestions = Question::whereIn('id', $questionOrder)
-                ->with('options')
-                ->get();
-        
-            $optimizedArray = [];
-        
-            foreach ($rawQuestions as $q) {
-                $optimizedArray[$q->id] = [
-                    'id' => $q->id,
-                    'question_text' => $q->question_text ?? '',
-                    'question_image' => $q->question_image ?? null,          // ✅ NULL CHECK
-                    'question_image_alt' => $q->question_image_alt ?? null,  // ✅ NULL CHECK
-                    'type' => $q->type ?? 'single_choice',
-                    'explanation' => $q->explanation ?? '',
-                    'marks' => $q->marks ?? 1,
-                    'negative_marks' => $q->negative_marks ?? 0,
-                    'options' => $q->options->map(function ($opt) {
-                        return [
-                            'id' => $opt->id,
-                            'option_text' => $opt->option_text ?? '',
-                            'option_image' => $opt->option_image ?? null,        // ✅ NULL CHECK
-                            'option_image_alt' => $opt->option_image_alt ?? null, // ✅ NULL CHECK
-                            'order' => $opt->order ?? 0,
-                        ];
-                    })->toArray()
-                ];
+    //             $optimizedArray = [];
+
+    //             foreach ($rawQuestions as $q) {
+    //                 $optimizedArray[$q->id] = [
+    //                     'id' => $q->id,
+    //                     'question_text' => $q->question_text,
+    //                     'type' => $q->type,
+    //                     'explanation' => $q->explanation,
+    //                     'marks' => $q->marks,
+    //                     'negative_marks' => $q->negative_marks,
+    //                     'options' => $q->options->map(function ($opt) {
+    //                         return [
+    //                             'id' => $opt->id,
+    //                             'option_text' => $opt->option_text,
+    //                             'order' => $opt->order,
+    //                         ];
+    //                     })->toArray()
+    //                 ];
+    //             }
+
+    //             return $optimizedArray;
+    //         });
+
+    //         // Get saved answers
+    //         $answers = $studentExam->answers()->get()->keyBy('question_id');
+
+    //         // ==========================================
+    //         // BUILD COMPLETE QUESTIONS DATA FOR JAVASCRIPT
+    //         // ==========================================
+    //         $questionsData = [];
+
+    //         foreach ($questionOrder as $questionId) {
+    //             if (isset($cachedQuestions[$questionId])) {
+    //                 $questionData = $cachedQuestions[$questionId];
+    //                 $answer = $answers[$questionId] ?? null;
+
+    //                 // Apply option randomization if needed
+    //                 $options = collect($questionData['options']);
+    //                 if ($studentExam->exam->randomize_options) {
+    //                     $options = $options->shuffle();
+    //                 }
+
+    //                 // Build option data with selection state
+    //                 $optionsData = $options->map(function ($opt) use ($answer) {
+    //                     $isSelected = false;
+    //                     if ($answer && $answer->selected_options) {
+    //                         $isSelected = in_array($opt['id'], $answer->selected_options);
+    //                     }
+
+    //                     return [
+    //                         'id' => $opt['id'],
+    //                         'text' => $opt['option_text'],
+    //                         'order' => $opt['order'],
+    //                         'selected' => $isSelected,
+    //                         'image' => null, // Add if you have option images
+    //                     ];
+    //                 })->toArray();
+
+    //                 // Build complete question data
+    //                 $questionsData[$questionId] = [
+    //                     'id' => $questionData['id'],
+    //                     'text' => $questionData['question_text'],
+    //                     'type' => $questionData['type'],
+    //                     'marks' => $questionData['marks'],
+    //                     'explanation' => $questionData['explanation'],
+    //                     'negative_marks' => $questionData['negative_marks'],
+    //                     'image' => null, // Add if you have question images
+    //                     'options' => $optionsData,
+    //                     'is_marked_for_review' => $answer ? $answer->is_marked_for_review : false,
+    //                     'answer_text' => $answer ? $answer->answer_text : null,
+    //                     'selected_options' => $answer ? $answer->selected_options : [],
+    //                 ];
+    //             }
+    //         }
+
+    //         // ✅ Mark as accessed via dashboard (proper channel)
+    //         session(['exam_access_' . $studentExamId => true]);
+    //         session(['exam_access_time_' . $studentExamId => now()->timestamp]);
+
+    //         // Build answers data for JavaScript
+    //         $answersData = [];
+    //         foreach ($questionOrder as $questionId) {
+    //             $answer = $answers[$questionId] ?? null;
+    //             $answersData[$questionId] = [
+    //                 'is_visited' => $answer ? $answer->is_visited : false,
+    //                 'selected_options' => $answer ? $answer->selected_options : [],
+    //                 'is_marked_for_review' => $answer ? $answer->is_marked_for_review : false,
+    //                 'answer_text' => $answer ? $answer->answer_text : null,
+    //             ];
+    //         }
+
+    //         // Timer
+    //         $remainingSeconds = $studentExam->remaining_seconds;
+    //         $startQuestionId = $studentExam->current_question_id ?? $questionOrder[0];
+
+    //         // FIX: Use $cachedQuestions as $questions for backward compatibility
+    //         $questions = $cachedQuestions;
+
+    //         return response()
+    //         ->view('student.exams.take', compact(
+    //             'studentExam',
+    //             'questions',        // This is the $cachedQuestions data
+    //             'answers',
+    //             'questionOrder',
+    //             'startQuestionId',
+    //             'remainingSeconds',
+    //             'questionsData',    // Complete questions data for JavaScript
+    //             'answersData'       // Answers data for JavaScript
+    //         ))
+    //         ->header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+    //         ->header('Pragma', 'no-cache')
+    //         ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT')
+    //         // ->header('Clear-Site-Data', '"cache"')
+    //         ->header('Vary', '*');
+
+    //     } catch (\Exception $e) {
+    //         Log::error('Take exam error: '.$e->getMessage(), [
+    //             'student_exam_id' => $studentExamId,
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+
+    //         return redirect()->route('student.exams.index')
+    //             ->with('error', 'Error loading exam: '.$e->getMessage());
+    //     }
+    // }
+
+    /**
+     * Take exam - Optimized with all questions preloaded
+     */
+    public function take(Request $request, $studentExamId)
+    {
+        try {
+            $studentExam = StudentExam::where('student_id', auth()->id())
+                ->with(['exam', 'exam.questions'])
+                ->find($studentExamId);
+
+            if (! $studentExam) {
+                return redirect()->route('student.exams.index')
+                    ->with('error', 'Exam session not found.');
             }
-        
-            return $optimizedArray;
-        });
 
-        $answers = $studentExam->answers()->get()->keyBy('question_id');
-        
-        // ==========================================
-        // BUILD COMPLETE QUESTIONS DATA FOR JAVASCRIPT
-        // ==========================================
-        $questionsData = [];
-        
-        foreach ($questionOrder as $questionId) {
-            if (isset($cachedQuestions[$questionId])) {
-                $questionData = $cachedQuestions[$questionId];
-                $answer = $answers[$questionId] ?? null;
-                
-                $options = collect($questionData['options']);
-                if ($studentExam->exam->randomize_options) {
-                    $options = $options->shuffle();
-                }
-                
-                $optionsData = $options->map(function ($opt) use ($answer) {
-                    $isSelected = false;
-                    if ($answer && $answer->selected_options) {
-                        $isSelected = in_array($opt['id'], $answer->selected_options);
-                    }
-                    
-                    // ✅ NULL CHECK for option_image
-                    $optionImage = null;
-                    if (!empty($opt['option_image'])) {
-                        $optionImage = asset('storage/' . $opt['option_image']);
-                    }
-                    
-                    return [
-                        'id' => $opt['id'],
-                        'text' => $opt['option_text'] ?? '',
-                        'image' => $optionImage,
-                        'image_alt' => $opt['option_image_alt'] ?? '',
-                        'order' => $opt['order'] ?? 0,
-                        'selected' => $isSelected,
+            if ($studentExam->submitted_at || in_array($studentExam->status, ['submitted', 'completed'])) {
+                return redirect()
+                    ->route('student.exams.index')
+                    ->with('error', 'Exam already submitted.');
+            }
+
+            if ($studentExam->status === 'paused') {
+                return redirect()
+                    ->route('student.exams.index')
+                    ->with('warning', 'Your exam has been saved. Please click "Resume" to continue.');
+            }
+
+            $isBackNavigation = $this->isBackNavigation($request, $studentExam);
+
+            if ($isBackNavigation && $studentExam->status === 'in_progress') {
+                return redirect()
+                    ->route('student.exams.index')
+                    ->with('warning', 'You have an ongoing exam. Please click "Resume" from the dashboard to continue.');
+            }
+
+            $access = $this->examEngine->validateExamAccess($studentExam);
+            if (! $access['allowed']) {
+                return redirect()->route('student.exams.index')
+                    ->with('error', $access['reason']);
+            }
+
+            $questionOrder = $studentExam->question_order ??
+                            $studentExam->exam->questions()->orderBy('order')->pluck('questions.id')->toArray();
+
+            if (empty($questionOrder)) {
+                return redirect()->route('student.exams.index')
+                    ->with('error', 'No questions found for this exam.');
+            }
+
+            // ==========================================
+            // CACHE QUESTIONS WITH IMAGES - WITH NULL CHECKS
+            // ==========================================
+            $cacheKey = "student_exam_questions_{$studentExamId}";
+
+            $cachedQuestions = Cache::remember($cacheKey, 120 * 60, function () use ($questionOrder) {
+                $rawQuestions = Question::whereIn('id', $questionOrder)
+                    ->with('options')
+                    ->get();
+
+                $optimizedArray = [];
+
+                foreach ($rawQuestions as $q) {
+                    $optimizedArray[$q->id] = [
+                        'id' => $q->id,
+                        'question_text' => $q->question_text ?? '',
+                        'question_image' => $q->question_image ?? null,          // ✅ NULL CHECK
+                        'question_image_alt' => $q->question_image_alt ?? null,  // ✅ NULL CHECK
+                        'type' => $q->type ?? 'single_choice',
+                        'explanation' => $q->explanation ?? '',
+                        'marks' => $q->marks ?? 1,
+                        'negative_marks' => $q->negative_marks ?? 0,
+                        'options' => $q->options->map(function ($opt) {
+                            return [
+                                'id' => $opt->id,
+                                'option_text' => $opt->option_text ?? '',
+                                'option_image' => $opt->option_image ?? null,        // ✅ NULL CHECK
+                                'option_image_alt' => $opt->option_image_alt ?? null, // ✅ NULL CHECK
+                                'order' => $opt->order ?? 0,
+                            ];
+                        })->toArray(),
                     ];
-                })->toArray();
-                
-                // ✅ NULL CHECK for question_image
-                $questionImage = null;
-                if (!empty($questionData['question_image'])) {
-                    $questionImage = asset('storage/' . $questionData['question_image']);
                 }
-                
-                $questionsData[$questionId] = [
-                    'id' => $questionData['id'],
-                    'text' => $questionData['question_text'] ?? '',
-                    'image' => $questionImage,
-                    'image_alt' => $questionData['question_image_alt'] ?? '',
-                    'type' => $questionData['type'] ?? 'single_choice',
-                    'marks' => $questionData['marks'] ?? 1,
-                    'explanation' => $questionData['explanation'] ?? '',
-                    'negative_marks' => $questionData['negative_marks'] ?? 0,
-                    'options' => $optionsData,
+
+                return $optimizedArray;
+            });
+
+            $answers = $studentExam->answers()->get()->keyBy('question_id');
+
+            // ==========================================
+            // BUILD COMPLETE QUESTIONS DATA FOR JAVASCRIPT
+            // ==========================================
+            $questionsData = [];
+
+            foreach ($questionOrder as $questionId) {
+                if (isset($cachedQuestions[$questionId])) {
+                    $questionData = $cachedQuestions[$questionId];
+                    $answer = $answers[$questionId] ?? null;
+
+                    $options = collect($questionData['options']);
+                    if ($studentExam->exam->randomize_options) {
+                        $options = $options->shuffle();
+                    }
+
+                    $optionsData = $options->map(function ($opt) use ($answer) {
+                        $isSelected = false;
+                        if ($answer && $answer->selected_options) {
+                            $isSelected = in_array($opt['id'], $answer->selected_options);
+                        }
+
+                        // ✅ NULL CHECK for option_image
+                        $optionImage = null;
+                        if (! empty($opt['option_image'])) {
+                            $optionImage = asset('storage/'.$opt['option_image']);
+                        }
+
+                        return [
+                            'id' => $opt['id'],
+                            'text' => $opt['option_text'] ?? '',
+                            'image' => $optionImage,
+                            'image_alt' => $opt['option_image_alt'] ?? '',
+                            'order' => $opt['order'] ?? 0,
+                            'selected' => $isSelected,
+                        ];
+                    })->toArray();
+
+                    // ✅ NULL CHECK for question_image
+                    $questionImage = null;
+                    if (! empty($questionData['question_image'])) {
+                        $questionImage = asset('storage/'.$questionData['question_image']);
+                    }
+
+                    $questionsData[$questionId] = [
+                        'id' => $questionData['id'],
+                        'text' => $questionData['question_text'] ?? '',
+                        'image' => $questionImage,
+                        'image_alt' => $questionData['question_image_alt'] ?? '',
+                        'type' => $questionData['type'] ?? 'single_choice',
+                        'marks' => $questionData['marks'] ?? 1,
+                        'explanation' => $questionData['explanation'] ?? '',
+                        'negative_marks' => $questionData['negative_marks'] ?? 0,
+                        'options' => $optionsData,
+                        'is_marked_for_review' => $answer ? $answer->is_marked_for_review : false,
+                        'answer_text' => $answer ? $answer->answer_text : null,
+                        'selected_options' => $answer ? $answer->selected_options : [],
+                    ];
+                }
+            }
+
+            session(['exam_access_'.$studentExamId => true]);
+            session(['exam_access_time_'.$studentExamId => now()->timestamp]);
+
+            $answersData = [];
+            foreach ($questionOrder as $questionId) {
+                $answer = $answers[$questionId] ?? null;
+                $answersData[$questionId] = [
+                    'is_visited' => $answer ? $answer->is_visited : false,
+                    'selected_options' => $answer ? $answer->selected_options : [],
                     'is_marked_for_review' => $answer ? $answer->is_marked_for_review : false,
                     'answer_text' => $answer ? $answer->answer_text : null,
-                    'selected_options' => $answer ? $answer->selected_options : [],
                 ];
             }
+
+            $remainingSeconds = $studentExam->remaining_seconds;
+            $startQuestionId = $studentExam->current_question_id ?? $questionOrder[0];
+            $questions = $cachedQuestions;
+
+            // dd($questions);
+
+            return response()
+                ->view('student.exams.take', compact(
+                    'studentExam',
+                    'questions',
+                    'answers',
+                    'questionOrder',
+                    'startQuestionId',
+                    'remainingSeconds',
+                    'questionsData',
+                    'answersData'
+                ))
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT')
+                ->header('Vary', '*');
+
+        } catch (\Exception $e) {
+            Log::error('Take exam error: '.$e->getMessage(), [
+                'student_exam_id' => $studentExamId,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('student.exams.index')
+                ->with('error', 'Error loading exam: '.$e->getMessage());
         }
-        
-        session(['exam_access_' . $studentExamId => true]);
-        session(['exam_access_time_' . $studentExamId => now()->timestamp]);
-        
-        $answersData = [];
-        foreach ($questionOrder as $questionId) {
-            $answer = $answers[$questionId] ?? null;
-            $answersData[$questionId] = [
-                'is_visited' => $answer ? $answer->is_visited : false,
-                'selected_options' => $answer ? $answer->selected_options : [],
-                'is_marked_for_review' => $answer ? $answer->is_marked_for_review : false,
-                'answer_text' => $answer ? $answer->answer_text : null,
-            ];
-        }
-
-        $remainingSeconds = $studentExam->remaining_seconds;
-        $startQuestionId = $studentExam->current_question_id ?? $questionOrder[0];
-        $questions = $cachedQuestions;
-        
-        // dd($questions);
-
-        return response()
-        ->view('student.exams.take', compact(
-            'studentExam', 
-            'questions', 
-            'answers', 
-            'questionOrder', 
-            'startQuestionId', 
-            'remainingSeconds',
-            'questionsData',
-            'answersData'
-        ))
-        ->header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
-        ->header('Pragma', 'no-cache')
-        ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT')
-        ->header('Vary', '*');
-
-    } catch (\Exception $e) {
-        Log::error('Take exam error: '.$e->getMessage(), [
-            'student_exam_id' => $studentExamId,
-            'trace' => $e->getTraceAsString(),
-        ]);
-
-        return redirect()->route('student.exams.index')
-            ->with('error', 'Error loading exam: '.$e->getMessage());
     }
-}
-/**
- * ✅ NEW: Detect if this is a back button navigation or direct URL access
- */
-private function isBackNavigation($request, $studentExam)
-{
-    // Check if user accessed via dashboard (proper channel)
-    $accessedViaDashboard = session('exam_access_' . $studentExam->id);
-    $accessTime = session('exam_access_time_' . $studentExam->id);
-    
-    // If no session marker, it's likely back button or direct URL
-    if (!$accessedViaDashboard) {
-        return true;
-    }
-    
-    // Check if session has expired (30 minutes since last access)
-    if ($accessTime && (now()->timestamp - $accessTime) > 1800) {
-        return true;
-    }
-    
-    // Check referrer - if coming from outside, it's suspicious
-    $referrer = $request->header('referer');
-    if ($referrer) {
-        $allowedReferrers = [
-            route('student.dashboard'),
-            route('student.exams.index'),
-            route('student.exams.start', $studentExam->exam_id),
-        ];
-        
-        $isAllowedReferrer = false;
-        foreach ($allowedReferrers as $allowed) {
-            if (strpos($referrer, $allowed) !== false) {
-                $isAllowedReferrer = true;
-                break;
-            }
-        }
-        
-        if (!$isAllowedReferrer) {
+
+    /**
+     * ✅ NEW: Detect if this is a back button navigation or direct URL access
+     */
+    private function isBackNavigation($request, $studentExam)
+    {
+        // Check if user accessed via dashboard (proper channel)
+        $accessedViaDashboard = session('exam_access_'.$studentExam->id);
+        $accessTime = session('exam_access_time_'.$studentExam->id);
+
+        // If no session marker, it's likely back button or direct URL
+        if (! $accessedViaDashboard) {
             return true;
         }
-    }
-    
-    return false;
-}
 
+        // Check if session has expired (30 minutes since last access)
+        if ($accessTime && (now()->timestamp - $accessTime) > 1800) {
+            return true;
+        }
+
+        // Check referrer - if coming from outside, it's suspicious
+        $referrer = $request->header('referer');
+        if ($referrer) {
+            $allowedReferrers = [
+                route('student.dashboard'),
+                route('student.exams.index'),
+                route('student.exams.start', $studentExam->exam_id),
+            ];
+
+            $isAllowedReferrer = false;
+            foreach ($allowedReferrers as $allowed) {
+                if (strpos($referrer, $allowed) !== false) {
+                    $isAllowedReferrer = true;
+                    break;
+                }
+            }
+
+            if (! $isAllowedReferrer) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /**
      * Get Question via AJAX with cache
      * */
 
-     
-     /**
- * Get question via AJAX (Database Cache Optimized)
- */
-// public function getQuestion(Request $request, $studentExam, $question)
-// {
-//     try {
-//         $studentExamModel = StudentExam::where('student_id', auth()->id())
-//             ->findOrFail($studentExam);
+    /**
+     * Get question via AJAX (Database Cache Optimized)
+     */
+    // public function getQuestion(Request $request, $studentExam, $question)
+    // {
+    //     try {
+    //         $studentExamModel = StudentExam::where('student_id', auth()->id())
+    //             ->findOrFail($studentExam);
 
-//         if ($studentExamModel->submitted_at) {
-//             return response()->json([
-//                 'status' => 'error',
-//                 'message' => 'Exam already submitted.'
-//             ], 403);
-//         }
+    //         if ($studentExamModel->submitted_at) {
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'Exam already submitted.'
+    //             ], 403);
+    //         }
 
-//         // 1. Fetch saved user progress from the DB
-//         $answer = $studentExamModel->answers()
-//             ->where('question_id', $question)
-//             ->first();
+    //         // 1. Fetch saved user progress from the DB
+    //         $answer = $studentExamModel->answers()
+    //             ->where('question_id', $question)
+    //             ->first();
 
-//         if (! $answer) {
-//             return $this->errorResponse('Question not found', 404);
-//         }
+    //         if (! $answer) {
+    //             return $this->errorResponse('Question not found', 404);
+    //         }
 
-//         // 2. Fetch lightweight structure from the Database Cache
-//         $cacheKey = "student_exam_questions_{$studentExam}";
-//         $cachedQuestions = \Illuminate\Support\Facades\Cache::get($cacheKey);
+    //         // 2. Fetch lightweight structure from the Database Cache
+    //         $cacheKey = "student_exam_questions_{$studentExam}";
+    //         $cachedQuestions = \Illuminate\Support\Facades\Cache::get($cacheKey);
 
-//         // Fallback safety layer: if cache was cleared, rebuild array format
-//         if (! $cachedQuestions || ! isset($cachedQuestions[$question])) {
-//             $questionOrder = $studentExamModel->question_order ?? [$question];
-            
-//             // Rebuild logic matching the array structure
-//             $rawQuestions = Question::whereIn('id', $questionOrder)->with('options')->get();
-//             $cachedQuestions = [];
-//             foreach ($rawQuestions as $q) {
-//                 $cachedQuestions[$q->id] = [
-//                     'id' => $q->id,
-//                     'question_text' => $q->question_text,
-//                     'type' => $q->type,
-//                     'explanation' => $q->explanation,
-//                     'marks' => $q->marks,
-//                     'negative_marks' => $q->negative_marks,
-//                     'options' => $q->options->map(fn($opt) => [
-//                         'id' => $opt->id, 'option_text' => $opt->option_text, 'order' => $opt->order
-//                     ])->toArray()
-//                 ];
-//             }
-//             \Illuminate\Support\Facades\Cache::put($cacheKey, $cachedQuestions, 120 * 60);
-//         }
+    //         // Fallback safety layer: if cache was cleared, rebuild array format
+    //         if (! $cachedQuestions || ! isset($cachedQuestions[$question])) {
+    //             $questionOrder = $studentExamModel->question_order ?? [$question];
 
-//         // Isolate specific question array from cache
-//         $questionData = $cachedQuestions[$question];
+    //             // Rebuild logic matching the array structure
+    //             $rawQuestions = Question::whereIn('id', $questionOrder)->with('options')->get();
+    //             $cachedQuestions = [];
+    //             foreach ($rawQuestions as $q) {
+    //                 $cachedQuestions[$q->id] = [
+    //                     'id' => $q->id,
+    //                     'question_text' => $q->question_text,
+    //                     'type' => $q->type,
+    //                     'explanation' => $q->explanation,
+    //                     'marks' => $q->marks,
+    //                     'negative_marks' => $q->negative_marks,
+    //                     'options' => $q->options->map(fn($opt) => [
+    //                         'id' => $opt->id, 'option_text' => $opt->option_text, 'order' => $opt->order
+    //                     ])->toArray()
+    //                 ];
+    //             }
+    //             \Illuminate\Support\Facades\Cache::put($cacheKey, $cachedQuestions, 120 * 60);
+    //         }
 
-//         // 3. Handle option shuffling via Laravel Collections directly on the array
-//         $optionsCollection = collect($questionData['options']);
-//         if ($studentExamModel->exam->randomize_options) {
-//             $optionsCollection = $optionsCollection->shuffle();
-//         }
+    //         // Isolate specific question array from cache
+    //         $questionData = $cachedQuestions[$question];
 
-//         return $this->successResponse([
-//             'id' => $questionData['id'],
-//             'text' => $questionData['question_text'],
-//             'type' => $questionData['type'],
-//             'options' => $optionsCollection->map(function ($opt) use ($answer) {
-//                 return [
-//                     'id' => $opt['id'],
-//                     'text' => $opt['option_text'],
-//                     'order' => $opt['order'],
-//                     'selected' => $answer->selected_options &&
-//                         in_array($opt['id'], $answer->selected_options),
-//                 ];
-//             }),
-//             'answer' => $answer->answer_text,
-//             'is_marked_for_review' => $answer->is_marked_for_review,
-//             'explanation' => $questionData['explanation'],
-//             'marks' => $questionData['marks'],
-//             'negative_marks' => $questionData['negative_marks'],
-//         ], 'Question loaded');
+    //         // 3. Handle option shuffling via Laravel Collections directly on the array
+    //         $optionsCollection = collect($questionData['options']);
+    //         if ($studentExamModel->exam->randomize_options) {
+    //             $optionsCollection = $optionsCollection->shuffle();
+    //         }
 
-//     } catch (\Exception $e) {
-//         return $this->errorResponse($e->getMessage(), 500);
-//     }
-// }
+    //         return $this->successResponse([
+    //             'id' => $questionData['id'],
+    //             'text' => $questionData['question_text'],
+    //             'type' => $questionData['type'],
+    //             'options' => $optionsCollection->map(function ($opt) use ($answer) {
+    //                 return [
+    //                     'id' => $opt['id'],
+    //                     'text' => $opt['option_text'],
+    //                     'order' => $opt['order'],
+    //                     'selected' => $answer->selected_options &&
+    //                         in_array($opt['id'], $answer->selected_options),
+    //                 ];
+    //             }),
+    //             'answer' => $answer->answer_text,
+    //             'is_marked_for_review' => $answer->is_marked_for_review,
+    //             'explanation' => $questionData['explanation'],
+    //             'marks' => $questionData['marks'],
+    //             'negative_marks' => $questionData['negative_marks'],
+    //         ], 'Question loaded');
 
-/**
- * Get question via AJAX (Database Cache Optimized)
- */
-public function getQuestion(Request $request, $studentExam, $question)
-{
-    try {
-        $studentExamModel = StudentExam::where('student_id', auth()->id())
-            ->findOrFail($studentExam);
+    //     } catch (\Exception $e) {
+    //         return $this->errorResponse($e->getMessage(), 500);
+    //     }
+    // }
 
-        if ($studentExamModel->submitted_at) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Exam already submitted.'
-            ], 403);
-        }
+    /**
+     * Get question via AJAX (Database Cache Optimized)
+     */
+    public function getQuestion(Request $request, $studentExam, $question)
+    {
+        try {
+            $studentExamModel = StudentExam::where('student_id', auth()->id())
+                ->findOrFail($studentExam);
 
-        $answer = $studentExamModel->answers()
-            ->where('question_id', $question)
-            ->first();
-
-        if (! $answer) {
-            return $this->errorResponse('Question not found', 404);
-        }
-
-        $cacheKey = "student_exam_questions_{$studentExam}";
-        $cachedQuestions = \Illuminate\Support\Facades\Cache::get($cacheKey);
-
-        if (! $cachedQuestions || ! isset($cachedQuestions[$question])) {
-            $questionOrder = $studentExamModel->question_order ?? [$question];
-            
-            $rawQuestions = Question::whereIn('id', $questionOrder)->with('options')->get();
-            $cachedQuestions = [];
-            foreach ($rawQuestions as $q) {
-                $cachedQuestions[$q->id] = [
-                    'id' => $q->id,
-                    'question_text' => $q->question_text ?? '',
-                    'question_image' => $q->question_image ?? null,
-                    'question_image_alt' => $q->question_image_alt ?? null,
-                    'type' => $q->type ?? 'single_choice',
-                    'explanation' => $q->explanation ?? '',
-                    'marks' => $q->marks ?? 1,
-                    'negative_marks' => $q->negative_marks ?? 0,
-                    'options' => $q->options->map(fn($opt) => [
-                        'id' => $opt->id, 
-                        'option_text' => $opt->option_text ?? '',
-                        'option_image' => $opt->option_image ?? null,
-                        'option_image_alt' => $opt->option_image_alt ?? null,
-                        'order' => $opt->order ?? 0
-                    ])->toArray()
-                ];
+            if ($studentExamModel->submitted_at) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Exam already submitted.',
+                ], 403);
             }
-            \Illuminate\Support\Facades\Cache::put($cacheKey, $cachedQuestions, 120 * 60);
-        }
 
-        $questionData = $cachedQuestions[$question];
+            $answer = $studentExamModel->answers()
+                ->where('question_id', $question)
+                ->first();
 
-        $optionsCollection = collect($questionData['options']);
-        if ($studentExamModel->exam->randomize_options) {
-            $optionsCollection = $optionsCollection->shuffle();
-        }
+            if (! $answer) {
+                return $this->errorResponse('Question not found', 404);
+            }
 
-        // ✅ NULL CHECK for question_image
-        $questionImage = null;
-        if (!empty($questionData['question_image'])) {
-            $questionImage = asset('storage/' . $questionData['question_image']);
-        }
+            $cacheKey = "student_exam_questions_{$studentExam}";
+            $cachedQuestions = Cache::get($cacheKey);
 
-        return $this->successResponse([
-            'id' => $questionData['id'],
-            'text' => $questionData['question_text'],
-            'image' => $questionImage,
-            'image_alt' => $questionData['question_image_alt'] ?? '',
-            'type' => $questionData['type'],
-            'options' => $optionsCollection->map(function ($opt) use ($answer) {
-                // ✅ NULL CHECK for option_image
-                $optionImage = null;
-                if (!empty($opt['option_image'])) {
-                    $optionImage = asset('storage/' . $opt['option_image']);
+            if (! $cachedQuestions || ! isset($cachedQuestions[$question])) {
+                $questionOrder = $studentExamModel->question_order ?? [$question];
+
+                $rawQuestions = Question::whereIn('id', $questionOrder)->with('options')->get();
+                $cachedQuestions = [];
+                foreach ($rawQuestions as $q) {
+                    $cachedQuestions[$q->id] = [
+                        'id' => $q->id,
+                        'question_text' => $q->question_text ?? '',
+                        'question_image' => $q->question_image ?? null,
+                        'question_image_alt' => $q->question_image_alt ?? null,
+                        'type' => $q->type ?? 'single_choice',
+                        'explanation' => $q->explanation ?? '',
+                        'marks' => $q->marks ?? 1,
+                        'negative_marks' => $q->negative_marks ?? 0,
+                        'options' => $q->options->map(fn ($opt) => [
+                            'id' => $opt->id,
+                            'option_text' => $opt->option_text ?? '',
+                            'option_image' => $opt->option_image ?? null,
+                            'option_image_alt' => $opt->option_image_alt ?? null,
+                            'order' => $opt->order ?? 0,
+                        ])->toArray(),
+                    ];
                 }
-                
-                return [
-                    'id' => $opt['id'],
-                    'text' => $opt['option_text'],
-                    'image' => $optionImage,
-                    'image_alt' => $opt['option_image_alt'] ?? '',
-                    'order' => $opt['order'],
-                    'selected' => $answer->selected_options &&
-                        in_array($opt['id'], $answer->selected_options),
-                ];
-            }),
-            'answer' => $answer->answer_text,
-            'is_marked_for_review' => $answer->is_marked_for_review,
-            'explanation' => $questionData['explanation'],
-            'marks' => $questionData['marks'],
-            'negative_marks' => $questionData['negative_marks'],
-        ], 'Question loaded');
+                Cache::put($cacheKey, $cachedQuestions, 120 * 60);
+            }
 
-    } catch (\Exception $e) {
-        return $this->errorResponse($e->getMessage(), 500);
+            $questionData = $cachedQuestions[$question];
+
+            $optionsCollection = collect($questionData['options']);
+            if ($studentExamModel->exam->randomize_options) {
+                $optionsCollection = $optionsCollection->shuffle();
+            }
+
+            // ✅ NULL CHECK for question_image
+            $questionImage = null;
+            if (! empty($questionData['question_image'])) {
+                $questionImage = asset('storage/'.$questionData['question_image']);
+            }
+
+            return $this->successResponse([
+                'id' => $questionData['id'],
+                'text' => $questionData['question_text'],
+                'image' => $questionImage,
+                'image_alt' => $questionData['question_image_alt'] ?? '',
+                'type' => $questionData['type'],
+                'options' => $optionsCollection->map(function ($opt) use ($answer) {
+                    // ✅ NULL CHECK for option_image
+                    $optionImage = null;
+                    if (! empty($opt['option_image'])) {
+                        $optionImage = asset('storage/'.$opt['option_image']);
+                    }
+
+                    return [
+                        'id' => $opt['id'],
+                        'text' => $opt['option_text'],
+                        'image' => $optionImage,
+                        'image_alt' => $opt['option_image_alt'] ?? '',
+                        'order' => $opt['order'],
+                        'selected' => $answer->selected_options &&
+                            in_array($opt['id'], $answer->selected_options),
+                    ];
+                }),
+                'answer' => $answer->answer_text,
+                'is_marked_for_review' => $answer->is_marked_for_review,
+                'explanation' => $questionData['explanation'],
+                'marks' => $questionData['marks'],
+                'negative_marks' => $questionData['negative_marks'],
+            ], 'Question loaded');
+
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), 500);
+        }
     }
-}
-
 
     /**
      * Get question via AJAX without cache
@@ -1402,7 +1391,6 @@ public function getQuestion(Request $request, $studentExam, $question)
     //             ], 403);
     //         }
 
-
     //         $answer = $this->examEngine->saveAnswer(
     //             $studentExam,
     //             $request->question_id,
@@ -1419,57 +1407,58 @@ public function getQuestion(Request $request, $studentExam, $question)
     //         return $this->errorResponse($e->getMessage(), 500);
     //     }
     // }
-    
+
     /**
- * Save answer via AJAX
- */
-public function saveAnswer(Request $request, $studentExamId)
-{
-    Log::info('SAVE Answer Controller');
-    Log::info($request->all());
-    Log::info($studentExamId);
-    try {
-        $request->validate([
-            'question_id' => 'required|exists:questions,id',
-            'answer' => 'nullable',
-            'is_marked_for_review' => 'boolean',
-            'answer_text' => 'nullable|string', 
-        ]);
+     * Save answer via AJAX
+     */
+    public function saveAnswer(Request $request, $studentExamId)
+    {
+        Log::info('SAVE Answer Controller');
+        Log::info($request->all());
+        Log::info($studentExamId);
+        try {
+            $request->validate([
+                'question_id' => 'required|exists:questions,id',
+                'answer' => 'nullable',
+                'is_marked_for_review' => 'boolean',
+                'answer_text' => 'nullable|string',
+            ]);
 
-        $studentExam = StudentExam::where('student_id', auth()->id())
-            ->whereIn('status', ['started', 'in_progress'])
-            ->findOrFail($studentExamId);
-            
-        if ($studentExam->submitted_at) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Exam already submitted.'
-            ], 403);
+            $studentExam = StudentExam::where('student_id', auth()->id())
+                ->whereIn('status', ['started', 'in_progress'])
+                ->findOrFail($studentExamId);
+
+            if ($studentExam->submitted_at) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Exam already submitted.',
+                ], 403);
+            }
+
+            // ✅ Pass answer_text to the service
+            $answer = $this->examEngine->saveAnswer(
+                $studentExam,
+                $request->question_id,
+                $request->answer,
+                $request->boolean('is_marked_for_review'),
+                $request->answer_text
+            );
+
+            return $this->successResponse([
+                'answered_count' => $studentExam->fresh()->answered_questions,
+                'marked_count' => $studentExam->fresh()->marked_for_review_count,
+                'remaining_seconds' => $studentExam->fresh()->remaining_seconds,
+            ], 'Answer saved successfully');
+        } catch (\Exception $e) {
+            Log::error('Save answer error: '.$e->getMessage(), [
+                'student_exam_id' => $studentExamId,
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->errorResponse($e->getMessage(), 500);
         }
-
-        // ✅ Pass answer_text to the service
-        $answer = $this->examEngine->saveAnswer(
-            $studentExam,
-            $request->question_id,
-            $request->answer,
-            $request->boolean('is_marked_for_review'),
-            $request->answer_text 
-        );
-
-        return $this->successResponse([
-            'answered_count' => $studentExam->fresh()->answered_questions,
-            'marked_count' => $studentExam->fresh()->marked_for_review_count,
-            'remaining_seconds' => $studentExam->fresh()->remaining_seconds,
-        ], 'Answer saved successfully');
-    } catch (\Exception $e) {
-        Log::error('Save answer error: ' . $e->getMessage(), [
-            'student_exam_id' => $studentExamId,
-            'request_data' => $request->all(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return $this->errorResponse($e->getMessage(), 500);
     }
-}
 
     /**
      * Mark for review
@@ -1483,14 +1472,13 @@ public function saveAnswer(Request $request, $studentExamId)
 
             $studentExam = StudentExam::where('student_id', auth()->id())
                 ->findOrFail($studentExamId);
-                
+
             if ($studentExam->submitted_at) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Exam already submitted.'
+                    'message' => 'Exam already submitted.',
                 ], 403);
             }
-
 
             $this->examEngine->markForReview($studentExam, $request->question_id);
 
@@ -1501,34 +1489,34 @@ public function saveAnswer(Request $request, $studentExamId)
             return $this->errorResponse($e->getMessage(), 500);
         }
     }
-    
-    public function syncTimer( Request $request,StudentExam $studentExam) {
-        if ($studentExam->submitted_at) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Exam already submitted.'
-                ], 403);
-            }
 
-    
-        if ($studentExam->student_id !== auth()->id()) {
-    
+    public function syncTimer(Request $request, StudentExam $studentExam)
+    {
+        if ($studentExam->submitted_at) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized'
+                'message' => 'Exam already submitted.',
             ], 403);
         }
-    
+
+        if ($studentExam->student_id !== auth()->id()) {
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
         $request->validate([
-            'remaining_seconds' => 'required|integer|min:0'
+            'remaining_seconds' => 'required|integer|min:0',
         ]);
-    
+
         $studentExam->update([
-            'remaining_seconds' => $request->remaining_seconds
+            'remaining_seconds' => $request->remaining_seconds,
         ]);
-    
+
         return response()->json([
-            'status' => 'success'
+            'status' => 'success',
         ]);
     }
 
@@ -1543,31 +1531,57 @@ public function saveAnswer(Request $request, $studentExamId)
                 ->findOrFail($studentExamId);
 
             $studentExam = $this->examEngine->submitExam($studentExam);
-            
-            \Illuminate\Support\Facades\Cache::forget("student_exam_questions_{$studentExamId}");
 
-            // ✅ Clear the session access marker
-            session()->forget('exam_access_' . $studentExamId);
-            session()->forget('exam_access_time_' . $studentExamId);
-            
+            Cache::forget("student_exam_questions_{$studentExamId}");
+            session()->forget('exam_access_'.$studentExamId);
+            session()->forget('exam_access_time_'.$studentExamId);
+
+            $result = $studentExam->result;
+
+            // If result is published — redirect to result page
+            if ($result && $result->is_published) {
+                $redirect = route('student.exam.result', $studentExamId);
+                $message = 'Exam submitted successfully. Your result is ready!';
+            } else {
+                // Otherwise — redirect to "thank you / result pending" page
+                $redirect = route('student.exam.submitted', $studentExamId);
+                $message = 'Exam submitted successfully. Result will be published soon.';
+            }
+
             if ($request->wantsJson()) {
                 return $this->successResponse([
-                    'result_id' => $studentExam->result->id,
-                    'redirect' => route('student.exam.result', $studentExamId),
-                ], 'Exam submitted successfully');
+                    'result_id' => $result?->id,
+                    'is_published' => $result?->is_published ?? false,
+                    'redirect' => $redirect,
+                ], $message);
             }
-            
-            
 
-            return redirect()->route('student.exam.result', $studentExamId)
-                ->with('success', 'Exam submitted successfully');
+            return redirect($redirect)->with('success', $message);
+
         } catch (\Exception $e) {
             return $this->errorResponse($e->getMessage(), 500);
         }
     }
 
     /**
-     * Show exam result
+     * Result pending / thank you page (shown when result is NOT published)
+     */
+    public function submitted($studentExamId)
+    {
+        $studentExam = StudentExam::with(['exam', 'result'])
+            ->where('student_id', auth()->id())
+            ->findOrFail($studentExamId);
+
+        // If result is published, redirect to actual result
+        if ($studentExam->result && $studentExam->result->is_published) {
+            return redirect()->route('student.exam.result', $studentExamId);
+        }
+
+        return view('student.exams.submitted', compact('studentExam'));
+    }
+
+    /**
+     * Show exam result (only if published)
      */
     public function result($studentExamId)
     {
@@ -1575,10 +1589,62 @@ public function saveAnswer(Request $request, $studentExamId)
             ->where('student_id', auth()->id())
             ->findOrFail($studentExamId);
 
+        // ✅ Guard: only show if published
+        if (! $studentExam->result || ! $studentExam->result->is_published) {
+            return redirect()
+                ->route('student.exam.submitted', $studentExamId)
+                ->with('warning', 'Your result has not been published yet.');
+        }
+
         $summary = $this->examEngine->getExamSummary($studentExam);
 
         return view('student.exams.result', compact('studentExam', 'summary'));
     }
+    // /**
+    //  * Submit exam
+    //  */
+    // public function submit(Request $request, $studentExamId)
+    // {
+    //     try {
+    //         $studentExam = StudentExam::where('student_id', auth()->id())
+    //             ->whereIn('status', ['started', 'in_progress'])
+    //             ->findOrFail($studentExamId);
+
+    //         $studentExam = $this->examEngine->submitExam($studentExam);
+
+    //         Cache::forget("student_exam_questions_{$studentExamId}");
+
+    //         // ✅ Clear the session access marker
+    //         session()->forget('exam_access_'.$studentExamId);
+    //         session()->forget('exam_access_time_'.$studentExamId);
+
+    //         if ($request->wantsJson()) {
+    //             return $this->successResponse([
+    //                 'result_id' => $studentExam->result->id,
+    //                 'redirect' => route('student.exam.result', $studentExamId),
+    //             ], 'Exam submitted successfully');
+    //         }
+
+    //         return redirect()->route('student.exam.result', $studentExamId)
+    //             ->with('success', 'Exam submitted successfully');
+    //     } catch (\Exception $e) {
+    //         return $this->errorResponse($e->getMessage(), 500);
+    //     }
+    // }
+
+    // /**
+    //  * Show exam result
+    //  */
+    // public function result($studentExamId)
+    // {
+    //     $studentExam = StudentExam::with(['exam', 'result'])
+    //         ->where('student_id', auth()->id())
+    //         ->findOrFail($studentExamId);
+
+    //     $summary = $this->examEngine->getExamSummary($studentExam);
+
+    //     return view('student.exams.result', compact('studentExam', 'summary'));
+    // }
 
     /**
      * Record tab switch
@@ -1611,7 +1677,7 @@ public function saveAnswer(Request $request, $studentExamId)
             if ($studentExam->submitted_at) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Exam already submitted.'
+                    'message' => 'Exam already submitted.',
                 ], 403);
             }
 
@@ -1623,22 +1689,23 @@ public function saveAnswer(Request $request, $studentExamId)
             return $this->errorResponse($e->getMessage(), 500);
         }
     }
-    
-    public function saveCurrentQuestion(Request $request, StudentExam $studentExam) {
-    
+
+    public function saveCurrentQuestion(Request $request, StudentExam $studentExam)
+    {
+
         $request->validate([
-            'question_id' => 'required|integer'
+            'question_id' => 'required|integer',
         ]);
-    
+
         $studentExam->update([
-            'current_question_id' => $request->question_id
+            'current_question_id' => $request->question_id,
         ]);
-    
+
         return response()->json([
-            'status' => 'success'
+            'status' => 'success',
         ]);
     }
-    
+
     /**
      * Save and exit exam
      */
@@ -1647,55 +1714,55 @@ public function saveAnswer(Request $request, $studentExamId)
         try {
             $studentExam = StudentExam::where('student_id', auth()->id())
                 ->findOrFail($studentExamId);
-    
+
             if ($studentExam->submitted_at) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Exam already submitted.'
+                    'message' => 'Exam already submitted.',
                 ], 403);
             }
-    
+
             // ✅ Keep status as 'in_progress' but update timestamps
             // Don't change to 'paused' - that might cause issues
             $studentExam->update([
 
-                'status' => 'paused',  
-                'is_saved_exit'       => true,
-                'saved_at'            => now(),
+                'status' => 'paused',
+                'is_saved_exit' => true,
+                'saved_at' => now(),
                 'remaining_seconds' => $request->remaining_seconds ?? $studentExam->remaining_seconds,
                 'current_question_id' => $request->current_question_id ?? $studentExam->current_question_id,
             ]);
-            
+
             // ✅ Clear the session access marker
-            session()->forget('exam_access_' . $studentExamId);
-            session()->forget('exam_access_time_' . $studentExamId);
-    
+            session()->forget('exam_access_'.$studentExamId);
+            session()->forget('exam_access_time_'.$studentExamId);
+
             return response()->json([
                 'status' => 'success',
-                'message' => 'Progress saved successfully. You can resume from dashboard.'
+                'message' => 'Progress saved successfully. You can resume from dashboard.',
             ]);
-    
+
         } catch (\Exception $e) {
             Log::error('Save exit error: '.$e->getMessage());
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error saving progress.'
+                'message' => 'Error saving progress.',
             ], 500);
         }
     }
 
-    
     // public function saveExit(Request $request,StudentExam $studentExam) {
 
     //     // dd($request->all());
     //     $studentExam->update([
-    //         'status' => 'paused',  
+    //         'status' => 'paused',
     //         'is_saved_exit'       => true,
     //         'saved_at'            => now(),
     //         'current_question_id' => $request->current_question_id,
     //         'remaining_seconds'   => $request->remaining_seconds,
     //     ]);
-    
+
     //     return response()->json([
     //         'status'  => 'success',
     //         'message' => 'Exam progress saved'

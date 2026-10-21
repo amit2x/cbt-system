@@ -2,18 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-
 use App\Traits\HasAirport;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-
-class ExamQuestion extends BaseModel
+class ExamQuestion extends Pivot
 {
     use HasAirport;
-    
+
     protected $table = 'exam_questions';
 
     protected $fillable = [
+        'airport_id',
         'exam_id',
         'section_id',
         'question_id',

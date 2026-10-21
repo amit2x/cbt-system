@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
 class HomeController extends Controller
 {
     /**
@@ -22,7 +20,7 @@ class HomeController extends Controller
         $user = auth()->user();
 
         // Redirect based on role
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin') || $user->hasRole('superadmin')) {
             return redirect()->route('admin.dashboard');
         } elseif ($user->hasRole('instructor')) {
             return redirect()->route('instructor.dashboard');
@@ -32,8 +30,6 @@ class HomeController extends Controller
 
         return view('home');
     }
-
-
 
     /**
      * Show privacy policy page
@@ -100,5 +96,4 @@ class HomeController extends Controller
 
         return view('pages.cookie-policy', compact('role'));
     }
-
 }

@@ -4,11 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
-use App\Models\Module;
 use App\Models\Exam;
-use App\Models\ExamQuestion;
-use Illuminate\Http\Request;
+use App\Models\Module;
 use App\Traits\ApiResponse;
+use Illuminate\Http\Request;
 
 class ModuleController extends Controller
 {
@@ -17,7 +16,7 @@ class ModuleController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -48,19 +47,19 @@ class ModuleController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'in:active,inactive'
+            'status' => 'in:active,inactive',
         ]);
 
         $module = $course->modules()->create([
             'title' => $request->title,
             'description' => $request->description,
             'order' => $course->modules()->max('order') + 1,
-            'status' => $request->status ?? 'active'
+            'status' => $request->status ?? 'active',
         ]);
 
         if ($request->ajax()) {
             return $this->successResponse([
-                'module' => $module
+                'module' => $module,
             ], 'Module created successfully.');
         }
 
@@ -75,13 +74,14 @@ class ModuleController extends Controller
     {
         $module->load(['course']);
         $exams = Exam::whereIn('id', function ($query) use ($module) {
-        $query->select('exam_questions.exam_id')
+            $query->select('exam_questions.exam_id')
                 ->from('exam_questions')
                 ->join('questions', 'exam_questions.question_id', '=', 'questions.id')
                 ->where('questions.subject_id', $module->id);
         })
-        ->withCount('examQuestions')
-        ->get();
+            ->withCount('examQuestions')
+            ->get();
+
         return view('admin.modules.show', compact('course', 'module', 'exams'));
     }
 
@@ -101,14 +101,14 @@ class ModuleController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'in:active,inactive'
+            'status' => 'in:active,inactive',
         ]);
 
         $module->update($request->only(['title', 'description', 'status']));
 
         if ($request->ajax()) {
             return $this->successResponse([
-                'module' => $module
+                'module' => $module,
             ], 'Module updated successfully.');
         }
 
@@ -126,6 +126,7 @@ class ModuleController extends Controller
             if (request()->ajax()) {
                 return $this->errorResponse('Cannot delete module with associated exams.', 422);
             }
+
             return back()->with('error', 'Cannot delete module with associated exams.');
         }
 
@@ -147,7 +148,7 @@ class ModuleController extends Controller
         $request->validate([
             'modules' => 'required|array',
             'modules.*.id' => 'required|exists:modules,id',
-            'modules.*.order' => 'required|integer'
+            'modules.*.order' => 'required|integer',
         ]);
 
         foreach ($request->modules as $moduleData) {
@@ -170,12 +171,12 @@ class ModuleController extends Controller
     public function toggleStatus(Course $course, Module $module)
     {
         $module->update([
-            'status' => $module->status === 'active' ? 'inactive' : 'active'
+            'status' => $module->status === 'active' ? 'inactive' : 'active',
         ]);
 
         if (request()->ajax()) {
             return $this->successResponse([
-                'status' => $module->status
+                'status' => $module->status,
             ], 'Module status updated.');
         }
 
@@ -191,15 +192,15 @@ class ModuleController extends Controller
         $request->validate([
             'module_ids' => 'required|array',
             'module_ids.*' => 'exists:modules,id',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
-    
+
         $count = Module::whereIn('id', $request->module_ids)
             ->where('course_id', $course->id)
             ->update(['status' => $request->status]);
-    
+
         return $this->successResponse([
-            'updated' => $count
+            'updated' => $count,
         ], "{$count} modules updated successfully.");
     }
 
@@ -210,7 +211,7 @@ class ModuleController extends Controller
     {
         $request->validate([
             'module_ids' => 'required|array',
-            'module_ids.*' => 'exists:modules,id'
+            'module_ids.*' => 'exists:modules,id',
         ]);
 
         $count = Module::whereIn('id', $request->module_ids)
@@ -219,12 +220,10 @@ class ModuleController extends Controller
             ->delete();
 
         return $this->successResponse([
-            'deleted' => $count
+            'deleted' => $count,
         ], "{$count} modules deleted successfully.");
     }
 
-    
-    
     /**
      * Get modules for a course (API endpoint).
      */
@@ -234,18 +233,18 @@ class ModuleController extends Controller
             ->where('status', 'active')
             ->orderBy('order')
             ->get()
-            ->map(function($module) {
+            ->map(function ($module) {
                 return [
                     'id' => $module->id,
                     'title' => $module->title,
                     'description' => $module->description,
-                    'order' => $module->order
+                    'order' => $module->order,
                 ];
             });
-    
+
         return response()->json([
             'status' => 'success',
-            'data' => $modules
+            'data' => $modules,
         ]);
     }
 }

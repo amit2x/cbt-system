@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use App\Traits\ApiResponse;
 
 class SettingsController extends Controller
 {
@@ -15,7 +15,7 @@ class SettingsController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -34,7 +34,7 @@ class SettingsController extends Controller
     public function update(Request $request)
     {
         $request->validate([
-            'settings' => 'required|array'
+            'settings' => 'required|array',
         ]);
 
         foreach ($request->settings as $key => $value) {
@@ -54,7 +54,7 @@ class SettingsController extends Controller
     public function uploadLogo(Request $request)
     {
         $request->validate([
-            'logo' => 'required|image|max:2048'
+            'logo' => 'required|image|max:2048',
         ]);
 
         $path = $request->file('logo')->store('settings', 'public');
@@ -64,7 +64,7 @@ class SettingsController extends Controller
         Cache::forget('settings');
 
         return $this->successResponse([
-            'url' => asset('storage/' . $path)
+            'url' => asset('storage/'.$path),
         ], 'Logo uploaded successfully');
     }
 
@@ -74,7 +74,7 @@ class SettingsController extends Controller
     public function uploadFavicon(Request $request)
     {
         $request->validate([
-            'favicon' => 'required|image|max:1024'
+            'favicon' => 'required|image|max:1024',
         ]);
 
         $path = $request->file('favicon')->store('settings', 'public');
@@ -84,7 +84,7 @@ class SettingsController extends Controller
         Cache::forget('settings');
 
         return $this->successResponse([
-            'url' => asset('storage/' . $path)
+            'url' => asset('storage/'.$path),
         ], 'Favicon uploaded successfully');
     }
 

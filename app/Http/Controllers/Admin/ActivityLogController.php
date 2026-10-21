@@ -1,19 +1,19 @@
 <?php
+
 // app/Http/Controllers/Admin/ActivityLogController.php
 
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Spatie\Activitylog\Models\Activity;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Spatie\Activitylog\Models\Activity;
 
 class ActivityLogController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -58,12 +58,12 @@ class ActivityLogController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Activity logs cleared successfully.'
+                'message' => 'Activity logs cleared successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error clearing logs: ' . $e->getMessage()
+                'message' => 'Error clearing logs: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -86,11 +86,11 @@ class ActivityLogController extends Controller
         $logs = $query->orderBy('created_at', 'desc')->get();
 
         // Generate CSV
-        $filename = 'activity-logs-' . now()->format('Y-m-d') . '.csv';
+        $filename = 'activity-logs-'.now()->format('Y-m-d').'.csv';
         $handle = fopen('php://output', 'w');
 
         header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Disposition: attachment; filename="'.$filename.'"');
 
         // Add headers
         fputcsv($handle, ['ID', 'Log Name', 'Event', 'Description', 'Causer', 'Subject', 'Properties', 'Date']);
@@ -103,9 +103,9 @@ class ActivityLogController extends Controller
                 $log->event ?? 'unknown',
                 $log->description ?? 'N/A',
                 $log->causer?->name ?? 'System',
-                $log->subject ? class_basename($log->subject_type) . ' #' . $log->subject_id : 'N/A',
+                $log->subject ? class_basename($log->subject_type).' #'.$log->subject_id : 'N/A',
                 json_encode($log->properties->toArray()),
-                $log->created_at ? $log->created_at->format('Y-m-d H:i:s') : 'N/A'
+                $log->created_at ? $log->created_at->format('Y-m-d H:i:s') : 'N/A',
             ]);
         }
 

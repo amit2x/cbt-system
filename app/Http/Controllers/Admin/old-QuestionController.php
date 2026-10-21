@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\QuestionsExport;
 use App\Http\Controllers\Controller;
-use App\Models\Question;
-use App\Models\Module;
-use App\Models\QuestionCategory;
+use App\Http\Requests\Question\ImportQuestionsRequest;
 use App\Http\Requests\Question\StoreQuestionRequest;
 use App\Http\Requests\Question\UpdateQuestionRequest;
-use App\Http\Requests\Question\ImportQuestionsRequest;
+use App\Imports\QuestionsImport;
+use App\Models\Module;
+use App\Models\Question;
+use App\Models\QuestionCategory;
 use App\Repositories\Contracts\QuestionRepositoryInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use App\Imports\QuestionsImport;
-use App\Exports\QuestionsExport;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionController extends Controller
@@ -24,7 +24,7 @@ class QuestionController extends Controller
     {
         $this->questionRepository = $questionRepository;
         $this->middleware('auth');
-        $this->middleware('role:admin');
+        $this->middleware('role:admin|superadmin');
     }
 
     /**
@@ -52,7 +52,7 @@ class QuestionController extends Controller
         }
 
         if ($request->filled('category_id')) {
-            $query->whereHas('categories', function($q) use ($request) {
+            $query->whereHas('categories', function ($q) use ($request) {
                 $q->where('question_categories.id', $request->category_id);
             });
         }
@@ -82,12 +82,12 @@ class QuestionController extends Controller
         $types = [
             'single_choice' => 'Single Choice',
             'multiple_choice' => 'Multiple Choice',
-            'numerical' => 'Numerical'
+            'numerical' => 'Numerical',
         ];
         $difficulties = [
             'easy' => 'Easy',
             'medium' => 'Medium',
-            'hard' => 'Hard'
+            'hard' => 'Hard',
         ];
 
         return view('admin.questions.create', compact('subjects', 'categories', 'types', 'difficulties'));
@@ -112,53 +112,54 @@ class QuestionController extends Controller
     //     }
     // }
     /**
- * Store a newly created question.
- */
-/**
- * Store a newly created question.
- */
-public function store(StoreQuestionRequest $request)
-{
-    try {
-        $questionData = $request->except(['options', 'correct_numerical', 'tolerance']);
-        $options = $request->input('options', []);
-        
-        // Process options to ensure is_correct is set
-        if (!empty($options)) {
-            foreach ($options as $index => $option) {
-                // If is_correct is missing or null, set to false (0)
-                if (!isset($option['is_correct']) || $option['is_correct'] === null) {
-                    $options[$index]['is_correct'] = false;
+     * Store a newly created question.
+     */
+    /**
+     * Store a newly created question.
+     */
+    public function store(StoreQuestionRequest $request)
+    {
+        try {
+            $questionData = $request->except(['options', 'correct_numerical', 'tolerance']);
+            $options = $request->input('options', []);
+
+            // Process options to ensure is_correct is set
+            if (! empty($options)) {
+                foreach ($options as $index => $option) {
+                    // If is_correct is missing or null, set to false (0)
+                    if (! isset($option['is_correct']) || $option['is_correct'] === null) {
+                        $options[$index]['is_correct'] = false;
+                    }
+                    // Convert string '1' or '0' to boolean
+                    $options[$index]['is_correct'] = filter_var($options[$index]['is_correct'], FILTER_VALIDATE_BOOLEAN);
                 }
-                // Convert string '1' or '0' to boolean
-                $options[$index]['is_correct'] = filter_var($options[$index]['is_correct'], FILTER_VALIDATE_BOOLEAN);
             }
+
+            // Handle numerical question
+            if ($request->type === 'numerical') {
+                $options = [
+                    [
+                        'option_text' => $request->correct_numerical,
+                        'is_correct' => true,
+                        'order' => 0,
+                    ],
+                ];
+            }
+
+            $question = $this->questionRepository->createWithOptions($questionData, $options);
+
+            return redirect()->route('admin.questions.index')
+                ->with('success', 'Question created successfully.');
+
+        } catch (\Exception $e) {
+            \Log::error('Question creation error: '.$e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Error creating question: '.$e->getMessage())
+                ->withInput();
         }
-        
-        // Handle numerical question
-        if ($request->type === 'numerical') {
-            $options = [
-                [
-                    'option_text' => $request->correct_numerical,
-                    'is_correct' => true,
-                    'order' => 0
-                ]
-            ];
-        }
-        
-        $question = $this->questionRepository->createWithOptions($questionData, $options);
-        
-        return redirect()->route('admin.questions.index')
-                        ->with('success', 'Question created successfully.');
-                        
-    } catch (\Exception $e) {
-        \Log::error('Question creation error: ' . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
-        return back()->with('error', 'Error creating question: ' . $e->getMessage())
-                     ->withInput();
     }
-}
 
     /**
      * Display the specified question.
@@ -180,12 +181,12 @@ public function store(StoreQuestionRequest $request)
         $types = [
             'single_choice' => 'Single Choice',
             'multiple_choice' => 'Multiple Choice',
-            'numerical' => 'Numerical'
+            'numerical' => 'Numerical',
         ];
         $difficulties = [
             'easy' => 'Easy',
             'medium' => 'Medium',
-            'hard' => 'Hard'
+            'hard' => 'Hard',
         ];
 
         $question->load(['categories', 'options']);
@@ -205,10 +206,10 @@ public function store(StoreQuestionRequest $request)
             $this->questionRepository->updateWithOptions($question->id, $questionData, $options);
 
             return redirect()->route('admin.questions.index')
-                            ->with('success', 'Question updated successfully.');
+                ->with('success', 'Question updated successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error updating question: ' . $e->getMessage())
-                         ->withInput();
+            return back()->with('error', 'Error updating question: '.$e->getMessage())
+                ->withInput();
         }
     }
 
@@ -226,9 +227,9 @@ public function store(StoreQuestionRequest $request)
             $question->delete();
 
             return redirect()->route('admin.questions.index')
-                            ->with('success', 'Question deleted successfully.');
+                ->with('success', 'Question deleted successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error deleting question: ' . $e->getMessage());
+            return back()->with('error', 'Error deleting question: '.$e->getMessage());
         }
     }
 
@@ -249,9 +250,9 @@ public function store(StoreQuestionRequest $request)
             Excel::import(new QuestionsImport($request->type), $request->file('file'));
 
             return redirect()->route('admin.questions.index')
-                            ->with('success', 'Questions imported successfully.');
+                ->with('success', 'Questions imported successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error importing questions: ' . $e->getMessage());
+            return back()->with('error', 'Error importing questions: '.$e->getMessage());
         }
     }
 
@@ -263,9 +264,9 @@ public function store(StoreQuestionRequest $request)
         try {
             $filters = $request->only(['type', 'difficulty', 'subject_id', 'category_id']);
 
-            return Excel::download(new QuestionsExport($filters), 'questions_' . date('Y-m-d') . '.xlsx');
+            return Excel::download(new QuestionsExport($filters), 'questions_'.date('Y-m-d').'.xlsx');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error exporting questions: ' . $e->getMessage());
+            return back()->with('error', 'Error exporting questions: '.$e->getMessage());
         }
     }
 
@@ -278,12 +279,13 @@ public function store(StoreQuestionRequest $request)
             'question_text', 'type', 'difficulty', 'marks', 'negative_marks',
             'explanation', 'subject_id', 'option_1', 'option_1_correct',
             'option_2', 'option_2_correct', 'option_3', 'option_3_correct',
-            'option_4', 'option_4_correct'
+            'option_4', 'option_4_correct',
         ];
 
         $filename = 'question_import_template.xlsx';
 
-        return Excel::download(new class($headers) implements \Maatwebsite\Excel\Concerns\FromArray {
+        return Excel::download(new class($headers) implements FromArray
+        {
             private $headers;
 
             public function __construct($headers)
@@ -298,8 +300,8 @@ public function store(StoreQuestionRequest $request)
                     [
                         'Sample question?', 'single_choice', 'medium', '1', '0',
                         'This is a sample explanation', '1',
-                        'Option A', '1', 'Option B', '0', 'Option C', '0', 'Option D', '0'
-                    ]
+                        'Option A', '1', 'Option B', '0', 'Option C', '0', 'Option D', '0',
+                    ],
                 ];
             }
         }, $filename);
@@ -312,22 +314,22 @@ public function store(StoreQuestionRequest $request)
     {
         $request->validate([
             'question_ids' => 'required|array',
-            'question_ids.*' => 'exists:questions,id'
+            'question_ids.*' => 'exists:questions,id',
         ]);
 
         try {
             Question::whereIn('id', $request->question_ids)
-                    ->whereDoesntHave('exams')
-                    ->delete();
+                ->whereDoesntHave('exams')
+                ->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Selected questions deleted successfully.'
+                'message' => 'Selected questions deleted successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error deleting questions: ' . $e->getMessage()
+                'message' => 'Error deleting questions: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -340,21 +342,21 @@ public function store(StoreQuestionRequest $request)
         $request->validate([
             'question_ids' => 'required|array',
             'question_ids.*' => 'exists:questions,id',
-            'status' => 'required|in:active,inactive'
+            'status' => 'required|in:active,inactive',
         ]);
 
         try {
             Question::whereIn('id', $request->question_ids)
-                    ->update(['status' => $request->status]);
+                ->update(['status' => $request->status]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Question status updated successfully.'
+                'message' => 'Question status updated successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error updating status: ' . $e->getMessage()
+                'message' => 'Error updating status: '.$e->getMessage(),
             ], 500);
         }
     }

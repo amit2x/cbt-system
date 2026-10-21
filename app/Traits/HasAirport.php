@@ -15,13 +15,14 @@ trait HasAirport
                 $model->airport_id = Auth::user()->airport_id;
             }
         });
+        
 
         static::updating(function ($model) {
             if (Auth::check()) {
                 $model->airport_id = Auth::user()->airport_id;
             }
         });
-        
+
         static::addGlobalScope(new AirportScope());
     }
 }

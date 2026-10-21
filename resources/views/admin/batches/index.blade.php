@@ -16,23 +16,25 @@
         <div class="card-body">
             <form method="GET" action="{{ route('admin.batches.index') }}" class="row g-3">
                 <div class="col-md-3">
-                    <input type="text" name="search" class="form-control" placeholder="Search by name" value="{{ request('search') }}">
+                    <input type="text" name="search" class="form-control" placeholder="Search by name"
+                        value="{{ request('search') }}">
                 </div>
                 <div class="col-md-2">
                     <select name="status" class="form-control">
                         <option value="">All Status</option>
-                        <option value="upcoming" {{ request('status') == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
-                        <option value="ongoing" {{ request('status') == 'ongoing' ? 'selected' : '' }}>Ongoing</option>
-                        <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                        <option value="upcoming" {{ request('status')=='upcoming' ? 'selected' : '' }}>Upcoming</option>
+                        <option value="ongoing" {{ request('status')=='ongoing' ? 'selected' : '' }}>Ongoing</option>
+                        <option value="completed" {{ request('status')=='completed' ? 'selected' : '' }}>Completed
+                        </option>
                     </select>
                 </div>
                 <div class="col-md-2">
                     <select name="course_id" class="form-control select2">
                         <option value="">All Courses</option>
                         @foreach(\App\Models\Course::all() as $course)
-                            <option value="{{ $course->id }}" {{ request('course_id') == $course->id ? 'selected' : '' }}>
-                                {{ $course->title }}
-                            </option>
+                        <option value="{{ $course->id }}" {{ request('course_id')==$course->id ? 'selected' : '' }}>
+                            {{ $course->title }}
+                        </option>
                         @endforeach
                     </select>
                 </div>
@@ -86,46 +88,47 @@
                             <td>
                                 {{ $batch->course->title ?? 'N/A' }}
                                 @if(!$batch->course)
-                                    <span class="badge bg-warning text-dark ms-1" title="No course assigned">⚠️</span>
+                                <span class="badge bg-warning text-dark ms-1" title="No course assigned">⚠️</span>
                                 @endif
                             </td>
                             <td>
                                 {{ $batch->instructor->name ?? 'N/A' }}
                                 @if(!$batch->instructor)
-                                    <span class="badge bg-warning text-dark ms-1" title="No instructor assigned">⚠️</span>
+                                <span class="badge bg-warning text-dark ms-1" title="No instructor assigned">⚠️</span>
                                 @endif
                             </td>
                             <td>
                                 @if($batch->start_date && $batch->end_date)
-                                    {{ $batch->start_date->format('d M Y') }} <br>
-                                    <small class="text-muted">to {{ $batch->end_date->format('d M Y') }}</small>
+                                {{ $batch->start_date->format('d M Y') }} <br>
+                                <small class="text-muted">to {{ $batch->end_date->format('d M Y') }}</small>
                                 @else
-                                    <span class="text-muted">N/A</span>
+                                <span class="text-muted">N/A</span>
                                 @endif
                             </td>
                             <td>
-                                <span class="badge bg-info">{{ $batch->students_count ?? 0 }}/{{ $batch->capacity ?? 0 }}</span>
+                                <span class="badge bg-info">{{ $batch->students_count ?? 0 }}/{{ $batch->capacity ?? 0
+                                    }}</span>
                                 @if(($batch->available_seats ?? 0) > 0)
-                                    <br><small class="text-success">{{ $batch->available_seats }} seats left</small>
+                                <br><small class="text-success">{{ $batch->available_seats }} seats left</small>
                                 @else
-                                    <br><small class="text-danger">Full</small>
+                                <br><small class="text-danger">Full</small>
                                 @endif
                             </td>
                             <td>
                                 <div class="progress" style="height: 10px;">
                                     <div class="progress-bar bg-success" role="progressbar"
-                                         style="width: {{ $batch->progress ?? 0 }}%"></div>
+                                        style="width: {{ $batch->progress ?? 0 }}%"></div>
                                 </div>
                                 <small class="text-muted">{{ round($batch->progress ?? 0) }}%</small>
                             </td>
                             <td>
                                 @php
-                                    $statusColors = [
-                                        'upcoming' => 'secondary',
-                                        'ongoing' => 'success',
-                                        'completed' => 'primary'
-                                    ];
-                                    $status = $batch->status ?? 'upcoming';
+                                $statusColors = [
+                                'upcoming' => 'secondary',
+                                'ongoing' => 'success',
+                                'completed' => 'primary'
+                                ];
+                                $status = $batch->status ?? 'upcoming';
                                 @endphp
                                 <span class="badge bg-{{ $statusColors[$status] ?? 'secondary' }}">
                                     {{ ucfirst($status) }}
@@ -133,25 +136,25 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('admin.batches.show', $batch) }}"
-                                       class="btn btn-sm btn-info" title="View">
+                                    <a href="{{ route('admin.batches.show', $batch) }}" class="btn btn-sm btn-info"
+                                        title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <a href="{{ route('admin.batches.edit', $batch) }}"
-                                       class="btn btn-sm btn-primary" title="Edit">
+                                    <a href="{{ route('admin.batches.edit', $batch) }}" class="btn btn-sm btn-primary"
+                                        title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-sm btn-success"
-                                            onclick="exportBatch({{ $batch->id }})" title="Export Students">
+                                        onclick="exportBatch({{ $batch->id }})" title="Export Students">
                                         <i class="bi bi-download"></i>
                                     </button>
-                                    <form action="{{ route('admin.batches.destroy', $batch) }}"
-                                          method="POST" class="d-inline">
+                                    <form action="{{ route('admin.batches.destroy', $batch) }}" method="POST"
+                                        class="d-inline">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-danger"
-                                                onclick="return confirm('Are you sure? This will delete the batch and all associated data.')"
-                                                title="Delete">
+                                            onclick="return confirm('Are you sure? This will delete the batch and all associated data.')"
+                                            title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
@@ -184,9 +187,7 @@
             <!-- Pagination -->
             <div class="row mt-3">
                 <div class="col-12">
-                    <div class="d-flex justify-content-center">
-                        {{ $batches->withQueryString()->links('pagination::bootstrap-5') }}
-                    </div>
+                    {{ $batches->withQueryString()->links('pagination::bootstrap-5') }}
                 </div>
             </div>
         </div>
@@ -203,11 +204,11 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize Select2
-        $('.select2').select2({ 
-            placeholder: 'Select Course', 
-            allowClear: true 
+        $('.select2').select2({
+            placeholder: 'Select Course',
+            allowClear: true
         });
-    
+
         // Select all checkbox
         $('#select-all').on('change', function() {
             $('.batch-checkbox').prop('checked', $(this).prop('checked'));
@@ -217,7 +218,7 @@
     function exportBatch(batchId) {
         window.location.href = `/admin/batches/${batchId}/export-students`;
     }
-    
+
     function getSelectedIds() {
         const ids = [];
         $('.batch-checkbox:checked').each(function() {
