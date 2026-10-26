@@ -140,87 +140,180 @@ class ExamController extends Controller
          );
      } */
 
+    // public function index()
+    // {
+    //     $student = auth()->user();
+    //     $today = now()->toDateString();
+
+    //     $batchIds = $student->batches()
+    //         ->wherePivot('status', 'active')
+    //         ->pluck('batches.id');
+
+    //     // Callback to ensure the exam's batch is currently active/valid by date
+    //     $dateFilter = function ($q) use ($today) {
+    //         $q->whereDate('start_date', '<=', $today)
+    //             ->whereDate('end_date', '>=', $today);
+    //     };
+
+    //     // ✅ 1. Regular Exams (Fixed structural relations & date checks)
+    //     $exams = Exam::whereIn('status', ['published', 'completed'])
+    //         ->where('type', '!=', 'quiz')
+    //         ->where(function ($query) use ($batchIds, $dateFilter) {
+    //             // Direct Batch Check
+    //             $query->whereIn('batch_id', $batchIds)
+    //                 ->whereHas('batch', $dateFilter)
+    //                 // OR Many-to-Many Batches Check
+    //                 ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
+    //                     $q->whereIn('batches.id', $batchIds)->where($dateFilter);
+    //                 });
+    //         })
+    //         ->with(['course', 'batch'])
+    //         ->get();
+
+    //     // ✅ 2. Quizzes (Fixed to include many-to-many if needed, plus unified date check)
+    //     $quizzes = Exam::whereIn('status', ['published', 'completed'])
+    //         ->where('type', 'quiz')
+    //         ->where(function ($query) use ($batchIds, $dateFilter) {
+    //             $query->whereIn('batch_id', $batchIds)
+    //                 ->whereHas('batch', $dateFilter)
+    //                 ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
+    //                     $q->whereIn('batches.id', $batchIds)->where($dateFilter);
+    //                 });
+    //         })
+    //         ->with(['batch.course'])
+    //         ->withCount('questions')
+    //         ->get();
+
+    //     // ✅ 3. All Student Attempts (Consolidated DB Hit)
+    //     $studentExams = StudentExam::where('student_id', $student->id)
+    //         ->whereRelation('exam', 'status', 'published')
+    //         ->whereHas('batch', $dateFilter)
+    //         ->with('exam')
+    //         ->latest()
+    //         ->get();
+
+    //     // ✅ 4. Split Exam vs Quiz attempts cleanly using PHP Collections
+    //     $examAttempts = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type !== 'quiz');
+    //     $quizAttemptsCollection = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type === 'quiz');
+
+    //     // Regular Exam Segregations
+    //     $ongoingExams = $examAttempts->whereIn('status', ['started', 'in_progress', 'paused']);
+    //     $completedExams = $examAttempts->where('status', 'completed');
+    //     $attemptedExams = $examAttempts->keyBy('exam_id');
+
+    //     // Quiz Segregations
+    //     $ongoingQuizzes = $quizAttemptsCollection->whereIn('status', ['started', 'in_progress', 'paused']);
+    //     $completedQuizzes = $quizAttemptsCollection->where('status', 'completed');
+    //     $quizAttempts = $quizAttemptsCollection->keyBy('exam_id');
+
+    //     // Check if quizzes exist
+    //     $hasQuizzes = $quizzes->count() > 0 || $quizAttemptsCollection->count() > 0;
+
+    //     return view('student.exams.index', compact(
+    //         'exams',
+    //         'quizzes',
+    //         'ongoingExams',
+    //         'completedExams',
+    //         'attemptedExams',
+    //         'ongoingQuizzes',
+    //         'completedQuizzes',
+    //         'quizAttempts',
+    //         'hasQuizzes'
+    //     ));
+    // }
+    
     public function index()
-    {
-        $student = auth()->user();
-        $today = now()->toDateString();
+{
+    $student = auth()->user();
+    $today = now()->toDateString();
 
-        $batchIds = $student->batches()
-            ->wherePivot('status', 'active')
-            ->pluck('batches.id');
+    $batchIds = $student->batches()
+        ->wherePivot('status', 'active')
+        ->pluck('batches.id');
 
-        // Callback to ensure the exam's batch is currently active/valid by date
-        $dateFilter = function ($q) use ($today) {
-            $q->whereDate('start_date', '<=', $today)
-                ->whereDate('end_date', '>=', $today);
-        };
+    // Callback to ensure the exam's batch is currently active/valid by date
+    $dateFilter = function ($q) use ($today) {
+        $q->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today);
+    };
 
-        // ✅ 1. Regular Exams (Fixed structural relations & date checks)
-        $exams = Exam::where('status', 'published')
-            ->where('type', '!=', 'quiz')
-            ->where(function ($query) use ($batchIds, $dateFilter) {
-                // Direct Batch Check
-                $query->whereIn('batch_id', $batchIds)
-                    ->whereHas('batch', $dateFilter)
-                    // OR Many-to-Many Batches Check
-                    ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
-                        $q->whereIn('batches.id', $batchIds)->where($dateFilter);
-                    });
+    // ✅ 1. Fetch all Student Attempts FIRST (Remove date restriction for attempts)
+    $studentExams = StudentExam::where('student_id', $student->id)
+        ->whereHas('exam', function($q) {
+            $q->whereIn('status', ['published', 'completed']);
+        })
+        ->with(['exam' => function($q) {
+            $q->with(['course', 'batch'])->withCount('questions');
+        }])
+        ->latest()
+        ->get();
+
+    // Split Exam vs Quiz attempts
+    $examAttempts = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type !== 'quiz');
+    $quizAttemptsCollection = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type === 'quiz');
+
+    // Get IDs of exams the student has already attempted
+    $attemptedExamIds = $examAttempts->pluck('exam_id')->toArray();
+    $attemptedQuizIds = $quizAttemptsCollection->pluck('exam_id')->toArray();
+
+    // ✅ 2. Fetch Regular Exams (Active/Valid Date OR Already Attempted by Student)
+    $exams = Exam::whereIn('status', ['published', 'completed'])
+        ->where('type', '!=', 'quiz')
+        ->where(function ($query) use ($batchIds, $dateFilter, $attemptedExamIds) {
+            // Valid active batches
+            $query->where(function($q) use ($batchIds, $dateFilter) {
+                $q->whereIn('batch_id', $batchIds)->whereHas('batch', $dateFilter)
+                  ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
+                      $q->whereIn('batches.id', $batchIds)->where($dateFilter);
+                  });
             })
-            ->with(['course', 'batch'])
-            ->get();
+            // OR they already attempted it
+            ->orWhereIn('id', $attemptedExamIds);
+        })
+        ->with(['course', 'batch'])
+        ->withCount('questions')
+        ->get();
 
-        // ✅ 2. Quizzes (Fixed to include many-to-many if needed, plus unified date check)
-        $quizzes = Exam::where('status', 'published')
-            ->where('type', 'quiz')
-            ->where(function ($query) use ($batchIds, $dateFilter) {
-                $query->whereIn('batch_id', $batchIds)
-                    ->whereHas('batch', $dateFilter)
-                    ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
-                        $q->whereIn('batches.id', $batchIds)->where($dateFilter);
-                    });
+    // ✅ 3. Fetch Quizzes (Active/Valid Date OR Already Attempted)
+    $quizzes = Exam::whereIn('status', ['published', 'completed'])
+        ->where('type', 'quiz')
+        ->where(function ($query) use ($batchIds, $dateFilter, $attemptedQuizIds) {
+            $query->where(function($q) use ($batchIds, $dateFilter) {
+                $q->whereIn('batch_id', $batchIds)->whereHas('batch', $dateFilter)
+                  ->orWhereHas('batches', function ($q) use ($batchIds, $dateFilter) {
+                      $q->whereIn('batches.id', $batchIds)->where($dateFilter);
+                  });
             })
-            ->with(['batch.course'])
-            ->withCount('questions')
-            ->get();
+            ->orWhereIn('id', $attemptedQuizIds);
+        })
+        ->with(['batch.course'])
+        ->withCount('questions')
+        ->get();
 
-        // ✅ 3. All Student Attempts (Consolidated DB Hit)
-        $studentExams = StudentExam::where('student_id', $student->id)
-            ->whereRelation('exam', 'status', 'published')
-            ->whereHas('batch', $dateFilter)
-            ->with('exam')
-            ->latest()
-            ->get();
+    // Segregations
+    $ongoingExams = $examAttempts->whereIn('status', ['started', 'in_progress', 'paused']);
+    $completedExams = $examAttempts->where('status', 'completed');
+    $attemptedExams = $examAttempts->keyBy('exam_id');
 
-        // ✅ 4. Split Exam vs Quiz attempts cleanly using PHP Collections
-        $examAttempts = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type !== 'quiz');
-        $quizAttemptsCollection = $studentExams->filter(fn ($se) => $se->exam && $se->exam->type === 'quiz');
+    $ongoingQuizzes = $quizAttemptsCollection->whereIn('status', ['started', 'in_progress', 'paused']);
+    $completedQuizzes = $quizAttemptsCollection->where('status', 'completed');
+    $quizAttempts = $quizAttemptsCollection->keyBy('exam_id');
 
-        // Regular Exam Segregations
-        $ongoingExams = $examAttempts->whereIn('status', ['started', 'in_progress', 'paused']);
-        $completedExams = $examAttempts->where('status', 'completed');
-        $attemptedExams = $examAttempts->keyBy('exam_id');
+    // Check if quizzes exist
+    $hasQuizzes = $quizzes->count() > 0 || $quizAttemptsCollection->count() > 0;
 
-        // Quiz Segregations
-        $ongoingQuizzes = $quizAttemptsCollection->whereIn('status', ['started', 'in_progress', 'paused']);
-        $completedQuizzes = $quizAttemptsCollection->where('status', 'completed');
-        $quizAttempts = $quizAttemptsCollection->keyBy('exam_id');
-
-        // Check if quizzes exist
-        $hasQuizzes = $quizzes->count() > 0 || $quizAttemptsCollection->count() > 0;
-
-        return view('student.exams.index', compact(
-            'exams',
-            'quizzes',
-            'ongoingExams',
-            'completedExams',
-            'attemptedExams',
-            'ongoingQuizzes',
-            'completedQuizzes',
-            'quizAttempts',
-            'hasQuizzes'
-        ));
-    }
+    return view('student.exams.index', compact(
+        'exams',
+        'quizzes',
+        'ongoingExams',
+        'completedExams',
+        'attemptedExams',
+        'ongoingQuizzes',
+        'completedQuizzes',
+        'quizAttempts',
+        'hasQuizzes'
+    ));
+}
 
     /**
      * Show exam instructions

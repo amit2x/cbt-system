@@ -32,17 +32,9 @@
         }
 
         @keyframes pulse {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.7;
-            }
-
-            100% {
-                opacity: 1;
-            }
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
         }
 
         .exam-status-badge {
@@ -389,30 +381,36 @@
                             @php
                                 $exam = $studentExam->exam;
                                 $result = $studentExam->result;
+                                
+                                // ✅ Check if BOTH the exam is completed AND the result is published
+                                $isExamCompleted = $exam->status === 'completed';
                                 $isPublished = $result && $result->is_published;
+                                $canShowResult = $isExamCompleted && $isPublished;
+                                
+                                // UI State mapping
+                                if (!$canShowResult) {
+                                    $cardBorder = 'border-warning';
+                                    $cardHeader = 'bg-warning text-dark';
+                                } elseif ($result->status === 'passed') {
+                                    $cardBorder = 'border-success';
+                                    $cardHeader = 'bg-success text-white';
+                                } else {
+                                    $cardBorder = 'border-danger';
+                                    $cardHeader = 'bg-danger text-white';
+                                }
                             @endphp
                             <div class="col-md-6 col-lg-4 mb-4">
-                                <div
-                                    class="card exam-card
-                                @if (!$isPublished) border-warning
-                                @elseif($result && $result->status == 'passed') border-success
-                                @else border-danger @endif
-                            ">
-                                    <div
-                                        class="card-header
-                                    @if (!$isPublished) bg-warning text-dark
-                                    @elseif($result && $result->status == 'passed') bg-success text-white
-                                    @else bg-danger text-white @endif
-                                ">
+                                <div class="card exam-card {{ $cardBorder }}">
+                                    <div class="card-header {{ $cardHeader }}">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="fw-bold">{{ $exam->type_name }}</span>
-                                            @if (!$isPublished)
+                                            @if (!$canShowResult)
                                                 <span class="badge bg-dark text-white">
                                                     <i class="bi bi-hourglass-split"></i> Result Pending
                                                 </span>
                                             @else
                                                 <span class="badge bg-light text-dark">
-                                                    {{ $result && $result->status == 'passed' ? 'Passed' : 'Failed' }}
+                                                    {{ $result->status == 'passed' ? 'Passed' : 'Failed' }}
                                                 </span>
                                             @endif
                                         </div>
@@ -426,15 +424,13 @@
                                         <div class="mb-3">
                                             <div class="d-flex justify-content-between small mb-2">
                                                 <span><i class="bi bi-calendar-check"></i> Completed:</span>
-                                                <span
-                                                    class="fw-bold">{{ $studentExam->updated_at->format('d M Y h:i A') }}</span>
+                                                <span class="fw-bold">{{ $studentExam->updated_at->format('d M Y h:i A') }}</span>
                                             </div>
 
-                                            @if ($isPublished && $result)
+                                            @if ($canShowResult)
                                                 <div class="d-flex justify-content-between small mb-2">
                                                     <span><i class="bi bi-percent"></i> Score:</span>
-                                                    <span
-                                                        class="fw-bold {{ $result->status == 'passed' ? 'text-success' : 'text-danger' }}">
+                                                    <span class="fw-bold {{ $result->status == 'passed' ? 'text-success' : 'text-danger' }}">
                                                         {{ $studentExam->percentage ?? $result->percentage }}%
                                                     </span>
                                                 </div>
@@ -464,9 +460,8 @@
                                         </div>
                                     </div>
                                     <div class="card-footer bg-transparent">
-                                        @if ($isPublished && $result)
-                                            <a href="{{ route('student.results.show', $result) }}"
-                                                class="btn btn-outline-primary w-100">
+                                        @if ($canShowResult)
+                                            <a href="{{ route('student.results.show', $result) }}" class="btn btn-outline-primary w-100">
                                                 <i class="bi bi-eye"></i> View Result
                                             </a>
                                         @else
@@ -504,16 +499,14 @@
                                 @php $quiz = $studentExam->exam; @endphp
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <div class="card quiz-card border-warning h-100">
-                                        <div
-                                            class="card-header bg-warning text-dark d-flex justify-content-between align-items-center py-2">
+                                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center py-2">
                                             <span class="fw-bold small">QUIZ</span>
                                             <span class="badge bg-dark">In Progress</span>
                                         </div>
                                         <div class="card-body py-3">
                                             <h6 class="card-title mb-2">{{ $quiz->title }}</h6>
                                             <div class="d-flex gap-3 small text-muted mb-2">
-                                                <span><i class="bi bi-question-circle"></i>
-                                                    {{ $quiz->question_count ?? '?' }} Q</span>
+                                                <span><i class="bi bi-question-circle"></i> {{ $quiz->question_count ?? '?' }} Q</span>
                                                 <span><i class="bi bi-clock"></i> {{ $quiz->duration_minutes }} min</span>
                                                 <span><i class="bi bi-trophy"></i> {{ $quiz->total_marks }} M</span>
                                             </div>
@@ -522,8 +515,7 @@
                                             </div>
                                         </div>
                                         <div class="card-footer bg-transparent py-2">
-                                            <a href="{{ route('student.exam.resume', $studentExam) }}"
-                                                class="btn btn-warning btn-sm w-100">
+                                            <a href="{{ route('student.exam.resume', $studentExam) }}" class="btn btn-warning btn-sm w-100">
                                                 <i class="bi bi-play-fill"></i> Resume Quiz
                                             </a>
                                         </div>
@@ -549,8 +541,7 @@
                             @foreach ($availableQuizzes as $quiz)
                                 <div class="col-md-6 col-lg-4 mb-3">
                                     <div class="card quiz-card border-success h-100">
-                                        <div
-                                            class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
+                                        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
                                             <span class="fw-bold small">QUICK QUIZ</span>
                                             <span class="badge bg-light text-success">New</span>
                                         </div>
@@ -560,15 +551,13 @@
                                                 {{ $quiz->batch->course->title ?? '' }} | {{ $quiz->batch->name ?? '' }}
                                             </p>
                                             <div class="d-flex gap-3 small text-muted mb-2">
-                                                <span><i class="bi bi-question-circle"></i>
-                                                    {{ $quiz->questions_count ?? '?' }} Q</span>
+                                                <span><i class="bi bi-question-circle"></i> {{ $quiz->questions_count ?? '?' }} Q</span>
                                                 <span><i class="bi bi-clock"></i> {{ $quiz->duration_minutes }} min</span>
                                                 <span><i class="bi bi-trophy"></i> {{ $quiz->total_marks }} M</span>
                                             </div>
                                         </div>
                                         <div class="card-footer bg-transparent py-2">
-                                            <a href="{{ route('student.exams.instructions', $quiz) }}"
-                                                class="btn btn-success btn-sm w-100">
+                                            <a href="{{ route('student.exams.instructions', $quiz) }}" class="btn btn-success btn-sm w-100">
                                                 <i class="bi bi-play-fill"></i> Start Quiz
                                             </a>
                                         </div>
@@ -588,37 +577,42 @@
                                 @php
                                     $quiz = $studentExam->exam;
                                     $result = $studentExam->result;
+                                    
+                                    // ✅ Check if BOTH the exam is completed AND the result is published
+                                    $isExamCompleted = $quiz->status === 'completed';
                                     $isPublished = $result && $result->is_published;
-                                    $passed = $isPublished && $result->status === 'passed';
+                                    $canShowResult = $isExamCompleted && $isPublished;
+                                    
+                                    $passed = $canShowResult && $result->status === 'passed';
+                                    
+                                    if (!$canShowResult) {
+                                        $cardBorder = 'border-warning';
+                                        $cardHeader = 'bg-warning text-dark';
+                                    } elseif ($passed) {
+                                        $cardBorder = 'border-success';
+                                        $cardHeader = 'bg-success text-white';
+                                    } else {
+                                        $cardBorder = 'border-danger';
+                                        $cardHeader = 'bg-danger text-white';
+                                    }
                                 @endphp
                                 <div class="col-md-6 col-lg-4 mb-3">
-                                    <div
-                                        class="card quiz-card
-                            @if (!$isPublished) border-warning
-                            @elseif($passed) border-success
-                            @else border-danger @endif
-                            h-100">
-                                        <div
-                                            class="card-header
-                                @if (!$isPublished) bg-warning text-dark
-                                @elseif($passed) bg-success text-white
-                                @else bg-danger text-white @endif
-                                d-flex justify-content-between align-items-center py-2">
+                                    <div class="card quiz-card {{ $cardBorder }} h-100">
+                                        <div class="card-header {{ $cardHeader }} d-flex justify-content-between align-items-center py-2">
                                             <span class="fw-bold small">QUIZ</span>
-                                            @if (!$isPublished)
+                                            @if (!$canShowResult)
                                                 <span class="badge bg-dark">
                                                     <i class="bi bi-hourglass-split"></i> Pending
                                                 </span>
                                             @else
-                                                <span
-                                                    class="badge bg-light {{ $passed ? 'text-success' : 'text-danger' }}">
+                                                <span class="badge bg-light {{ $passed ? 'text-success' : 'text-danger' }}">
                                                     {{ $passed ? 'Passed' : 'Failed' }}
                                                 </span>
                                             @endif
                                         </div>
                                         <div class="card-body py-3">
                                             <h6 class="card-title mb-2">{{ $quiz->title }}</h6>
-                                            @if ($isPublished && $result)
+                                            @if ($canShowResult)
                                                 <div class="d-flex justify-content-between small mb-2">
                                                     <span>Score:</span>
                                                     <strong class="{{ $passed ? 'text-success' : 'text-danger' }}">
@@ -636,9 +630,8 @@
                                             @endif
                                         </div>
                                         <div class="card-footer bg-transparent py-2">
-                                            @if ($isPublished && $result)
-                                                <a href="{{ route('student.results.show', $result) }}"
-                                                    class="btn btn-outline-primary btn-sm w-100">
+                                            @if ($canShowResult)
+                                                <a href="{{ route('student.results.show', $result) }}" class="btn btn-outline-primary btn-sm w-100">
                                                     <i class="bi bi-eye"></i> View Result
                                                 </a>
                                             @else
@@ -675,36 +668,46 @@
                                     !$attempt || ($attempt->status == 'completed' && $exam->attempts_allowed > 1);
                                 $isOngoing = $attempt && in_array($attempt->status, ['started', 'in_progress']);
                                 $isCompleted = $attempt && $attempt->status == 'completed';
+                                
                                 $completedResult = $isCompleted ? $attempt->result : null;
+                                
+                                // ✅ Check if BOTH the exam is completed AND the result is published
+                                $isExamCompleted = $exam->status === 'completed';
                                 $isPublished = $completedResult && $completedResult->is_published;
+                                $canShowResult = $isCompleted && $isExamCompleted && $isPublished;
+                                
+                                // UI State Mapping
+                                if ($isOngoing) {
+                                    $cardBorder = 'border-warning';
+                                    $cardHeader = 'bg-warning text-white';
+                                } elseif ($isCompleted && !$canShowResult) {
+                                    $cardBorder = 'border-warning';
+                                    $cardHeader = 'bg-warning text-dark';
+                                } elseif ($canShowResult && $completedResult->status == 'passed') {
+                                    $cardBorder = 'border-success';
+                                    $cardHeader = 'bg-success text-white';
+                                } elseif ($isCompleted) {
+                                    $cardBorder = 'border-danger';
+                                    $cardHeader = 'bg-danger text-white';
+                                } elseif ($exam->is_available) {
+                                    $cardBorder = 'border-primary';
+                                    $cardHeader = 'bg-primary text-white';
+                                } else {
+                                    $cardBorder = 'border-secondary';
+                                    $cardHeader = 'bg-secondary text-white';
+                                }
                             @endphp
                             <div class="col-md-6 col-lg-4 mb-4">
-                                <div
-                                    class="card exam-card
-                                @if ($isOngoing) border-warning
-                                @elseif($isCompleted && $isPublished && $completedResult->status == 'passed') border-success
-                                @elseif($isCompleted) border-danger
-                                @elseif($exam->is_available) border-primary
-                                @else border-secondary @endif
-                            ">
-                                    <div
-                                        class="card-header
-                                    @if ($isOngoing) bg-warning
-                                    @elseif($isCompleted && $isPublished && $completedResult->status == 'passed') bg-success
-                                    @elseif($isCompleted) bg-danger
-                                    @elseif($exam->is_available) bg-primary
-                                    @else bg-secondary @endif
-                                    text-white
-                                ">
+                                <div class="card exam-card {{ $cardBorder }}">
+                                    <div class="card-header {{ $cardHeader }}">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="fw-bold">{{ $exam->type_name }}</span>
                                             @if ($attempt)
                                                 @if ($isOngoing)
                                                     <span class="badge bg-light text-warning">In Progress</span>
                                                 @elseif($isCompleted)
-                                                    @if ($isPublished)
-                                                        <span
-                                                            class="badge bg-light text-{{ $completedResult->status == 'passed' ? 'success' : 'danger' }}">
+                                                    @if ($canShowResult)
+                                                        <span class="badge bg-light text-{{ $completedResult->status == 'passed' ? 'success' : 'danger' }}">
                                                             {{ $completedResult->status == 'passed' ? 'Passed' : 'Failed' }}
                                                         </span>
                                                     @else
@@ -737,11 +740,10 @@
                                                 <span><i class="bi bi-trophy"></i> Passing:</span>
                                                 <span class="fw-bold">{{ $exam->passing_percentage }}%</span>
                                             </div>
-                                            @if ($isCompleted && $isPublished && $completedResult)
+                                            @if ($canShowResult && $completedResult)
                                                 <div class="d-flex justify-content-between small mt-2 pt-2 border-top">
                                                     <span><i class="bi bi-percent"></i> Score:</span>
-                                                    <span
-                                                        class="fw-bold {{ $completedResult->status == 'passed' ? 'text-success' : 'text-danger' }}">
+                                                    <span class="fw-bold {{ $completedResult->status == 'passed' ? 'text-success' : 'text-danger' }}">
                                                         {{ $attempt->percentage }}%
                                                     </span>
                                                 </div>
@@ -761,14 +763,12 @@
                                     </div>
                                     <div class="card-footer bg-transparent">
                                         @if ($isOngoing)
-                                            <a href="{{ route('student.exam.resume', $exam) }}"
-                                                class="btn btn-warning w-100">
+                                            <a href="{{ route('student.exam.resume', $exam) }}" class="btn btn-warning w-100">
                                                 <i class="bi bi-arrow-right-circle"></i> Resume
                                             </a>
                                         @elseif($isCompleted)
-                                            @if ($isPublished)
-                                                <a href="{{ route('student.results.show', $completedResult) }}"
-                                                    class="btn btn-outline-primary w-100">
+                                            @if ($canShowResult)
+                                                <a href="{{ route('student.results.show', $completedResult) }}" class="btn btn-outline-primary w-100">
                                                     <i class="bi bi-eye"></i> View Result
                                                 </a>
                                             @else
@@ -777,8 +777,7 @@
                                                 </button>
                                             @endif
                                         @elseif($exam->is_available && $canTake)
-                                            <a href="{{ route('student.exams.instructions', $exam) }}"
-                                                class="btn btn-primary w-100">
+                                            <a href="{{ route('student.exams.instructions', $exam) }}" class="btn btn-primary w-100">
                                                 <i class="bi bi-play-circle"></i> Start Exam
                                             </a>
                                         @elseif(!$exam->is_available)

@@ -90,66 +90,127 @@ class ExamController extends Controller
     /**
      * Store a newly created exam.
      */
-    public function store(StoreExamRequest $request)
+     public function store(StoreExamRequest $request)
     {
         Log::info('Exam store request data:', $request->all());
-
+    
         DB::beginTransaction();
         try {
             $data = $request->validated();
             $data['created_by'] = auth()->id();
-
+    
+            // ✅ EXPLICITLY SET BOOLEANS
+            // This ensures that if the checkbox is unchecked (and missing from request), it saves as false (0).
+            $data['randomize_questions'] = $request->boolean('randomize_questions');
+            $data['randomize_options'] = $request->boolean('randomize_options');
+            $data['show_result_immediately'] = $request->boolean('show_result_immediately');
+            $data['allow_review'] = $request->boolean('allow_review');
+            $data['is_scheduled'] = $request->boolean('is_scheduled');
+    
             // Handle scheduled exams
-            if (! $request->is_scheduled) {
+            if (! $data['is_scheduled']) {
                 $data['start_time'] = null;
                 $data['end_time'] = null;
             }
-
+    
             // Validate module selection
             if (empty($data['module_id'])) {
                 Log::warning('Module ID is empty');
-
-                return back()->with('error', 'Please select a module for this exam.')
-                    ->withInput();
+                return back()->with('error', 'Please select a module for this exam.')->withInput();
             }
-
+    
             $exam = Exam::create($data);
-
+    
             // Attach modules if provided (for backward compatibility)
             if ($request->has('module_ids')) {
                 $exam->modules()->attach($request->module_ids);
             }
-
+    
             // Attach primary batch
-            if ($request->has('batch_id') && ! empty($request->batch_id)) {
+            if ($request->has('batch_id') && !empty($request->batch_id)) {
                 $exam->batches()->attach($request->batch_id);
             }
-
+    
             // Attach additional batches
-            if ($request->has('batch_ids') && ! empty($request->batch_ids)) {
+            if ($request->has('batch_ids') && !empty($request->batch_ids)) {
                 $exam->batches()->attach($request->batch_ids);
             }
-
+    
             DB::commit();
-
+    
             return redirect()->route('admin.exams.show', $exam)
                 ->with('success', 'Exam created successfully. Now add questions to the exam.');
+                
         } catch (ValidationException $e) {
             DB::rollBack();
             Log::error('Validation error:', $e->errors());
-
             return back()->withErrors($e->errors())->withInput();
-
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Exam creation error: '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return back()->with('error', 'Error creating exam: '.$e->getMessage())
-                ->withInput();
+            Log::error('Exam creation error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Error creating exam: '.$e->getMessage())->withInput();
         }
     }
+    // public function store(StoreExamRequest $request)
+    // {
+    //     Log::info('Exam store request data:', $request->all());
+
+    //     DB::beginTransaction();
+    //     try {
+    //         $data = $request->validated();
+    //         $data['created_by'] = auth()->id();
+
+    //         // Handle scheduled exams
+    //         if (! $request->is_scheduled) {
+    //             $data['start_time'] = null;
+    //             $data['end_time'] = null;
+    //         }
+
+    //         // Validate module selection
+    //         if (empty($data['module_id'])) {
+    //             Log::warning('Module ID is empty');
+
+    //             return back()->with('error', 'Please select a module for this exam.')
+    //                 ->withInput();
+    //         }
+
+    //         $exam = Exam::create($data);
+
+    //         // Attach modules if provided (for backward compatibility)
+    //         if ($request->has('module_ids')) {
+    //             $exam->modules()->attach($request->module_ids);
+    //         }
+
+    //         // Attach primary batch
+    //         if ($request->has('batch_id') && ! empty($request->batch_id)) {
+    //             $exam->batches()->attach($request->batch_id);
+    //         }
+
+    //         // Attach additional batches
+    //         if ($request->has('batch_ids') && ! empty($request->batch_ids)) {
+    //             $exam->batches()->attach($request->batch_ids);
+    //         }
+
+    //         DB::commit();
+
+    //         return redirect()->route('admin.exams.show', $exam)
+    //             ->with('success', 'Exam created successfully. Now add questions to the exam.');
+    //     } catch (ValidationException $e) {
+    //         DB::rollBack();
+    //         Log::error('Validation error:', $e->errors());
+
+    //         return back()->withErrors($e->errors())->withInput();
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Exam creation error: '.$e->getMessage(), [
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+
+    //         return back()->with('error', 'Error creating exam: '.$e->getMessage())
+    //             ->withInput();
+    //     }
+    // }
 
     //     public function store(StoreExamRequest $request)
     // {
@@ -243,30 +304,88 @@ class ExamController extends Controller
     /**
      * Display the specified exam.
      */
+    // public function show(Exam $exam)
+    // {
+    //     $exam->load(['course', 'batch', 'batches', 'creator', 'module', 'modules', 'sections' => function ($q) {
+    //         $q->withCount('questions');
+    //     }]);
+
+    //     $exam->loadCount(['questions', 'studentExams']);
+
+    //     // Get questions grouped by section
+    //     $questions = $exam->questions()
+    //         ->with(['subject', 'options'])
+    //         ->orderBy('pivot_order')
+    //         ->get()
+    //         ->groupBy('pivot.section_id');
+
+    //     $stats = [
+    //         'total_students' => $exam->total_students,
+    //         'attempted' => $exam->attempted_count,
+    //         'average_score' => round($exam->average_score, 2),
+    //         'highest_score' => round($exam->highest_score, 2),
+    //         'passing_count' => $exam->passing_count,
+    //         'failing_count' => $exam->failing_count,
+    //     ];
+
+    //     return view('admin.exams.show', compact('exam', 'questions', 'stats'));
+    // }
+    
     public function show(Exam $exam)
     {
-        $exam->load(['course', 'batch', 'batches', 'creator', 'module', 'modules', 'sections' => function ($q) {
-            $q->withCount('questions');
-        }]);
-
+        $exam->load([
+            'course', 
+            'batch', 
+            'batches', 
+            'creator', 
+            'module', 
+            'modules', 
+            'sections' => function ($q) {
+                $q->withCount('questions');
+            }
+        ]);
+    
         $exam->loadCount(['questions', 'studentExams']);
-
+    
         // Get questions grouped by section
         $questions = $exam->questions()
             ->with(['subject', 'options'])
             ->orderBy('pivot_order')
             ->get()
             ->groupBy('pivot.section_id');
-
-        $stats = [
-            'total_students' => $exam->total_students,
-            'attempted' => $exam->attempted_count,
-            'average_score' => round($exam->average_score, 2),
-            'highest_score' => round($exam->highest_score, 2),
-            'passing_count' => $exam->passing_count,
-            'failing_count' => $exam->failing_count,
-        ];
-
+    
+        // ✅ 1. Check if the exam is actually completed
+        $isExamCompleted = $exam->status === 'completed';
+    
+        // ✅ 2. Check if results are allowed to be shown (either immediately or manually published)
+        $hasPublishedResults = $exam->results()->where('is_published', true)->exists();
+        $resultsAllowed = $exam->show_result_immediately || $hasPublishedResults;
+    
+        // ✅ 3. Final decision: Only show stats if exam is completed AND results are allowed
+        $canShowStats = $isExamCompleted && $resultsAllowed;
+    
+        if ($canShowStats) {
+            $stats = [
+                'total_students' => $exam->total_students ?? 0,
+                'attempted' => $exam->attempted_count ?? 0,
+                'average_score' => round($exam->average_score ?? 0, 2),
+                'highest_score' => round($exam->highest_score ?? 0, 2),
+                'passing_count' => $exam->passing_count ?? 0,
+                'failing_count' => $exam->failing_count ?? 0,
+                'is_pending' => false, 
+            ];
+        } else {
+            $stats = [
+                'total_students' => $exam->total_students ?? 0,
+                'attempted' => $exam->attempted_count ?? 0,
+                'average_score' => 0,
+                'highest_score' => 0,
+                'passing_count' => 0,
+                'failing_count' => 0,
+                'is_pending' => true, 
+            ];
+        }
+    
         return view('admin.exams.show', compact('exam', 'questions', 'stats'));
     }
 
@@ -366,53 +485,108 @@ class ExamController extends Controller
     /**
      * Update the specified exam.
      */
+    // public function update(UpdateExamRequest $request, Exam $exam)
+    // {
+    //     DB::beginTransaction();
+    //     try {
+    //         $data = $request->validated();
+    //         $data['updated_by'] = auth()->id();
+
+    //         // Handle scheduled exams
+    //         if (! $request->is_scheduled) {
+    //             $data['start_time'] = null;
+    //             $data['end_time'] = null;
+    //         }
+
+    //         // Update the exam
+    //         $exam->update($data);
+
+    //         // Sync modules if provided
+    //         if ($request->has('module_ids')) {
+    //             $exam->modules()->sync($request->module_ids);
+    //         }
+
+    //         // Sync primary batch
+    //         $batchIds = [];
+    //         if ($request->has('batch_id') && ! empty($request->batch_id)) {
+    //             $batchIds[] = $request->batch_id;
+    //         }
+
+    //         // Sync additional batches
+    //         if ($request->has('batch_ids') && ! empty($request->batch_ids)) {
+    //             $batchIds = array_merge($batchIds, $request->batch_ids);
+    //         }
+
+    //         // Sync all batches
+    //         $exam->batches()->sync($batchIds);
+
+    //         DB::commit();
+
+    //         return redirect()->route('admin.exams.show', $exam)
+    //             ->with('success', 'Exam updated successfully.');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Exam update error: '.$e->getMessage(), [
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+
+    //         return back()->with('error', 'Error updating exam: '.$e->getMessage())
+    //             ->withInput();
+    //     }
+    // }
+    
     public function update(UpdateExamRequest $request, Exam $exam)
     {
+        Log::info('Exam update request data:', $request->all());
         DB::beginTransaction();
         try {
             $data = $request->validated();
             $data['updated_by'] = auth()->id();
-
+    
+            // ✅ EXPLICITLY SET BOOLEANS
+            $data['randomize_questions'] = $request->boolean('randomize_questions');
+            $data['randomize_options'] = $request->boolean('randomize_options');
+            $data['show_result_immediately'] = $request->boolean('show_result_immediately');
+            $data['allow_review'] = $request->boolean('allow_review');
+            $data['is_scheduled'] = $request->boolean('is_scheduled');
+    
             // Handle scheduled exams
-            if (! $request->is_scheduled) {
+            if (! $data['is_scheduled']) {
                 $data['start_time'] = null;
                 $data['end_time'] = null;
             }
-
+    
             // Update the exam
             $exam->update($data);
-
+    
             // Sync modules if provided
             if ($request->has('module_ids')) {
                 $exam->modules()->sync($request->module_ids);
             }
-
+    
             // Sync primary batch
             $batchIds = [];
-            if ($request->has('batch_id') && ! empty($request->batch_id)) {
+            if ($request->has('batch_id') && !empty($request->batch_id)) {
                 $batchIds[] = $request->batch_id;
             }
-
+    
             // Sync additional batches
-            if ($request->has('batch_ids') && ! empty($request->batch_ids)) {
+            if ($request->has('batch_ids') && !empty($request->batch_ids)) {
                 $batchIds = array_merge($batchIds, $request->batch_ids);
             }
-
+    
             // Sync all batches
             $exam->batches()->sync($batchIds);
-
+    
             DB::commit();
-
+    
             return redirect()->route('admin.exams.show', $exam)
                 ->with('success', 'Exam updated successfully.');
+                
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Exam update error: '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return back()->with('error', 'Error updating exam: '.$e->getMessage())
-                ->withInput();
+            Log::error('Exam update error: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->with('error', 'Error updating exam: '.$e->getMessage())->withInput();
         }
     }
 
@@ -885,6 +1059,7 @@ class ExamController extends Controller
 
         // Get all results for this exam with student details
         $results = $exam->results()
+            ->where('is_published', true)
             ->with(['student', 'student.batches'])
             ->orderBy('percentage', 'desc')
             ->paginate(20);

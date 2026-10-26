@@ -160,7 +160,14 @@
                                                 onclick="deleteExam({{ $exam->id }})" title="Delete">
                                                 <i class="bi bi-trash"></i>
                                             </button>
-
+                                            @hasrole('admin')
+                                                @if ($exam->status == 'completed' && $exam->student_exams_count > 1000 && $exam->type == 'full_exam')
+                                                    <a href="{{ route('admin.results.moderation.index', $exam) }}"
+                                                        class="btn btn-sm btn-primary" title="Publish Results">
+                                                        <i class="bi bi-bar-chart"></i>
+                                                    </a>
+                                                @endif
+                                            @endhasrole
 
                                             @hasrole('superadmin')
                                                 @if ($exam->status == 'completed' && $exam->student_exams_count > 0 && $exam->type == 'full_exam')

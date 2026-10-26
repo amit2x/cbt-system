@@ -56,7 +56,7 @@ class DashboardController extends Controller
             ->count();
 
         // Performance metrics
-        $results = Result::where('student_id', $student->id)->get();
+        $results = Result::where('student_id', $student->id)->where('is_published', true)->get();
         $averageScore = round($results->avg('percentage') ?? 0, 2);
 
         $totalCorrect = $results->sum('correct_answers');
@@ -70,6 +70,7 @@ class DashboardController extends Controller
             $rankData = DB::table('results')
                 ->select('student_id', DB::raw('AVG(percentage) as avg_score'))
                 ->whereIn('batch_id', $batchIds)
+                ->where('is_published',true)
                 ->groupBy('student_id')
                 ->orderBy('avg_score', 'desc')
                 ->get();
@@ -105,7 +106,7 @@ class DashboardController extends Controller
         }
 
         // Performance trend data
-        $recentResults = Result::where('student_id', $student->id)
+        $recentResults = Result::where('student_id', $student->id)->where('is_published', true)
             ->with('exam')
             ->orderBy('created_at', 'desc')
             ->take(10)
@@ -369,33 +370,87 @@ class DashboardController extends Controller
     /**
      * Get recent activities
      */
+    // private function getRecentActivities($student)
+    // {
+    //     $activities = [];
+
+    //     // Recent exams taken
+    //     $recentExams = StudentExam::where('student_id', $student->id)
+    //         ->where('status', 'completed')
+    //         ->with('exam')
+    //         ->orderBy('updated_at', 'desc')
+    //         ->take(5)
+    //         ->get();
+
+    //     foreach ($recentExams as $exam) {
+    //         $activities[] = [
+    //             'title' => 'Completed Exam: ' . ($exam->exam->title ?? 'N/A'),
+    //             // 'description' => 'Score: ' . ($exam->percentage ?? 0) . '%',
+    //             'description' => 'Score: ' . '--' . '%',
+    //             'color' => 'success',
+    //             'time' => $exam->updated_at->diffForHumans()
+    //         ];
+    //     }
+
+    //     // Recent batch enrollments
+    //     $recentBatches = $student->batches()
+    //         ->orderBy('batch_student.created_at', 'desc')
+    //         ->take(3)
+    //         ->get();
+
+    //     foreach ($recentBatches as $batch) {
+    //         $activities[] = [
+    //             'title' => 'Enrolled in Batch: ' . $batch->name,
+    //             'description' => $batch->course->title ?? '',
+    //             'color' => 'info',
+    //             'time' => $batch->pivot->created_at->diffForHumans()
+    //         ];
+    //     }
+
+    //     // Sort by time descending
+    //     usort($activities, function($a, $b) {
+    //         return strtotime($b['time']) - strtotime($a['time']);
+    //     });
+
+    //     return array_slice($activities, 0, 10);
+    // }
+    
     private function getRecentActivities($student)
     {
         $activities = [];
-
-        // Recent exams taken
+    
+        // Recent exams taken - eager load the result relationship
         $recentExams = StudentExam::where('student_id', $student->id)
             ->where('status', 'completed')
-            ->with('exam')
+            ->with(['exam', 'result'])
             ->orderBy('updated_at', 'desc')
             ->take(5)
             ->get();
-
+    
         foreach ($recentExams as $exam) {
+            $result = $exam->result;
+            
+            // ✅ Only show the score if the result exists and is published
+            if ($result && $result->is_published) {
+                $description = 'Score: ' . round($result->percentage, 1) . '%';
+            } else {
+                $description = 'Result Not Yet Published';
+            }
+    
             $activities[] = [
                 'title' => 'Completed Exam: ' . ($exam->exam->title ?? 'N/A'),
-                'description' => 'Score: ' . ($exam->percentage ?? 0) . '%',
+                'description' => $description,
                 'color' => 'success',
                 'time' => $exam->updated_at->diffForHumans()
             ];
         }
-
+    
         // Recent batch enrollments
         $recentBatches = $student->batches()
             ->orderBy('batch_student.created_at', 'desc')
             ->take(3)
             ->get();
-
+    
         foreach ($recentBatches as $batch) {
             $activities[] = [
                 'title' => 'Enrolled in Batch: ' . $batch->name,
@@ -404,12 +459,12 @@ class DashboardController extends Controller
                 'time' => $batch->pivot->created_at->diffForHumans()
             ];
         }
-
-        // Sort by time descending
+    
+        // Sort by time descending (handling Carbon instances properly)
         usort($activities, function($a, $b) {
             return strtotime($b['time']) - strtotime($a['time']);
         });
-
+    
         return array_slice($activities, 0, 10);
     }
 

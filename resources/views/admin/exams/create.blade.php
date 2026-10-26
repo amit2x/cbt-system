@@ -208,48 +208,113 @@
                         </div>
 
                         <!-- Settings -->
-                        <div class="card mb-3">
-                            <div class="card-header">
-                                <h6 class="mb-0">Exam Settings</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox"
-                                           id="randomize_questions" name="randomize_questions" value="1"
-                                           {{ old('randomize_questions') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="randomize_questions">
-                                        Randomize Questions
-                                    </label>
-                                </div>
+                        <!--<div class="card mb-3">-->
+                        <!--    <div class="card-header">-->
+                        <!--        <h6 class="mb-0">Exam Settings</h6>-->
+                        <!--    </div>-->
+                        <!--    <div class="card-body">-->
+                        <!--        <div class="form-check mb-2">-->
+                        <!--            <input class="form-check-input" type="checkbox"-->
+                        <!--                   id="randomize_questions" name="randomize_questions" value="1"-->
+                        <!--                   {{ old('randomize_questions') ? 'checked' : '' }}>-->
+                        <!--            <label class="form-check-label" for="randomize_questions">-->
+                        <!--                Randomize Questions-->
+                        <!--            </label>-->
+                        <!--        </div>-->
 
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox"
-                                           id="randomize_options" name="randomize_options" value="1"
-                                           {{ old('randomize_options') ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="randomize_options">
-                                        Randomize Options
-                                    </label>
-                                </div>
+                        <!--        <div class="form-check mb-2">-->
+                        <!--            <input class="form-check-input" type="checkbox"-->
+                        <!--                   id="randomize_options" name="randomize_options" value="1"-->
+                        <!--                   {{ old('randomize_options') ? 'checked' : '' }}>-->
+                        <!--            <label class="form-check-label" for="randomize_options">-->
+                        <!--                Randomize Options-->
+                        <!--            </label>-->
+                        <!--        </div>-->
 
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox"
-                                           id="show_result_immediately" name="show_result_immediately" value="1"
-                                           {{ old('show_result_immediately', true) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="show_result_immediately">
-                                        Show Result Immediately
-                                    </label>
-                                </div>
+                        <!--        <div class="form-check mb-2">-->
+                        <!--            <input class="form-check-input" type="checkbox"-->
+                        <!--                   id="show_result_immediately" name="show_result_immediately" value="1"-->
+                        <!--                   {{ old('show_result_immediately', true) ? 'checked' : '' }}>-->
+                        <!--            <label class="form-check-label" for="show_result_immediately">-->
+                        <!--                Show Result Immediately-->
+                        <!--            </label>-->
+                        <!--        </div>-->
 
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox"
-                                           id="allow_review" name="allow_review" value="1"
-                                           {{ old('allow_review', true) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="allow_review">
-                                        Allow Review of Answers
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
+                        <!--        <div class="form-check mb-2">-->
+                        <!--            <input class="form-check-input" type="checkbox"-->
+                        <!--                   id="allow_review" name="allow_review" value="1"-->
+                        <!--                   {{ old('allow_review', true) ? 'checked' : '' }}>-->
+                        <!--            <label class="form-check-label" for="allow_review">-->
+                        <!--                Allow Review of Answers-->
+                        <!--            </label>-->
+                        <!--        </div>-->
+                        <!--    </div>-->
+                        <!--</div>-->
+                        <!-- Settings -->
+<div class="card mb-3">
+    <div class="card-header">
+        <h6 class="mb-0">Exam Settings</h6>
+    </div>
+    <div class="card-body">
+        
+        {{-- ✅ FIX: Hidden input ensures 0 is sent if unchecked --}}
+        <input type="hidden" name="randomize_questions" value="0">
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox"
+                   id="randomize_questions" name="randomize_questions" value="1"
+                   {{ old('randomize_questions', $exam->randomize_questions ?? false) ? 'checked' : '' }}>
+            <label class="form-check-label" for="randomize_questions">
+                Randomize Questions
+            </label>
+        </div>
+
+        {{-- ✅ FIX: Hidden input ensures 0 is sent if unchecked --}}
+        <input type="hidden" name="randomize_options" value="0">
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox"
+                   id="randomize_options" name="randomize_options" value="1"
+                   {{ old('randomize_options', $exam->randomize_options ?? false) ? 'checked' : '' }}>
+            <label class="form-check-label" for="randomize_options">
+                Randomize Options
+            </label>
+        </div>
+
+        {{-- ✅ FIX: Hidden input ensures 0 is sent if unchecked --}}
+        <input type="hidden" name="show_result_immediately" value="0">
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox"
+                   id="show_result_immediately" name="show_result_immediately" value="1"
+                   {{ old('show_result_immediately', $exam->show_result_immediately ?? true) ? 'checked' : '' }}>
+            <label class="form-check-label" for="show_result_immediately">
+                Show Result Immediately
+            </label>
+        </div>
+
+        {{-- ✅ FIX: Hidden input ensures 0 is sent if unchecked --}}
+        <input type="hidden" name="allow_review" value="0">
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox"
+                   id="allow_review" name="allow_review" value="1"
+                   {{ old('allow_review', $exam->allow_review ?? true) ? 'checked' : '' }}>
+            <label class="form-check-label" for="allow_review">
+                Allow Review of Answers
+            </label>
+        </div>
+        
+        {{-- ✅ FIX: Hidden input ensures 0 is sent if unchecked --}}
+        <input type="hidden" name="is_scheduled" value="0">
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox"
+                   id="is_scheduled" name="is_scheduled" value="1"
+                   {{ old('is_scheduled', $exam->is_scheduled ?? false) ? 'checked' : '' }}
+                   onchange="toggleSchedule()">
+            <label class="form-check-label" for="is_scheduled">
+                Schedule this exam
+            </label>
+        </div>
+        
+    </div>
+</div>
 
                         <!-- Scheduling -->
                         <div class="card mb-3">
